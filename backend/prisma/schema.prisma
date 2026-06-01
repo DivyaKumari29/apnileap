@@ -15,9 +15,15 @@ model User {
   role             String
   campusId         String?
   campus           Campus?  @relation(fields: [campusId], references: [id])
+  status           String   @default("PENDING")
   resetToken       String?
   resetTokenExpiry DateTime?
   createdAt        DateTime @default(now())
+  mentorAssignments MentorAssignment[]
+  studentAssignments StudentAssignment[]
+  messagesSent       Message[]
+  meetingInvites     MeetingInvite[]
+  documentsUploaded  Document[]
 }
 
 model Project {
@@ -36,6 +42,7 @@ model Project {
   dateAdded       String
   initialWorkstream String?
   allocations     Allocation[]
+  documents       Document[]
 }
 
 model Allocation {
@@ -48,6 +55,20 @@ model Allocation {
   
   projectId       String
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mentorAssignments MentorAssignment[]
+  teams              Team[]
+  messages           Message[]
+  meetings           Meeting[]
+  documents          Document[]
+}
+
+model MentorAssignment {
+  id           String     @id @default(uuid())
+  allocationId String
+  allocation   Allocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  facultyId    String
+  faculty      User       @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now())
 }
 
 model Campus {
@@ -77,6 +98,11 @@ model Meeting {
   status      String   @default("Scheduled")
   campusId    String
   campus      Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  
+  allocationId String?
+  allocation   Allocation? @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  organizerId  String?
+  invites      MeetingInvite[]
 }
 
 model AuditLog {
@@ -87,3 +113,64 @@ model AuditLog {
   details         String?
   timestamp       DateTime @default(now())
 }
+
+model Team {
+  id           String     @id @default(uuid())
+  name         String
+  allocationId String
+  allocation   Allocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  studentAssignments StudentAssignment[]
+  createdAt    DateTime   @default(now())
+}
+
+model StudentAssignment {
+  id           String     @id @default(uuid())
+  teamId       String
+  team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now())
+}
+
+model Message {
+  id           String     @id @default(uuid())
+  content      String
+  senderId     String
+  sender       User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  allocationId String
+  allocation   Allocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+}
+
+model MeetingInvite {
+  id        String   @id @default(uuid())
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy String?
+  status    String   @default("Pending")
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id           String     @id @default(uuid())
+  filename     String
+  filepath     String
+  fileType     String
+  status       String     @default("Pending Review")
+  feedback     String?
+  
+  uploadedById String
+  uploadedBy   User       @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  
+  allocationId String?
+  allocation   Allocation? @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  
+  projectId    String?
+  project      Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+

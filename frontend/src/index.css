@@ -12,6 +12,7 @@
   --primary-glow: rgba(45, 212, 191, 0.15);
   --secondary: #22d3ee;       /* Aurora Cyan */
   --accent: #fb923c;          /* Peach Coral */
+  --purple: #a855f7;          /* Vibrant Lilac Purple */
   
   --text-main: #e2f1f1;       /* Icy White/Teal */
   --text-muted: #84a1a8;      /* Oceanic grey-teal */
@@ -66,6 +67,7 @@
   --primary-glow: rgba(13, 148, 136, 0.15);
   --secondary: #0891b2;       /* High-contrast Cyan */
   --accent: #ea580c;          /* High-contrast Orange */
+  --purple: #7c3aed;          /* High-contrast Violet Purple */
   
   --text-main: #0f172a;       /* Slate Dark 900 */
   --text-muted: #475569;      /* Slate Grey 600 */

@@ -12,38 +12,120 @@ async function main() {
   
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: {},
+    update: { status: 'APPROVED' },
     create: {
       email: adminEmail,
       password: adminPassword,
       name: 'Central Admin',
       role: 'MODERATOR',
+      status: 'APPROVED'
     },
   });
   console.log(`✅ Admin user created/verified: ${admin.email}`);
 
+  // 1.5 Seed Campuses
+  const campuses = [
+    { id: '3', name: 'KLE Spoke' },
+    { id: '101', name: 'COEP Spoke' },
+    { id: '102', name: 'MMCOEP Spoke' },
+    { id: '103', name: 'RIT Spoke' }
+  ];
+
+  for (const campus of campuses) {
+    await prisma.campus.upsert({
+      where: { id: campus.id },
+      update: {},
+      create: { id: campus.id, name: campus.name }
+    });
+  }
+  console.log('✅ Campuses created');
+
   // 2. Seed Campus Coordinator Users (for easy testing)
   const coordinators = [
-    { email: 'kle@apnileap.com', name: 'KLE Coordinator', role: 'SPONSOR', campusId: '3' },
-    { email: 'coep@apnileap.com', name: 'COEP Coordinator', role: 'SPONSOR', campusId: '101' },
-    { email: 'mmcoep@apnileap.com', name: 'MMCOEP Coordinator', role: 'SPONSOR', campusId: '102' },
-    { email: 'rit@apnileap.com', name: 'RIT Coordinator', role: 'SPONSOR', campusId: '103' },
+    { email: 'sponsor@nvidia.com', name: 'NVIDIA Sponsor', role: 'SPONSOR', campusId: null },
+    { email: 'kle@apnileap.com', name: 'KLE Coordinator', role: 'COORDINATOR', campusId: '3' },
+    { email: 'coep@apnileap.com', name: 'COEP Coordinator', role: 'COORDINATOR', campusId: '101' },
+    { email: 'mmcoep@apnileap.com', name: 'MMCOEP Coordinator', role: 'COORDINATOR', campusId: '102' },
+    { email: 'rit@apnileap.com', name: 'RIT Coordinator', role: 'COORDINATOR', campusId: '103' },
   ];
 
   for (const coord of coordinators) {
     const pwd = await bcrypt.hash('spoke123', 10);
     await prisma.user.upsert({
       where: { email: coord.email },
-      update: {},
+      update: { role: coord.role, status: 'APPROVED' },
       create: {
         email: coord.email,
         password: pwd,
         name: coord.name,
-        role: 'SPONSOR', // Uses coordinator persona permissions in app
-        campusId: coord.campusId
+        role: coord.role,
+        campusId: coord.campusId,
+        status: 'APPROVED'
       }
     });
     console.log(`✅ Coordinator created/verified: ${coord.email}`);
+  }
+
+  // 2.5 Seed Faculty Mentors
+  const mentors = [
+    { email: 'anitasharma@kle.in', name: 'Dr. Anita Sharma', role: 'MENTOR', campusId: '3' },
+    { email: 'rajivgupta@kle.in', name: 'Prof. Rajiv Gupta', role: 'MENTOR', campusId: '3' },
+    { email: 'vikramrao@kle.in', name: 'Dr. Vikram Rao', role: 'MENTOR', campusId: '3' },
+    { email: 'meenadeshmukh@coep.in', name: 'Dr. Meena Deshmukh', role: 'MENTOR', campusId: '101' },
+    { email: 'sanjaypatil@coep.in', name: 'Prof. Sanjay Patil', role: 'MENTOR', campusId: '101' },
+    { email: 'snehabhosale@coep.in', name: 'Prof. Sneha Bhosale', role: 'MENTOR', campusId: '101' },
+    { email: 'kavitajoshi@mmcoep.in', name: 'Dr. Kavita Joshi', role: 'MENTOR', campusId: '102' },
+    { email: 'amitkulkarni@mmcoep.in', name: 'Prof. Amit Kulkarni', role: 'MENTOR', campusId: '102' },
+    { email: 'rohitpawar@mmcoep.in', name: 'Dr. Rohit Pawar', role: 'MENTOR', campusId: '102' },
+    { email: 'sureshdesai@rit.in', name: 'Dr. Suresh Desai', role: 'MENTOR', campusId: '103' },
+    { email: 'nehasingh@rit.in', name: 'Prof. Neha Singh', role: 'MENTOR', campusId: '103' },
+    { email: 'poojajadhav@rit.in', name: 'Prof. Pooja Jadhav', role: 'MENTOR', campusId: '103' },
+  ];
+
+  for (const mentor of mentors) {
+    const pwd = await bcrypt.hash('faculty123', 10);
+    await prisma.user.upsert({
+      where: { email: mentor.email },
+      update: { status: 'APPROVED' },
+      create: {
+        email: mentor.email,
+        password: pwd,
+        name: mentor.name,
+        role: mentor.role,
+        campusId: mentor.campusId,
+        status: 'APPROVED'
+      }
+    });
+    console.log(`✅ Faculty Mentor created/verified: ${mentor.email}`);
+  }
+
+  // 2.7 Seed Students
+  const students = [
+    { email: 'rahulsharma@kle.edu', name: 'Rahul Sharma', role: 'STUDENT', campusId: '3' },
+    { email: 'priyapatel@kle.edu', name: 'Priya Patel', role: 'STUDENT', campusId: '3' },
+    { email: 'snehajoshi@coep.edu', name: 'Sneha Joshi', role: 'STUDENT', campusId: '101' },
+    { email: 'amitwaghmare@coep.edu', name: 'Amit Waghmare', role: 'STUDENT', campusId: '101' },
+    { email: 'nikhilrane@mmcoep.edu', name: 'Nikhil Rane', role: 'STUDENT', campusId: '102' },
+    { email: 'sayalideshmukh@mmcoep.edu', name: 'Sayali Deshmukh', role: 'STUDENT', campusId: '102' },
+    { email: 'tejasshinde@rit.edu', name: 'Tejas Shinde', role: 'STUDENT', campusId: '103' },
+    { email: 'pritipatil@rit.edu', name: 'Priti Patil', role: 'STUDENT', campusId: '103' },
+  ];
+
+  for (const student of students) {
+    const pwd = await bcrypt.hash('student123', 10);
+    await prisma.user.upsert({
+      where: { email: student.email },
+      update: { status: 'APPROVED' },
+      create: {
+        email: student.email,
+        password: pwd,
+        name: student.name,
+        role: student.role,
+        campusId: student.campusId,
+        status: 'APPROVED'
+      }
+    });
+    console.log(`✅ Student created/verified: ${student.email}`);
   }
 
   // 3. Seed B2B Company Projects
@@ -102,28 +184,6 @@ async function main() {
       status: 'Proposed',
       dateAdded: '2026-05-26',
       initialWorkstream: 'Phase 1: Set up Isaac Sim workspace and import PCB CAD designs'
-    },
-    {
-      company: 'Intel',
-      logoUrl: 'https://logo.clearbit.com/intel.com?size=80',
-      title: 'Automotive VLSI Controller Chip',
-      description: 'Design and verify a micro-controller unit (MCU) for dashboard telemetry and advanced sensor fusion in electric vehicles.',
-      budget: '$40,000',
-      duration: '9 Months',
-      status: 'Proposed',
-      dateAdded: '2026-05-24',
-      initialWorkstream: 'Phase 1: Configure RTL model and compile system level testbench suite'
-    },
-    {
-      company: 'Google',
-      logoUrl: 'https://logo.clearbit.com/google.com?size=80',
-      title: 'Cloud-Native Health Tracking API',
-      description: 'Develop a secure, high-throughput FHIR-compliant API for sharing electronic medical records seamlessly between clinics and hospitals.',
-      budget: '$15,000',
-      duration: '4 Months',
-      status: 'Proposed',
-      dateAdded: '2026-05-26',
-      initialWorkstream: 'Phase 1: Implement basic FHIR schema validation and configure OAuth2 layer'
     }
   ];
 

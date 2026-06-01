@@ -14,6 +14,8 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 
 // Modern Lucide-style Icon setup using React Icons Fa
 import {
@@ -40,12 +42,14 @@ import {
   FaLock,
   FaEye,
   FaEyeSlash,
-  FaUser
+  FaUser,
+  FaGraduationCap,
+  FaRunning
 } from "react-icons/fa";
 import {
   LayoutDashboard, FolderKanban, CheckCircle, Clock, Zap, Crown, Building2,
   CalendarDays, Settings, PlayCircle, PlusCircle, AlertTriangle, Monitor,
-  Activity, Users, LogOut, Sun, Moon, Briefcase, Calendar, FolderHeart
+  Activity, Users, LogOut, Sun, Moon, Briefcase, Calendar, FolderHeart, FileText
 } from "lucide-react";
 
 
@@ -62,6 +66,14 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import FIPProgressModal from "./components/FIPProgressModal";
+import AssignMentorsModal from "./components/AssignMentorsModal";
+import CreateSprintModal from "./components/CreateSprintModal";
+
+import FacultyDashboardView from "./components/FacultyDashboardView";
+import StudentDashboardView from "./components/StudentDashboardView";
+import { InviteToMeetingModal } from "./components/InviteToMeetingModal";
+import DocumentsView from "./components/DocumentsView";
 
 // Utility date calculator to evaluate task deadline details
 const getDeadlineInfo = (dueDate, statusName) => {
@@ -92,29 +104,31 @@ const getDeadlineInfo = (dueDate, statusName) => {
 };
 
 const SPOKES = {
-  "3": { name: "KLE Spoke", key: "AK", live: true },
-  "101": { name: "COEP Spoke", key: "AK", live: true },
-  "102": { name: "MMCOEP Spoke", key: "AK", live: true },
-  "103": { name: "RIT Spoke", key: "AK", live: true }
+  "3": { name: "KLE Spoke", key: "PNLP", live: true },
+  "101": { name: "COEP Spoke", key: "PNLP", live: true },
+  "102": { name: "MMCOEP Spoke", key: "PNLP", live: true },
+  "103": { name: "RIT Spoke", key: "PNLP", live: true }
 };
 
 function App() {
   // Authentication & Session States
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem("apnileap-auth") === "true";
-  });
-  const [sessionUser, setSessionUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("apnileap-user")) || null;
-    } catch {
-      return null;
-    }
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [sessionUser, setSessionUser] = useState(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Registration States
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regRole, setRegRole] = useState("STUDENT");
+  const [regCampusId, setRegCampusId] = useState("3");
+  const [regError, setRegError] = useState("");
+  const [isSubmittingReg, setIsSubmittingReg] = useState(false);
 
   // Forgot Password States
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
@@ -128,35 +142,63 @@ function App() {
   const [activeView, setActiveView] = useState("dashboard"); // "dashboard" or "kanban"
   const [theme, setTheme] = useState(() => localStorage.getItem("app-theme") || "dark");
 
-  const [activeWorkspace, setActiveWorkspace] = useState(() => {
-    const auth = localStorage.getItem("apnileap-auth") === "true";
-    if (auth) {
-      const persona = localStorage.getItem("apnileap-persona") || "moderator";
-      return persona === "moderator" ? "hub" : persona;
-    }
-    return "hub";
-  });
+  const [activeWorkspace, setActiveWorkspace] = useState("hub");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [currentPersona, setCurrentPersona] = useState(() => {
-    return localStorage.getItem("apnileap-persona") || "moderator";
-  });
+  const [currentPersona, setCurrentPersona] = useState("moderator");
   const [currentUser, setCurrentUser] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState("Connecting to Jira...");
   const [hasError, setHasError] = useState(false);
 
   const [hubMetrics, setHubMetrics] = useState(null);
   const [isHubLoading, setIsHubLoading] = useState(true);
+  
+  const [pendingUsers, setPendingUsers] = useState([]);
+
+  const fetchPendingUsers = async () => {
+    if (currentUser?.role !== "COORDINATOR") return;
+    try {
+      const res = await axios.get(`/api/auth/users/pending?campusId=${currentUser.campusId}`);
+      setPendingUsers(res.data);
+    } catch (err) {
+      console.error("Failed to fetch pending users", err);
+    }
+  };
+
+  const handleApproveUser = async (userId) => {
+    try {
+      await axios.post(`/api/auth/users/${userId}/approve`);
+      triggerToast("User approved successfully!");
+      fetchPendingUsers();
+    } catch (err) {
+      console.error("Approve user error", err);
+      triggerToast("Failed to approve user.", "error");
+    }
+  };
+
+  const handleRejectUser = async (userId) => {
+    try {
+      await axios.post(`/api/auth/users/${userId}/reject`);
+      triggerToast("User rejected and removed.", "warning");
+      fetchPendingUsers();
+    } catch (err) {
+      console.error("Reject user error", err);
+      triggerToast("Failed to reject user.", "error");
+    }
+  };
 
   // B2B Moderator Project Assignment states
   const [moderatorProjects, setModeratorProjects] = useState([]);
   const [isModeratorLoading, setIsModeratorLoading] = useState(false);
   const [selectedAssignProject, setSelectedAssignProject] = useState(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isAssignMentorsOpen, setIsAssignMentorsOpen] = useState(false);
+  const [assignMentorsProject, setAssignMentorsProject] = useState(null);
   const [isSignOutConfirmOpen, setIsSignOutConfirmOpen] = useState(false);
   const [assignTargetCampus, setAssignTargetCampus] = useState("3");
   const [assignDueDate, setAssignDueDate] = useState("2026-08-25");
   const [isProvisioning, setIsProvisioning] = useState(false);
   const [isRespondingToProject, setIsRespondingToProject] = useState(false);
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
 
 
 
@@ -202,6 +244,10 @@ function App() {
   const [spokeMembers, setSpokeMembers] = useState([]);
   const [isMembersLoading, setIsMembersLoading] = useState(false);
 
+  // Sprints State
+  const [activeSprints, setActiveSprints] = useState([]);
+  const [sprintFilter, setSprintFilter] = useState("All");
+
   // Filters State
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState("All");
@@ -210,6 +256,7 @@ function App() {
   // Modal States & Premium Multi-tab details
   const [selectedTask, setSelectedTask] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateSprintOpen, setIsCreateSprintOpen] = useState(false);
   const [modalTab, setModalTab] = useState("overview"); // "overview", "subtasks", "worklog", "links"
   const [worklogHistory, setWorklogHistory] = useState([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
@@ -275,6 +322,34 @@ function App() {
     return null;
   };
 
+  const handleRegisterSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setRegError("");
+
+    if (!regName.trim() || !regEmail.trim() || !regPassword.trim()) {
+      setRegError("Please fill in all fields.");
+      return;
+    }
+
+    setIsSubmittingReg(true);
+    try {
+      const res = await axios.post("/api/auth/register", {
+        name: regName,
+        email: regEmail,
+        password: regPassword,
+        role: regRole,
+        campusId: regCampusId
+      });
+      triggerToast(res.data.message);
+      setIsRegistering(false); // flip back to login
+      setLoginEmail(regEmail); // pre-fill email
+    } catch (err) {
+      setRegError(err.response?.data?.error || "Failed to register.");
+    } finally {
+      setIsSubmittingReg(false);
+    }
+  };
+
   const handleLoginSubmit = async (e) => {
     if (e) e.preventDefault();
     setLoginError("");
@@ -286,7 +361,7 @@ function App() {
 
     setIsLoggingIn(true);
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
+      const res = await axios.post("/api/auth/login", {
         email: loginEmail,
         password: loginPassword,
       });
@@ -303,6 +378,10 @@ function App() {
         else if (user.campusId === "101") persona = "spoke-coep";
         else if (user.campusId === "102") persona = "spoke-mmcoep";
         else if (user.campusId === "103") persona = "spoke-rit";
+      } else if (user.role === "MENTOR") {
+        persona = "faculty-dashboard";
+      } else if (user.role === "STUDENT") {
+        persona = "student-dashboard";
       } else if (user.role === "SPONSOR" || user.role === "COMPANY") {
         persona = "company";
       } else {
@@ -332,7 +411,7 @@ function App() {
     }
     setIsResetting(true);
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", {
+      const res = await axios.post("/api/auth/forgot-password", {
         email: forgotPasswordEmail
       });
       setIsResetting(false);
@@ -356,7 +435,7 @@ function App() {
     }
     setIsResetting(true);
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/reset-password", {
+      const res = await axios.post("/api/auth/reset-password", {
         email: forgotPasswordEmail,
         token: resetTokenInput,
         newPassword: newPasswordInput
@@ -374,32 +453,49 @@ function App() {
     }
   };
 
-  const handleQuickConnect = (email, name, boardId, persona) => {
+  const handleQuickConnect = async (email, name, boardId, persona) => {
+    let password = "spoke123";
+    if (email === "admin@apnileap.com") password = "admin123";
+    else if (email.includes("kle.in") || email.includes("coep.in") || email.includes("mmcoep.in") || email.includes("rit.in")) password = "faculty123";
+    else if (email.includes("kle.edu") || email.includes("coep.edu") || email.includes("mmcoep.edu") || email.includes("rit.edu")) password = "student123";
+
     setLoginEmail(email);
-    setLoginPassword("••••••••");
+    setLoginPassword(password);
     setLoginError("");
     setIsLoggingIn(true);
-
-    setTimeout(() => {
+    
+    try {
+      const res = await axios.post("/api/auth/login", { email, password });
+      const { token, user } = res.data;
+      
       setIsLoggingIn(false);
-      const matchedUser = {
-        email: email,
-        displayName: name,
-        role: persona === "moderator" ? "Central Moderator" : persona === "company" ? "Corporate Sponsor" : (SPOKES[boardId]?.name || "Campus") + " Coordinator",
-        company: persona === "company" ? "NVIDIA" : null
-      };
-
       setIsAuthenticated(true);
-      setSessionUser(matchedUser);
-      setCurrentPersona(persona);
-      setActiveWorkspace(persona === "moderator" ? "hub" : persona);
+      setSessionUser(user);
+      
+      let finalPersona = persona;
+      if (user.role === "MODERATOR") finalPersona = "moderator";
+      else if (user.role === "SPONSOR") {
+        if (user.campusId === "3") finalPersona = "spoke-kle";
+        else if (user.campusId === "101") finalPersona = "spoke-coep";
+        else if (user.campusId === "102") finalPersona = "spoke-mmcoep";
+        else if (user.campusId === "103") finalPersona = "spoke-rit";
+        else finalPersona = "company";
+      } else if (user.role === "MENTOR") finalPersona = "faculty-dashboard";
+      else if (user.role === "STUDENT") finalPersona = "student-dashboard";
+      
+      setCurrentPersona(finalPersona);
+      setActiveWorkspace(finalPersona === "moderator" ? "hub" : finalPersona);
 
+      localStorage.setItem("apnileap-token", token);
       localStorage.setItem("apnileap-auth", "true");
-      localStorage.setItem("apnileap-user", JSON.stringify(matchedUser));
-      localStorage.setItem("apnileap-persona", persona);
+      localStorage.setItem("apnileap-user", JSON.stringify(user));
+      localStorage.setItem("apnileap-persona", finalPersona);
 
-      triggerToast(`Quick Connected as ${matchedUser.displayName}! `);
-    }, 800);
+      triggerToast(`Quick Connected as ${user.name}!`);
+    } catch (err) {
+      setIsLoggingIn(false);
+      setLoginError(err.response?.data?.error || "Login failed via Quick Connect.");
+    }
   };
 
   const handleLogout = () => {
@@ -426,7 +522,7 @@ function App() {
   const fetchSpokeMembers = async (boardId, silent = false) => {
     if (!silent) setIsMembersLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/spokes/${boardId}/members`);
+      const res = await axios.get(`/spokes/${boardId}/members`);
       setSpokeMembers(res.data);
     } catch (err) {
       console.error("Failed to retrieve campus team members:", err);
@@ -437,11 +533,13 @@ function App() {
 
   // Fetch Tasks from Real API
   const fetchJiraTasks = async (silent = false, customBoardId = null) => {
-    if (!silent) setIsLoading(true);
-    setHasError(false);
+    if (!silent) {
+      setIsLoading(true);
+      setHasError(false);
+    }
     try {
       const boardIdToFetch = customBoardId || currentBoardId;
-      const response = await axios.get(`http://localhost:5000/tasks?boardId=${boardIdToFetch}`);
+      const response = await axios.get(`/tasks?boardId=${boardIdToFetch}`);
       if (Array.isArray(response.data)) {
         // Adapt Jira issues dynamically - pulls exact assignee, reporter, and due date
         const normalized = response.data.map((item) => ({
@@ -465,6 +563,7 @@ function App() {
               avatarUrl: item.fields.reporter.avatarUrls?.["48x48"] || item.fields.reporter.avatarUrl || "https://i.pravatar.cc/150",
               email: item.fields.reporter.emailAddress || ""
             } : null,
+            sprints: item.fields?.customfield_10020 || item.fields?.sprint ? (Array.isArray(item.fields?.customfield_10020) ? item.fields.customfield_10020 : [item.fields.sprint]) : [],
             created: item.fields?.created || new Date().toISOString(),
             dueDate: item.fields?.duedate || item.fields?.dueDate || null,
             flagged: (item.fields?.customfield_10021 && item.fields.customfield_10021.length > 0) || 
@@ -507,6 +606,7 @@ function App() {
         }));
         setTasksAndCache(normalized, boardIdToFetch);
         setConnectionStatus(currentBoardId === "3" ? "Connected to Jira Cloud" : `Connected to Spoke (${currentBoardId})`);
+        if (silent) setHasError(false);
         if (!silent) {
           triggerToast("Successfully synchronized with Live Jira API!");
         }
@@ -526,12 +626,27 @@ function App() {
     }
   };
 
+  // Fetch Active Sprints
+  const fetchSprints = async (silent = false, customBoardId = null) => {
+    try {
+      const boardIdToFetch = customBoardId || currentBoardId;
+      const res = await axios.get(`/sprints?boardId=${boardIdToFetch}`);
+      setActiveSprints(res.data || []);
+    } catch (err) {
+      console.error("Sprint Fetch Error:", err);
+      setActiveSprints([]);
+    }
+  };
+
   // Fetch Aggregated Hub Metrics for ApniLeap
   const fetchHubMetrics = async (silent = false) => {
-    if (!silent) setIsHubLoading(true);
-    setHasError(false);
+    if (!silent) {
+      setIsHubLoading(true);
+      setHasError(false);
+    }
     try {
-      const response = await axios.get("http://localhost:5000/hub/metrics");
+      const response = await axios.get("/hub/metrics");
+      if (silent) setHasError(false);
       setHubMetrics(response.data);
       setConnectionStatus("Connected to Jira Cloud (HUB)");
     } catch (error) {
@@ -548,10 +663,13 @@ function App() {
 
   // Fetch incoming B2B projects for Moderator Intake
   const fetchModeratorProjects = async (silent = false) => {
-    if (!silent) setIsModeratorLoading(true);
-    setHasError(false);
+    if (!silent) {
+      setIsModeratorLoading(true);
+      setHasError(false);
+    }
     try {
-      const response = await axios.get("http://localhost:5000/moderator/projects");
+      const response = await axios.get("/moderator/projects");
+      if (silent) setHasError(false);
       setModeratorProjects(response.data);
       setConnectionStatus("Connected to Ingestion Portal");
     } catch (error) {
@@ -569,7 +687,7 @@ function App() {
   const fetchMeetings = async (silent = false) => {
     if (!silent) setIsMeetingsLoading(true);
     try {
-      const response = await axios.get("http://localhost:5000/meetings");
+      const response = await axios.get("/meetings");
       setMeetings(response.data);
     } catch (error) {
       console.error("Meetings Fetch Error:", error);
@@ -588,7 +706,7 @@ function App() {
 
     setIsProvisioning(true);
     try {
-      const response = await axios.post("http://localhost:5000/moderator/assign", {
+      const response = await axios.post("/moderator/assign", {
         projectId: selectedAssignProject.id,
         targetBoardId: assignTargetCampus,
         dueDate: assignDueDate
@@ -611,7 +729,7 @@ function App() {
   const handleAcceptProject = async (projectId) => {
     setIsRespondingToProject(true);
     try {
-      const res = await axios.post(`http://localhost:5000/spoke/project/${projectId}/accept`, { targetBoardId: currentBoardId });
+      const res = await axios.post(`/spoke/project/${projectId}/accept`, { targetBoardId: currentBoardId });
       if (res.data && res.data.success) {
         triggerToast("Project accepted! Jira workspace successfully provisioned with 3 standard Phase tasks!");
         fetchModeratorProjects(true);
@@ -629,7 +747,7 @@ function App() {
   const handleDeclineProject = async (projectId) => {
     setIsRespondingToProject(true);
     try {
-      const res = await axios.post(`http://localhost:5000/spoke/project/${projectId}/decline`, { targetBoardId: currentBoardId });
+      const res = await axios.post(`/spoke/project/${projectId}/decline`, { targetBoardId: currentBoardId });
       if (res.data && res.data.success) {
         triggerToast("Proposal declined. Project returned to the Moderator assignment pool.");
         fetchModeratorProjects(true);
@@ -644,7 +762,7 @@ function App() {
 
   const handleAssignFacultyToProject = async (projectId, facultyName) => {
     try {
-      const res = await axios.post(`http://localhost:5000/spoke/project/${projectId}/assign`, {
+      const res = await axios.post(`/spoke/project/${projectId}/assign`, {
         targetBoardId: currentBoardId,
         facultyName
       });
@@ -677,6 +795,7 @@ function App() {
       } else {
         fetchJiraTasks(false); // blocking first-load shimmer
       }
+      fetchSprints(true); // silent fetch sprints
       fetchSpokeMembers(currentBoardId, true); // silent non-blocking fetch
       fetchModeratorProjects(true); // Fetch moderator projects silently to check for proposed B2B assignments
     }
@@ -686,7 +805,7 @@ function App() {
   useEffect(() => {
     const fetchMyself = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/myself");
+        const res = await axios.get("/myself");
         setCurrentUser(res.data);
       } catch (err) {
         console.error("Failed to retrieve myself context:", err);
@@ -709,6 +828,7 @@ function App() {
         fetchMeetings(true);
       } else {
         fetchJiraTasks(true);
+        fetchSprints(true);
         fetchSpokeMembers(currentBoardId, true);
       }
     }, 10000); // 10s auto-polling
@@ -781,9 +901,19 @@ function App() {
         (filterAssignee === "Unassigned" && !task.fields.assignee) ||
         task.fields.assignee?.displayName === filterAssignee;
 
-      return textMatch && priorityMatch && assigneeMatch;
+      let sprintMatch = true;
+      if (sprintFilter !== "All") {
+        if (sprintFilter === "Active Sprints") {
+          const activeSprintIds = activeSprints.map(s => s.id);
+          const taskSprints = task.fields.sprints || [];
+          sprintMatch = taskSprints.some(s => s && s.id && activeSprintIds.includes(s.id)) || 
+                        taskSprints.some(s => typeof s === 'string' && s.includes('state=ACTIVE')); // Handle string format 
+        }
+      }
+
+      return textMatch && priorityMatch && assigneeMatch && sprintMatch;
     });
-  }, [tasks, searchQuery, filterPriority, filterAssignee]);
+  }, [tasks, searchQuery, filterPriority, filterAssignee, sprintFilter, activeSprints]);
 
   // Aggregate Metrics
   const metrics = useMemo(() => {
@@ -962,7 +1092,7 @@ function App() {
     triggerToast(`Transitioning ${taskKey} to ${newStatus} in Jira...`);
     
     // 2. Perform live API status transition
-    axios.post(`http://localhost:5000/tasks/${taskKey}/transition`, { statusName: newStatus })
+    axios.post(`/tasks/${taskKey}/transition`, { statusName: newStatus })
       .then(() => {
         triggerToast(`Successfully transitioned ${taskKey} to ${newStatus} in Jira!`);
       })
@@ -1000,7 +1130,7 @@ function App() {
     setIsCreateOpen(false);
     triggerToast("Creating task in Jira...", "info");
     try {
-      const res = await axios.post("http://localhost:5000/tasks", payload);
+      const res = await axios.post("/tasks", payload);
       triggerToast(`Created task ${res.data.key} in Jira successfully!`);
       
       // Reset Form
@@ -1030,7 +1160,7 @@ function App() {
     try {
       if (changedField === "status") {
         triggerToast(`Transitioning ${updatedTask.key} to ${updatedTask.fields.status.name} in Jira...`);
-        await axios.post(`http://localhost:5000/tasks/${updatedTask.key}/transition`, { statusName: updatedTask.fields.status.name });
+        await axios.post(`/tasks/${updatedTask.key}/transition`, { statusName: updatedTask.fields.status.name });
         triggerToast(`Successfully transitioned ${updatedTask.key} to ${updatedTask.fields.status.name} in Jira!`);
       } else {
         const payload = {};
@@ -1042,7 +1172,7 @@ function App() {
         if (changedField === "priority") payload.priority = updatedTask.fields.priority?.name || null;
 
         triggerToast(`Saving ${changedField} updates for ${updatedTask.key} in Jira...`);
-        await axios.put(`http://localhost:5000/tasks/${updatedTask.key}`, payload);
+        await axios.put(`/tasks/${updatedTask.key}`, payload);
         triggerToast(`Successfully saved ${changedField} for ${updatedTask.key} in Jira!`);
       }
     } catch (err) {
@@ -1082,7 +1212,7 @@ function App() {
 
     try {
       triggerToast(nextFlagged ? `Flagging issue ${task.key} as BLOCKED...` : `Clearing blocker flag for ${task.key}...`, "warning");
-      await axios.put(`http://localhost:5000/tasks/${task.key}/flag`, { flagged: nextFlagged });
+      await axios.put(`/tasks/${task.key}/flag`, { flagged: nextFlagged });
       triggerToast(nextFlagged ? `Issue ${task.key} is now flagged as blocked!` : `Successfully cleared blocker flag for ${task.key}!`);
       await fetchJiraTasks(true);
     } catch (err) {
@@ -1101,14 +1231,14 @@ function App() {
     
     try {
       triggerToast(`Logging ${timeSpentString} spent time to issue ${taskKey} in Jira...`);
-      await axios.post(`http://localhost:5000/tasks/${taskKey}/worklog`, { timeSpent: timeSpentString, comment: logComment });
+      await axios.post(`/tasks/${taskKey}/worklog`, { timeSpent: timeSpentString, comment: logComment });
       triggerToast(`Successfully logged ${timeSpentString} to issue ${taskKey}!`);
       
       setWorklogTimeSpent("");
       setWorklogComment("");
       
       // Refetch worklogs immediately for the modal history
-      const logsRes = await axios.get(`http://localhost:5000/tasks/${taskKey}/worklog`);
+      const logsRes = await axios.get(`/tasks/${taskKey}/worklog`);
       setWorklogHistory(logsRes.data || []);
       
       await fetchJiraTasks(true);
@@ -1128,7 +1258,7 @@ function App() {
   const fetchWorklogHistory = async (taskKey) => {
     setIsHistoryLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/tasks/${taskKey}/worklog`);
+      const res = await axios.get(`/tasks/${taskKey}/worklog`);
       setWorklogHistory(res.data || []);
     } catch (err) {
       console.error("Fetch worklogs error:", err);
@@ -1149,7 +1279,7 @@ function App() {
       const label = isEpic ? "child task" : "child subtask";
       triggerToast(`Creating ${label} under ${parentKey} in Jira...`);
       
-      await axios.post(`http://localhost:5000/tasks/${parentKey}/subtask`, {
+      await axios.post(`/tasks/${parentKey}/subtask`, {
         summary: subtaskSummary,
         assigneeId: assigneeId || null,
         parentIssueType: parentIssueType || null
@@ -1184,7 +1314,7 @@ function App() {
     
     try {
       triggerToast(`Linking issue ${sourceKey} to ${targetKey} in Jira...`);
-      await axios.post(`http://localhost:5000/tasks/links`, { linkType: relationType, sourceKey, targetKey });
+      await axios.post(`/tasks/links`, { linkType: relationType, sourceKey, targetKey });
       triggerToast(`Issues successfully linked in Jira!`);
       
       setLinkTargetKey("");
@@ -1220,7 +1350,7 @@ function App() {
         }));
       }
 
-      await axios.put(`http://localhost:5000/tasks/${taskKey}/labels`, { labels: newLabelsArray });
+      await axios.put(`/tasks/${taskKey}/labels`, { labels: newLabelsArray });
       triggerToast(`Saved tags for ${taskKey} in Jira!`);
     } catch (err) {
       console.error(err);
@@ -1236,7 +1366,7 @@ function App() {
     setSelectedTask(null);
     try {
       triggerToast(`Deleting issue ${taskKey} from Jira...`, "warning");
-      await axios.delete(`http://localhost:5000/tasks/${taskKey}`);
+      await axios.delete(`/tasks/${taskKey}`);
       triggerToast(`Permanently deleted issue ${taskKey} from Jira!`, "warning");
       await fetchJiraTasks(true);
     } catch (err) {
@@ -1287,7 +1417,7 @@ function App() {
 
     // Duration of envelope flight animation: 2.2 seconds
     setTimeout(() => {
-      axios.post("http://localhost:5000/tasks/send-reminder", payload)
+      axios.post("/tasks/send-reminder", payload)
         .then(res => {
           triggerToast(res.data.message || `Dispatched alert successfully to ${emailRecipient}!`);
           if (res.data.previewUrl) {
@@ -1484,140 +1614,6 @@ function App() {
               }}>
                 A robust multi-tenant Agile collaboration suite powered by live Jira Cloud. Experience absolute campus workspace isolation with central Moderator ingestion pathways.
               </p>
-
-              {/* Quick Connect demo panel inside left visual panel */}
-              <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.15)", paddingTop: "35px", maxWidth: "640px" }}>
-                <span style={{
-                  display: "block",
-                  fontSize: "18px",
-                  fontWeight: "900",
-                  color: "rgba(255, 255, 255, 0.7)",
-                  textTransform: "uppercase",
-                  letterSpacing: "1.8px",
-                  marginBottom: "20px"
-                }}>
-                  Quick Demo Connect
-                </span>
-                
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "16px"
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("admin@apnileap.com", "Central Admin", "hub", "moderator")}
-                    style={{
-                      gridColumn: "span 2",
-                      padding: "18px",
-                      borderRadius: "12px",
-                      background: "rgba(255, 255, 255, 0.12)",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      color: "white",
-                      fontWeight: "700",
-                      fontSize: "19px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                    title="Connect as Central Moderator Admin"
-                  >
-                    Central Moderator Admin
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("sponsor@nvidia.com", "NVIDIA Sponsor", "company", "company")}
-                    style={{
-                      gridColumn: "span 2",
-                      padding: "18px",
-                      borderRadius: "12px",
-                      background: "rgba(255, 255, 255, 0.12)",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      color: "white",
-                      fontWeight: "700",
-                      fontSize: "19px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)",
-                      marginTop: "-4px"
-                    }}
-                    title="Connect as NVIDIA Corporate Sponsor"
-                  >
-                    NVIDIA Corporate Sponsor
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("coordinator@kle.edu", "KLE Coordinator", "3", "spoke-kle")}
-                    style={{
-                      padding: "16px",
-                      borderRadius: "12px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "17px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                  >
-                    KLE Spoke (Live)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("coordinator@coep.edu", "COEP Coordinator", "101", "spoke-coep")}
-                    style={{
-                      padding: "16px",
-                      borderRadius: "12px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "17px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                  >
-                    COEP Spoke
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("coordinator@mmcoep.edu", "MMCOEP Coordinator", "102", "spoke-mmcoep")}
-                    style={{
-                      padding: "16px",
-                      borderRadius: "12px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "17px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                  >
-                    MMCOEP Spoke
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("coordinator@rit.edu", "RIT Coordinator", "103", "spoke-rit")}
-                    style={{
-                      padding: "16px",
-                      borderRadius: "12px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "17px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                  >
-                    RIT Spoke
-                  </button>
-                </div>
-              </div>
             </div>
 
             {/* Footer trademark or copyright */}
@@ -1649,7 +1645,53 @@ function App() {
                   Enter your campus spoke or administrative email to connect.
                 </p>
               </div>
-
+              
+              {isRegistering ? (
+              <form onSubmit={handleRegisterSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                {regError && (
+                  <div style={{ padding: "18px 22px", borderRadius: "14px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)", color: "#ef4444", fontSize: "16px", fontWeight: "600", display: "flex", alignItems: "center", gap: "12px" }}>
+                    ️ {regError}
+                  </div>
+                )}
+                <div>
+                  <label style={{ display: "block", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase" }}>Full Name</label>
+                  <input type="text" placeholder="John Doe" value={regName} onChange={(e) => setRegName(e.target.value)} style={{ width: "100%", padding: "14px", borderRadius: "10px", background: "var(--bg-input)", border: "1px solid var(--border-glass)", color: "var(--text-main)", outline: "none", fontSize: "16px" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase" }}>Email Address</label>
+                  <input type="email" placeholder="john@university.edu" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} style={{ width: "100%", padding: "14px", borderRadius: "10px", background: "var(--bg-input)", border: "1px solid var(--border-glass)", color: "var(--text-main)", outline: "none", fontSize: "16px" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase" }}>Password</label>
+                  <input type={showPassword ? "text" : "password"} placeholder="••••••••" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} style={{ width: "100%", padding: "14px", borderRadius: "10px", background: "var(--bg-input)", border: "1px solid var(--border-glass)", color: "var(--text-main)", outline: "none", fontSize: "16px" }} />
+                </div>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: "block", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase" }}>Role</label>
+                    <select value={regRole} onChange={(e) => setRegRole(e.target.value)} style={{ width: "100%", padding: "14px", borderRadius: "10px", background: "var(--bg-input)", border: "1px solid var(--border-glass)", color: "var(--text-main)", outline: "none", fontSize: "16px" }}>
+                      <option value="STUDENT">Student</option>
+                      <option value="MENTOR">Faculty / Mentor</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: "block", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase" }}>Campus</label>
+                    <select value={regCampusId} onChange={(e) => setRegCampusId(e.target.value)} style={{ width: "100%", padding: "14px", borderRadius: "10px", background: "var(--bg-input)", border: "1px solid var(--border-glass)", color: "var(--text-main)", outline: "none", fontSize: "16px" }}>
+                      <option value="3">KLE Tech</option>
+                      <option value="101">COEP Pune</option>
+                      <option value="102">MMCOEP</option>
+                      <option value="103">RIT</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" disabled={isSubmittingReg} style={{ marginTop: "10px", padding: "16px", borderRadius: "10px", background: "var(--primary)", color: "var(--text-primary-btn)", border: "none", fontWeight: "800", fontSize: "18px", cursor: isSubmittingReg ? "not-allowed" : "pointer" }}>
+                  {isSubmittingReg ? "Submitting..." : "Sign Up"}
+                </button>
+                <div style={{ textAlign: "center", marginTop: "10px" }}>
+                  <span style={{ color: "var(--text-muted)" }}>Already have an account? </span>
+                  <a href="#" onClick={(e) => { e.preventDefault(); setIsRegistering(false); }} style={{ color: "var(--primary)", fontWeight: "600", textDecoration: "none" }}>Sign In</a>
+                </div>
+              </form>
+            ) : (
             <form onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
               {loginError && (
                 <div style={{
@@ -1691,13 +1733,13 @@ function App() {
                     fontSize: "21px"
                   }} />
                   <input
-                    type="text"
-                    placeholder="coordinator@kle.edu or admin@apnileap.com"
+                    type="email"
+                    placeholder="user@campus.edu"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     style={{
                       width: "100%",
-                      padding: "18px 20px 18px 56px",
+                      padding: "18px 90px 18px 56px",
                       borderRadius: "14px",
                       background: "var(--bg-input)",
                       border: "1px solid var(--border-glass)",
@@ -1826,7 +1868,13 @@ function App() {
                   </>
                 )}
               </button>
+              
+              <div style={{ textAlign: "center", marginTop: "10px" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "16px" }}>Don't have an account? </span>
+                <a href="#" onClick={(e) => { e.preventDefault(); setIsRegistering(true); }} style={{ color: "var(--primary)", fontWeight: "600", textDecoration: "none", fontSize: "16px" }}>Sign Up</a>
+              </div>
             </form>
+            )}
             </div> {/* Closing the maxWidth wrapper */}
           </div>
         </div>
@@ -2097,8 +2145,8 @@ function App() {
             </div>
           )}
 
-          {/* Section 1: ACTIVE VIEW MODE (Hidden if viewing Hub or Moderator) */}
-          {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "meetings" && (
+          {/* Section 1: ACTIVE VIEW MODE (Only shown for Spokes and Playground) */}
+          {(activeWorkspace === "playground" || activeWorkspace?.startsWith("spoke-")) && (
             <>
               <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "8px", marginBottom: "4px" }}>
                 {!isSidebarCollapsed && "View Mode"}
@@ -2124,9 +2172,47 @@ function App() {
                 collapsed={isSidebarCollapsed}
                 onClick={() => setActiveView("projects")}
               />
+              {currentUser?.role === "COORDINATOR" && (
+                <SidebarNavItem
+                  active={activeView === "approvals"}
+                  icon={<FaUsers size={16} />}
+                  label="Approve Student/Faculty"
+                  collapsed={isSidebarCollapsed}
+                  onClick={() => {
+                    setActiveView("approvals");
+                    fetchPendingUsers();
+                  }}
+                />
+              )}
               <hr style={{ border: "none", borderTop: "1px solid var(--border-glass)", margin: "8px 0" }} />
             </>
           )}
+
+          {/* Section 2: GLOBAL RESOURCES */}
+          <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "8px", marginBottom: "4px" }}>
+            {!isSidebarCollapsed && "Global Resources"}
+          </div>
+          <SidebarNavItem
+            active={activeWorkspace === "documents-global"}
+            icon={<FileText size={16} style={{ color: "var(--accent)" }} />}
+            label="Global Documents"
+            collapsed={isSidebarCollapsed}
+            onClick={() => {
+               setActiveWorkspace("documents-global");
+               setActiveView("documents");
+            }}
+          />
+          <SidebarNavItem
+            active={activeWorkspace === "documents-student"}
+            icon={<FileText size={16} style={{ color: "var(--primary)" }} />}
+            label="Student Submissions"
+            collapsed={isSidebarCollapsed}
+            onClick={() => {
+               setActiveWorkspace("documents-student");
+               setActiveView("documents");
+            }}
+          />
+          <hr style={{ border: "none", borderTop: "1px solid var(--border-glass)", margin: "8px 0" }} />
 
 
 
@@ -2152,11 +2238,18 @@ function App() {
                 onClick={() => setActiveWorkspace("moderator")}
               />
               <SidebarNavItem
-                active={activeWorkspace === "meetings"}
+                active={activeWorkspace === "meetings-campus"}
                 icon={<CalendarDays size={18} style={{ color: "var(--secondary)" }} />}
-                label="Meetings & Syncs"
+                label="Campus Syncs"
                 collapsed={isSidebarCollapsed}
-                onClick={() => setActiveWorkspace("meetings")}
+                onClick={() => setActiveWorkspace("meetings-campus")}
+              />
+              <SidebarNavItem
+                active={activeWorkspace === "meetings-cohort"}
+                icon={<CalendarDays size={18} style={{ color: "var(--accent)" }} />}
+                label="Cohort Syncs"
+                collapsed={isSidebarCollapsed}
+                onClick={() => setActiveWorkspace("meetings-cohort")}
               />
             </>
           )}
@@ -2169,6 +2262,30 @@ function App() {
                 label="Sponsor Portal"
                 collapsed={isSidebarCollapsed}
                 onClick={() => setActiveWorkspace("company")}
+              />
+            </>
+          )}
+
+          {currentPersona === "faculty-dashboard" && (
+            <>
+              <SidebarNavItem
+                active={activeWorkspace === "faculty-dashboard"}
+                icon={<FaGraduationCap size={16} style={{ color: "var(--accent)" }} />}
+                label="Mentor Dashboard"
+                collapsed={isSidebarCollapsed}
+                onClick={() => setActiveWorkspace("faculty-dashboard")}
+              />
+            </>
+          )}
+          
+          {currentPersona === "student-dashboard" && (
+            <>
+              <SidebarNavItem
+                active={activeWorkspace === "student-dashboard"}
+                icon={<FaGraduationCap size={16} style={{ color: "var(--accent)" }} />}
+                label="Student Portal"
+                collapsed={isSidebarCollapsed}
+                onClick={() => setActiveWorkspace("student-dashboard")}
               />
             </>
           )}
@@ -2264,7 +2381,7 @@ function App() {
             {!isSidebarCollapsed && (
               <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <span style={{ fontWeight: "600", fontSize: "13px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {sessionUser?.displayName || currentUser?.displayName || "Jira Administrator"}
+                  {sessionUser?.name || sessionUser?.displayName || currentUser?.displayName || "Jira Administrator"}
                 </span>
                 <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>
                   {sessionUser?.role || "Active Session"}
@@ -2273,38 +2390,6 @@ function App() {
             )}
           </div>
           
-          <button
-            onClick={handleSignOutWithConfirmation}
-            style={{
-              background: "rgba(239, 68, 68, 0.08)",
-              border: "1px solid rgba(239, 68, 68, 0.2)",
-              color: "#f87171",
-              cursor: "pointer",
-              padding: isSidebarCollapsed ? "8px" : "10px 14px",
-              borderRadius: "10px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              fontSize: "12px",
-              fontWeight: "700",
-              width: "100%",
-              transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(239, 68, 68, 0.18)";
-              e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.35)";
-              e.currentTarget.style.boxShadow = "0 0 10px rgba(239, 68, 68, 0.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
-              e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.2)";
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          >
-            <LogOut size={isSidebarCollapsed ? 15 : 13} />
-            {!isSidebarCollapsed && <span>Sign Out</span>}
-          </button>
         </div>
       </aside>
 
@@ -2329,6 +2414,8 @@ function App() {
                 ? "FIP Sync Meetings & Collaboration"
                 : activeWorkspace === "company"
                 ? "Corporate Partner Sponsorship Portal"
+                : activeWorkspace === "student-dashboard"
+                ? "My Learning & Project Portal"
                 : activeView === "dashboard"
                 ? `${activeWorkspace === "playground" ? "Playground" : SPOKES[currentBoardId]?.name || "Spoke"} Analytics Dashboard`
                 : `${activeWorkspace === "playground" ? "Playground" : SPOKES[currentBoardId]?.name || "Spoke"} Active Sprint Kanban`}
@@ -2342,6 +2429,8 @@ function App() {
                 ? "Schedule campus sprint syncs, manage agendas, and auto-dispatch pre-meeting overdue warning digests."
                 : activeWorkspace === "company"
                 ? "Propose new corporate projects, monitor active campus sponsorships, and track student engineering deliverables."
+                : activeWorkspace === "student-dashboard"
+                ? "Track your individual engineering progress, coursework submissions, and sprint deliverables."
                 : activeView === "dashboard" 
                 ? "Key performance metrics, sprint load status, priorities summary and deadline risks." 
                 : "Drag issues across columns to transition status, update fields, or track work progression."
@@ -2401,13 +2490,24 @@ function App() {
             </button>
 
             {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "meetings" && currentPersona !== "moderator" && (
-              <button
-                onClick={() => setIsCreateOpen(true)}
-                className="btn-primary"
-              >
-                <FaPlus size={12} />
-                <span>New Issue</span>
-              </button>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  onClick={() => setIsCreateSprintOpen(true)}
+                  className="btn-secondary"
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <FaRunning size={12} />
+                  <span>New Sprint</span>
+                </button>
+                <button
+                  onClick={() => setIsCreateOpen(true)}
+                  className="btn-primary"
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <FaPlus size={12} />
+                  <span>New Issue</span>
+                </button>
+              </div>
             )}
 
             <div style={{ position: "relative", cursor: "pointer" }}>
@@ -2458,11 +2558,45 @@ function App() {
                 )
               )}
             </div>
+            
+            <button
+              onClick={handleSignOutWithConfirmation}
+              style={{
+                background: "rgba(239, 68, 68, 0.08)",
+                border: "1px solid rgba(239, 68, 68, 0.2)",
+                color: "#f87171",
+                cursor: "pointer",
+                padding: "8px 12px",
+                borderRadius: "10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                fontSize: "12px",
+                fontWeight: "700",
+                transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                marginLeft: "8px"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(239, 68, 68, 0.18)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.35)";
+                e.currentTarget.style.boxShadow = "0 0 10px rgba(239, 68, 68, 0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.2)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+              title="Sign Out"
+            >
+              <LogOut size={14} />
+              <span>Sign Out</span>
+            </button>
           </div>
         </header>
 
         {/* SEARCH & DYNAMIC FILTER BAR */}
-        {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && (
+        {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "student-dashboard" && (
           <section className="glass-panel" style={{
             padding: "16px 24px",
             display: "flex",
@@ -2500,7 +2634,6 @@ function App() {
 
             {/* Filter Dropdowns */}
             <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-              {/* Priority Filter */}
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <FaFilter size={12} color="var(--text-muted)" />
                 <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Priority:</span>
@@ -2535,13 +2668,29 @@ function App() {
                 </select>
               </div>
               
+              {/* Sprint Filter */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <FaFilter size={12} color="var(--text-muted)" />
+                <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Sprint:</span>
+                <select
+                  className="form-select"
+                  value={sprintFilter}
+                  onChange={(e) => setSprintFilter(e.target.value)}
+                  style={{ padding: "6px 28px 6px 12px", width: "140px", height: "34px", fontSize: "13px" }}
+                >
+                  <option value="All">All Backlog</option>
+                  <option value="Active Sprints">Active Sprints</option>
+                </select>
+              </div>
+              
               {/* Reset Filters indicator */}
-              {(searchQuery || filterPriority !== "All" || filterAssignee !== "All") && (
+              {(searchQuery || filterPriority !== "All" || filterAssignee !== "All" || sprintFilter !== "All") && (
                 <button
                   onClick={() => {
                     setSearchQuery("");
                     setFilterPriority("All");
                     setFilterAssignee("All");
+                    setSprintFilter("All");
                     triggerToast("Filters cleared");
                   }}
                   style={{
@@ -2562,7 +2711,7 @@ function App() {
         )}
 
         {/* LOADING SHIMMER STATE */}
-        {isLoading ? (
+        {(isLoading && activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "company" && activeWorkspace !== "meetings") ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "300px", gap: "16px" }}>
             <div style={{
               width: "48px",
@@ -2618,6 +2767,7 @@ function App() {
               setIsAssignModalOpen(true);
             }}
             triggerToast={triggerToast}
+            onOpenProgressModal={() => setIsProgressModalOpen(true)}
           />
         ) : activeWorkspace === "company" ? (
           <CompanySponsorView
@@ -2626,16 +2776,30 @@ function App() {
             onRefresh={() => fetchModeratorProjects(false)}
             sessionUser={sessionUser}
             triggerToast={triggerToast}
+            onOpenProgressModal={() => setIsProgressModalOpen(true)}
           />
-        ) : activeWorkspace === "meetings" ? (
-          <MeetingsPortalView
-            meetings={meetings}
-            loading={isMeetingsLoading}
-            onRefresh={() => fetchMeetings(false)}
-            spokes={Object.entries(SPOKES).map(([id, spoke]) => ({ id, ...spoke }))}
+        ) : activeWorkspace.startsWith("meetings") ? (
+          <MeetingsPortalView 
+            meetings={meetings} 
+            loading={isMeetingsLoading} 
+            onRefresh={fetchMeetings} 
+            spokes={Object.values(SPOKES).filter(s => s.live)}
             triggerToast={triggerToast}
             moderatorProjects={moderatorProjects}
+            sessionUser={sessionUser}
+            meetingType={activeWorkspace === "meetings-campus" ? "campus" : "cohort"}
           />
+        ) : activeWorkspace === "faculty-dashboard" ? (
+          <FacultyDashboardView
+            sessionUser={sessionUser}
+            moderatorProjects={moderatorProjects}
+            loading={isModeratorLoading}
+            onRefresh={() => fetchModeratorProjects(true)}
+          />
+        ) : activeWorkspace === "student-dashboard" ? (
+          <StudentDashboardView currentUser={sessionUser} campusId={sessionUser.campusId || currentBoardId} />
+        ) : activeWorkspace.startsWith("documents") ? (
+          <DocumentsView currentUser={sessionUser} documentType={activeWorkspace === "documents-global" ? "project" : "allocation"} />
         ) : (
           <>
             {/* Proposed B2B Project Decision Banner (Multi-tenant Coordinator Review Privilege) */}
@@ -2906,6 +3070,66 @@ function App() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* ACTIVE SPRINTS OVERVIEW */}
+            {activeSprints && activeSprints.length > 0 && (
+              <div className="glass-panel" style={{
+                background: "linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(37, 99, 235, 0.04))",
+                border: "1px solid rgba(59, 130, 246, 0.2)",
+                padding: "20px 24px",
+                borderRadius: "16px",
+                marginBottom: "25px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{
+                    width: "32px", height: "32px", borderRadius: "8px",
+                    background: "rgba(59, 130, 246, 0.2)", color: "#60a5fa",
+                    display: "flex", alignItems: "center", justifyContent: "center"
+                  }}>
+                    <FaRunning size={16} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "var(--text-main)" }}>
+                      Active Sprints for {SPOKES[currentBoardId]?.name || "Spoke"}
+                    </h3>
+                    <p style={{ margin: "2px 0 0 0", fontSize: "13px", color: "var(--text-muted)" }}>
+                      Currently running phases for this project board.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginTop: "4px" }}>
+                  {activeSprints.map(sprint => (
+                    <div key={sprint.id} style={{
+                      background: "rgba(0,0,0,0.2)",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "10px",
+                      padding: "12px 16px",
+                      minWidth: "250px",
+                      flex: "1 1 auto"
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "14px", fontWeight: "800", color: "#60a5fa" }}>{sprint.name}</span>
+                        <span className="pulse-glow" style={{
+                          fontSize: "10px", fontWeight: "800", background: "rgba(59, 130, 246, 0.15)",
+                          color: "#93c5fd", padding: "2px 8px", borderRadius: "12px", textTransform: "uppercase"
+                        }}>
+                          ACTIVE
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "12px", color: "var(--text-dim)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                        {sprint.startDate && <span><strong>Start:</strong> {new Date(sprint.startDate).toLocaleDateString()}</span>}
+                        {sprint.endDate && <span><strong>End:</strong> {new Date(sprint.endDate).toLocaleDateString()}</span>}
+                        {sprint.goal && <span style={{ marginTop: "4px", color: "var(--text-muted)", fontStyle: "italic" }}>"{sprint.goal}"</span>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -3422,7 +3646,7 @@ function App() {
                             {filteredTasks
                               .filter(t => ["Backlog", "To Do", "Open"].includes(t.fields.status.name))
                               .map((task, idx) => (
-                                <DraggableCard key={task.id} task={task} index={idx} onClick={() => setSelectedTask(task)} />
+                                <DraggableCard key={task.id} task={task} index={idx} activeSprints={activeSprints} onClick={() => setSelectedTask(task)} />
                               ))}
                             {provided.placeholder}
                           </div>
@@ -3449,7 +3673,7 @@ function App() {
                             {filteredTasks
                               .filter(t => ["In Progress", "In Review"].includes(t.fields.status.name))
                               .map((task, idx) => (
-                                <DraggableCard key={task.id} task={task} index={idx} onClick={() => setSelectedTask(task)} />
+                                <DraggableCard key={task.id} task={task} index={idx} activeSprints={activeSprints} onClick={() => setSelectedTask(task)} />
                               ))}
                             {provided.placeholder}
                           </div>
@@ -3475,7 +3699,7 @@ function App() {
                             {filteredTasks
                               .filter(t => ["Done", "Closed", "Resolved"].includes(t.fields.status.name))
                               .map((task, idx) => (
-                                <DraggableCard key={task.id} task={task} index={idx} onClick={() => setSelectedTask(task)} />
+                                <DraggableCard key={task.id} task={task} index={idx} activeSprints={activeSprints} onClick={() => setSelectedTask(task)} />
                               ))}
                             {provided.placeholder}
                           </div>
@@ -3502,7 +3726,7 @@ function App() {
                   {acceptedProjectsForSpoke.length > 0 ? (
                     acceptedProjectsForSpoke.map(proj => {
                       const allocation = proj.allocations?.find(a => a.targetCampusId === currentBoardId);
-                      const assignedFaculty = allocation?.assignedTo || proj.assignedTo;
+                      const mentorAssignments = allocation?.mentorAssignments || [];
                       const progress = allocation?.progressPercent || 0;
                       
                       return (
@@ -3544,28 +3768,36 @@ function App() {
                             </div>
                           </div>
 
-                          <div style={{ marginTop: "8px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: assignedFaculty ? "var(--accent)" : "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "12px", fontWeight: "bold" }}>
-                                {assignedFaculty ? assignedFaculty.charAt(0) : "?"}
-                              </div>
-                              <div style={{ fontSize: "13px", color: assignedFaculty ? "var(--text-main)" : "var(--text-muted)", fontWeight: "600" }}>
-                                {assignedFaculty ? assignedFaculty : "No Faculty Assigned"}
-                              </div>
+                          <div style={{ marginTop: "8px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                              {mentorAssignments.length > 0 ? mentorAssignments.map(assignment => (
+                                <div key={assignment.id} style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: "20px" }}>
+                                  <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "10px", fontWeight: "bold" }}>
+                                    {assignment.faculty?.name?.charAt(0) || "?"}
+                                  </div>
+                                  <div style={{ fontSize: "11px", color: "var(--text-main)", fontWeight: "600" }}>
+                                    {assignment.faculty?.name || "Unknown"}
+                                  </div>
+                                </div>
+                              )) : (
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "10px", fontWeight: "bold" }}>?</div>
+                                  <div style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: "600" }}>No Faculty Assigned</div>
+                                </div>
+                              )}
                             </div>
                             
-                            {!assignedFaculty && (
-                              <button 
-                                onClick={() => {
-                                  const name = window.prompt("Enter the name of the Faculty member to assign as Lead:");
-                                  if (name) handleAssignFacultyToProject(proj.id, name);
-                                }}
-                                className="btn-glow"
-                                style={{ padding: "6px 12px", background: "var(--primary)", border: "none", borderRadius: "6px", color: "white", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
-                              >
-                                Assign
-                              </button>
-                            )}
+                            <button 
+                              onClick={() => {
+                                setAssignMentorsProject(proj);
+                                setIsAssignMentorsOpen(true);
+                              }}
+                              className="btn-glow hover-bg-glass"
+                              style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-glass)", borderRadius: "6px", color: "var(--text-main)", fontSize: "11px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                            >
+                              <FaPlus size={10} color="var(--primary)" />
+                              Manage Faculty
+                            </button>
                           </div>
 
                         </div>
@@ -3581,6 +3813,136 @@ function App() {
             )}
           </>
         )}
+        
+        {activeView === "approvals" && (() => {
+          const [approvalTab, setApprovalTab] = React.useState("ALL");
+          const filtered = approvalTab === "ALL" ? pendingUsers : pendingUsers.filter(u => u.role === approvalTab);
+          return (
+          <div className="fade-in" style={{ flex: 1, padding: "24px", overflowY: "auto" }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "30px" }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: "800", color: "var(--text-main)", letterSpacing: "-0.5px" }}>
+                  Approve Student / Faculty
+                </h1>
+                <p style={{ margin: "6px 0 0 0", color: "var(--text-muted)", fontSize: "14px" }}>
+                  Review new registrations for your campus and grant or deny access.
+                </p>
+              </div>
+              <button onClick={fetchPendingUsers} className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <FaSyncAlt size={12} /> Refresh
+              </button>
+            </div>
+
+            {/* Stats strip */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "16px", marginBottom: "24px" }}>
+              {[
+                { label: "Total Pending", value: pendingUsers.length, color: "var(--primary)" },
+                { label: "Students", value: pendingUsers.filter(u => u.role === "STUDENT").length, color: "#60a5fa" },
+                { label: "Faculty", value: pendingUsers.filter(u => u.role === "FACULTY").length, color: "#c084fc" },
+              ].map(s => (
+                <div key={s.label} className="glass-panel" style={{ padding: "18px 20px" }}>
+                  <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{s.label}</p>
+                  <p style={{ margin: "6px 0 0 0", fontSize: "28px", fontWeight: "800", color: s.color }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Role filter tabs */}
+            <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+              {["ALL", "STUDENT", "FACULTY"].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setApprovalTab(tab)}
+                  style={{
+                    padding: "7px 18px",
+                    borderRadius: "8px",
+                    border: "1px solid " + (approvalTab === tab ? "var(--primary)" : "var(--border-glass)"),
+                    background: approvalTab === tab ? "linear-gradient(135deg,rgba(99,102,241,0.15),rgba(168,85,247,0.15))" : "transparent",
+                    color: approvalTab === tab ? "var(--text-main)" : "var(--text-muted)",
+                    fontSize: "12.5px", fontWeight: "700", cursor: "pointer", transition: "all 0.2s ease"
+                  }}
+                >
+                  {tab === "ALL" ? "All Roles" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                  <span style={{ marginLeft: "6px", background: "rgba(255,255,255,0.1)", padding: "1px 6px", borderRadius: "4px", fontSize: "11px" }}>
+                    {tab === "ALL" ? pendingUsers.length : pendingUsers.filter(u => u.role === tab).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Table */}
+            <div style={{ background: "var(--bg-panel)", border: "1px solid var(--border-glass)", borderRadius: "16px", overflow: "hidden" }}>
+              {filtered.length > 0 ? (
+                <table style={{ width: "100%", borderCollapse: "collapse", color: "var(--text-main)", fontSize: "13.5px" }}>
+                  <thead style={{ background: "rgba(0,0,0,0.25)", borderBottom: "1px solid var(--border-glass)" }}>
+                    <tr>
+                      <th style={{ padding: "14px 20px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-muted)" }}>Name</th>
+                      <th style={{ padding: "14px 20px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-muted)" }}>Email</th>
+                      <th style={{ padding: "14px 20px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-muted)" }}>Role</th>
+                      <th style={{ padding: "14px 20px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-muted)" }}>Registered On</th>
+                      <th style={{ padding: "14px 20px", textAlign: "right", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-muted)" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((u, idx) => (
+                      <tr key={u.id} style={{ borderBottom: "1px solid var(--border-glass)", background: idx % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent", transition: "background 0.2s" }}
+                        onMouseOver={e => e.currentTarget.style.background = "rgba(99,102,241,0.04)"}
+                        onMouseOut={e => e.currentTarget.style.background = idx % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent"}
+                      >
+                        <td style={{ padding: "16px 20px", fontWeight: "700" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: u.role === "STUDENT" ? "rgba(59,130,246,0.2)" : "rgba(168,85,247,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "14px", color: u.role === "STUDENT" ? "#60a5fa" : "#c084fc", flexShrink: 0 }}>
+                              {u.name?.charAt(0).toUpperCase()}
+                            </div>
+                            {u.name}
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px 20px", color: "var(--text-dim)" }}>{u.email}</td>
+                        <td style={{ padding: "16px 20px" }}>
+                          <span style={{ background: u.role === "STUDENT" ? "rgba(59,130,246,0.15)" : "rgba(168,85,247,0.15)", color: u.role === "STUDENT" ? "#60a5fa" : "#c084fc", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700" }}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td style={{ padding: "16px 20px", color: "var(--text-muted)", fontSize: "13px" }}>
+                          {new Date(u.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </td>
+                        <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                            <button
+                              onClick={() => handleApproveUser(u.id)}
+                              style={{ padding: "7px 16px", borderRadius: "8px", background: "linear-gradient(135deg, #10b981, #059669)", color: "white", border: "none", fontWeight: "700", cursor: "pointer", fontSize: "12.5px", display: "flex", alignItems: "center", gap: "6px", transition: "opacity 0.2s" }}
+                              onMouseOver={e => e.currentTarget.style.opacity = "0.85"}
+                              onMouseOut={e => e.currentTarget.style.opacity = "1"}
+                            >
+                              <FaCheck size={11} /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleRejectUser(u.id)}
+                              style={{ padding: "7px 16px", borderRadius: "8px", background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)", fontWeight: "700", cursor: "pointer", fontSize: "12.5px", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }}
+                              onMouseOver={e => { e.currentTarget.style.background = "rgba(239,68,68,0.2)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.5)"; }}
+                              onMouseOut={e => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.25)"; }}
+                            >
+                              <FaTimes size={11} /> Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ padding: "60px 20px", textAlign: "center" }}>
+                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>🎉</div>
+                  <p style={{ color: "var(--text-muted)", fontSize: "15px", fontWeight: "600" }}>All clear! No pending registrations.</p>
+                  <p style={{ color: "var(--text-dim)", fontSize: "13px", marginTop: "4px" }}>New sign-ups will appear here for review.</p>
+                </div>
+              )}
+            </div>
+          </div>
+          );
+        })()}
       </main>
 
       {/* TOAST SYSTEM CONTAINER */}
@@ -3600,6 +3962,16 @@ function App() {
           </div>
         ))}
       </div>
+
+      {/* MODAL 0: CREATE SPRINT */}
+      <CreateSprintModal
+        isOpen={isCreateSprintOpen}
+        onClose={() => setIsCreateSprintOpen(false)}
+        currentBoardId={currentBoardId}
+        onSuccess={() => fetchSprints(true, currentBoardId)}
+        triggerToast={triggerToast}
+        acceptedProjects={acceptedProjectsForSpoke}
+      />
 
       {/* MODAL 1: NEW TASK CREATION */}
       {isCreateOpen && (
@@ -4682,6 +5054,25 @@ function App() {
       )}
 
       {/* MODAL 4: AUTOMATED B2B PROJECT ASSIGNMENT & PROVISIONING */}
+      <FIPProgressModal isOpen={isProgressModalOpen} onClose={() => setIsProgressModalOpen(false)} />
+
+      {isAssignMentorsOpen && assignMentorsProject && (
+        <AssignMentorsModal
+          isOpen={isAssignMentorsOpen}
+          onClose={() => {
+            setIsAssignMentorsOpen(false);
+            setAssignMentorsProject(null);
+          }}
+          allocationId={assignMentorsProject.allocations?.find(a => a.targetCampusId === currentBoardId)?.id}
+          campusId={currentBoardId}
+          projectTitle={assignMentorsProject.title}
+          company={assignMentorsProject.company}
+          currentAssignments={assignMentorsProject.allocations?.find(a => a.targetCampusId === currentBoardId)?.mentorAssignments || []}
+          onAssignSuccess={() => fetchModeratorProjects(true)}
+          triggerToast={triggerToast}
+        />
+      )}
+
       {isAssignModalOpen && selectedAssignProject && (
         <div style={modalBackdropStyle}>
           <div className="glass-panel" style={{
@@ -4942,10 +5333,11 @@ function SidebarNavItem({ active, icon, label, collapsed, onClick }) {
 }
 
 // DASHBOARD METRIC CARD
-function DashboardCard({ title, value, subtitle, themeColor, pulse, glow, progress, alert }) {
+function DashboardCard({ title, value, subtitle, themeColor, pulse, glow, progress, alert, onClick }) {
   return (
     <div
       className="glass-panel"
+      onClick={onClick}
       style={{
         padding: "20px",
         display: "flex",
@@ -4954,8 +5346,12 @@ function DashboardCard({ title, value, subtitle, themeColor, pulse, glow, progre
         position: "relative",
         overflow: "hidden",
         borderTop: glow ? "2.5px solid var(--primary)" : alert ? "2.5px solid var(--accent)" : "1px solid var(--border-glass)",
-        animation: alert ? "pulseWarning 1.5s infinite" : "none"
+        animation: alert ? "pulseWarning 1.5s infinite" : "none",
+        cursor: onClick ? "pointer" : "default",
+        transition: "transform 0.2s ease, box-shadow 0.2s ease",
       }}
+      onMouseOver={(e) => onClick && (e.currentTarget.style.transform = "translateY(-2px)", e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.15)")}
+      onMouseOut={(e) => onClick && (e.currentTarget.style.transform = "none", e.currentTarget.style.boxShadow = "none")}
     >
       {/* Absolute Glow Background */}
       {glow && (
@@ -5072,7 +5468,7 @@ function ColumnHeader({ title, count, color, bgColor, pulse }) {
 }
 
 // DRAGGABLE TASK CARD (KANBAN BOARD)
-function DraggableCard({ task, index, onClick }) {
+function DraggableCard({ task, index, onClick, activeSprints }) {
   const deadline = getDeadlineInfo(task.fields.dueDate, task.fields.status?.name);
 
   return (
@@ -5147,6 +5543,23 @@ function DraggableCard({ task, index, onClick }) {
                   letterSpacing: "0.2px"
                 }}>
                   BLOCKED
+                </span>
+              )}
+              {activeSprints && activeSprints.length > 0 && task.fields.sprints && (
+                task.fields.sprints.some(s => s && s.id && activeSprints.map(as => as.id).includes(s.id)) || 
+                task.fields.sprints.some(s => typeof s === 'string' && s.includes('state=ACTIVE'))
+              ) && (
+                <span style={{
+                  fontSize: "9px",
+                  fontWeight: "700",
+                  color: "#3b82f6",
+                  background: "rgba(59, 130, 246, 0.1)",
+                  border: "1px solid rgba(59, 130, 246, 0.3)",
+                  borderRadius: "4px",
+                  padding: "2px 6px",
+                  letterSpacing: "0.2px"
+                }}>
+                  ACTIVE SPRINT
                 </span>
               )}
             </div>
@@ -5389,10 +5802,13 @@ function HubDashboardView({ metrics, loading, onRefresh, moderatorProjects }) {
     );
   }
 
-  const totalIssues = metrics.spokes.reduce((sum, s) => sum + s.total, 0);
-  const totalDone = metrics.spokes.reduce((sum, s) => sum + s.done, 0);
+  const safeSpokes = metrics?.spokes || [];
+  const safeBlockers = metrics?.blockers || [];
+
+  const totalIssues = safeSpokes.reduce((sum, s) => sum + s.total, 0);
+  const totalDone = safeSpokes.reduce((sum, s) => sum + s.done, 0);
   const globalCompletionRate = totalIssues > 0 ? Math.round((totalDone / totalIssues) * 100) : 0;
-  const totalBlockers = metrics.blockers.length;
+  const totalBlockers = safeBlockers.length;
 
   return (
     <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
@@ -5809,12 +6225,15 @@ function ProgressBadge({ pct }) {
   );
 }
 
-function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, triggerToast }) {
+function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, triggerToast, onOpenProgressModal }) {
   const [activeTab, setActiveTab] = useState("proposals"); // "proposals" or "deadlines"
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditResults, setAuditResults] = useState(null);
+  const [metricFilter, setMetricFilter] = useState("total"); // "total", "active", "pending", "value"
 
-  if (loading && (!projects || projects.length === 0)) {
+  const safeProjects = Array.isArray(projects) ? projects : [];
+
+  if (loading && safeProjects.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "400px", gap: "16px" }}>
         <div style={{
@@ -5829,9 +6248,31 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
     );
   }
 
-  const totalProjects = projects.length;
-  const assignedProjects = projects.filter(p => (p.allocations && p.allocations.length > 0) || p.status === "Proposed" || p.status === "Active" || p.status.includes("BREACHED")).length;
+  const totalProjects = safeProjects.length;
+  // Exclude "Proposed" from assigned since they are awaiting assignment
+  const assignedProjects = safeProjects.filter(p => (p.allocations && p.allocations.length > 0) || p.status === "Active" || p.status?.includes("BREACHED")).length;
   const pendingProjects = totalProjects - assignedProjects;
+
+  const calculateAverageBudget = (projs) => {
+    if (projs.length === 0) return "$0";
+    let total = 0;
+    let count = 0;
+    projs.forEach(p => {
+      if (p.budget) {
+        let val = p.budget.replace(/[^0-9.kKmM]/g, '');
+        let num = parseFloat(val);
+        if (val.toLowerCase().includes('k')) num *= 1000;
+        if (val.toLowerCase().includes('m')) num *= 1000000;
+        if (!isNaN(num)) {
+          total += num;
+          count++;
+        }
+      }
+    });
+    if (count === 0) return "$0";
+    return "$" + Math.round(total / count).toLocaleString();
+  };
+  const avgBudgetStr = calculateAverageBudget(safeProjects);
 
   return (
     <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
@@ -5846,13 +6287,16 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
           title="Total Proposals"
           value={totalProjects}
           subtitle="Direct company submissions"
-          glow={true}
+          glow={metricFilter === "total"}
+          onClick={() => setMetricFilter("total")}
         />
         <DashboardCard
           title="Active Allocations"
           value={assignedProjects}
           subtitle="Provisioned to campus workspaces"
           themeColor="var(--status-done-text)"
+          glow={metricFilter === "active"}
+          onClick={() => setMetricFilter("active")}
         />
         <DashboardCard
           title="Pending Moderator Review"
@@ -5860,19 +6304,24 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
           subtitle="Awaiting campus assignment"
           themeColor={pendingProjects > 0 ? "var(--priority-medium-text)" : "var(--text-dim)"}
           pulse={pendingProjects > 0}
+          glow={metricFilter === "pending"}
+          onClick={() => setMetricFilter("pending")}
         />
         <DashboardCard
           title="Avg Project Value"
-          value="$26,666"
+          value={avgBudgetStr}
           subtitle="FIP external funding"
           themeColor="var(--primary)"
+          glow={metricFilter === "value"}
+          onClick={() => setMetricFilter("value")}
         />
       </div>
 
       {/* Premium Tab Switcher */}
-      <div style={{ display: "flex", gap: "12px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px" }}>
-        <button
-          onClick={() => setActiveTab("proposals")}
+      <div style={{ display: "flex", gap: "12px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            onClick={() => setActiveTab("proposals")}
           style={{
             background: activeTab === "proposals" ? "linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))" : "transparent",
             border: "1px solid " + (activeTab === "proposals" ? "var(--primary)" : "var(--border-glass)"),
@@ -5910,13 +6359,50 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
           <span>Deadlines & Alerts Console</span>
         </button>
       </div>
+        <button 
+          onClick={onOpenProgressModal}
+          style={{
+            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))",
+            border: "1px solid var(--primary)",
+            color: "var(--text-main)",
+            padding: "8px 16px",
+            borderRadius: "6px",
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease"
+          }}
+          className="hover-glow"
+        >
+          <FaChartPie size={14} /> FIP Cohort Progress
+        </button>
+      </div>
 
-      {activeTab === "proposals" ? (
+      {activeTab === "proposals" ? (() => {
+        let filteredProjects = safeProjects;
+        if (metricFilter === "active") {
+          filteredProjects = safeProjects.filter(p => (p.allocations && p.allocations.length > 0) || p.status === "Active" || p.status?.includes("BREACHED"));
+        } else if (metricFilter === "pending") {
+          filteredProjects = safeProjects.filter(p => !((p.allocations && p.allocations.length > 0) || p.status === "Active" || p.status?.includes("BREACHED")));
+        }
+        
+        return (
         /* Projects Intake Glass Board */
         <div className="glass-panel" style={{ padding: "24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
             <div>
-              <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)" }}>️ Project Intake Board</h3>
+              <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
+                ️ Project Intake Board
+                {metricFilter !== "total" && metricFilter !== "value" && (
+                  <span style={{ fontSize: "12px", background: "var(--primary)", padding: "2px 8px", borderRadius: "4px", color: "white", display: "flex", alignItems: "center" }}>
+                    Filtered: {metricFilter === "active" ? "Active Allocations" : "Pending Review"}
+                    <button onClick={(e) => { e.stopPropagation(); setMetricFilter("total"); }} style={{ background: "none", border: "none", color: "white", cursor: "pointer", marginLeft: "6px", padding: 0, fontWeight: "bold" }}>×</button>
+                  </span>
+                )}
+              </h3>
               <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "4px" }}>Review budget scope, and instantly automate provisioning to campus Jira spaces.</p>
             </div>
             <button onClick={onRefresh} className="btn-secondary" style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -5935,8 +6421,8 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
                 </tr>
               </thead>
               <tbody>
-                {projects.map((proj, idx) => {
-                  const activeAllocations = proj.allocations || [];
+                {filteredProjects.map((proj, idx) => {
+                  const activeAllocations = Array.isArray(proj.allocations) ? proj.allocations : [];
                   return (
                     <tr
                       key={proj.id}
@@ -6030,7 +6516,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
                                     <button
                                       onClick={async () => {
                                         try {
-                                          await axios.post("http://localhost:5000/moderator/alerts/check");
+                                          await axios.post("/moderator/alerts/check");
                                           triggerToast(`Deadline warning notification dispatched successfully to ${alloc.assignedTo} Coordinator!`);
                                         } catch (err) {
                                           console.error(err);
@@ -6107,7 +6593,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
             </table>
           </div>
         </div>
-      ) : (
+      ); })() : (
         /* Deadlines & Alerts Console */
         <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
           {/* Auditor Trigger Control Card */}
@@ -6130,7 +6616,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
                 onClick={async () => {
                   setAuditLoading(true);
                   try {
-                    const res = await axios.post("http://localhost:5000/moderator/alerts/check");
+                    const res = await axios.post("/moderator/alerts/check");
                     setAuditResults(res.data);
                     onRefresh(); // reload projects to update their statuses
                   } catch (err) {
@@ -6181,7 +6667,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
                     <span>SUCCESS</span>
                   </div>
                   <div>[baseline local time: 2026-05-27] Initiating full FIP portfolio audit...</div>
-                  <div>Scanning campus spaces KLE (live), COEP (mock), MMCOEP (mock), RIT (mock)...</div>
+                  <div>Scanning campus spaces KLE (live), COEP (live), MMCOEP (live), RIT (live)...</div>
                   <div style={{ color: "white" }}>&gt;&gt; {auditResults.message}</div>
                   {auditResults.alerts && auditResults.alerts.length > 0 ? (
                     auditResults.alerts.map((al, idx) => (
@@ -6209,7 +6695,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, t
 // COLLABORATIVE Sync Meetings PORTAL VIEW
 // ==========================================
 
-function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast, moderatorProjects = [] }) {
+function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast, moderatorProjects = [], sessionUser, meetingType = "campus" }) {
   const getSpokeProjectStatus = (spokeName) => {
     const activeProjs = moderatorProjects.filter(p => p.assignedTo === spokeName && (p.status === "Active" || p.status.startsWith("Assigned") || p.status.includes("BREACHED")));
     const proposedProjs = moderatorProjects.filter(p => p.assignedTo === spokeName && p.status === "Proposed");
@@ -6224,12 +6710,29 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
   };
   const [newTitle, setNewTitle] = useState("");
   const [newCampusId, setNewCampusId] = useState("3");
+  const [newAllocationId, setNewAllocationId] = useState("");
   const [newDate, setNewDate] = useState("2026-05-27");
   const [newTime, setNewTime] = useState("14:30");
   const [newLink, setNewLink] = useState("");
   const [newAgenda, setNewAgenda] = useState("");
   const [isScheduling, setIsScheduling] = useState(false);
   const [remindLoading, setRemindLoading] = useState(null); // id of meeting loading reminder
+  const [inviteModalMeeting, setInviteModalMeeting] = useState(null);
+
+  const availableAllocations = useMemo(() => {
+    if (!moderatorProjects) return [];
+    let allocs = [];
+    moderatorProjects.forEach(p => {
+      if (Array.isArray(p.allocations)) {
+        p.allocations.forEach(a => {
+          if (a.status === 'Active' || a.status === 'Proposed') {
+            allocs.push({ ...a, projectCompany: p.company, projectTitle: p.title });
+          }
+        });
+      }
+    });
+    return allocs;
+  }, [moderatorProjects]);
 
   const isConflicted = (meet) => {
     return meetings.some(m => m.id !== meet.id && m.campusId === meet.campusId && m.date === meet.date && m.time === meet.time);
@@ -6241,17 +6744,29 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
       triggerToast("Please enter a meeting title.", "warning");
       return;
     }
+    
+    if (meetingType === 'cohort' && !newAllocationId) {
+      triggerToast("Please select a target student cohort.", "warning");
+      return;
+    }
 
-    const overlap = meetings.some(m => m.campusId === newCampusId && m.date === newDate && m.time === newTime);
+    const overlap = meetings.some(m => 
+      m.date === newDate && 
+      m.time === newTime && 
+      ((meetingType === 'campus' && m.campusId === newCampusId) || 
+       (meetingType === 'cohort' && m.allocationId === newAllocationId))
+    );
     if (overlap) {
-      triggerToast(`️ Schedule Conflict: There is already a sync scheduled for this campus today at ${newTime}!`, "warning");
+      triggerToast(`️ Schedule Conflict: There is already a sync scheduled for this target today at ${newTime}!`, "warning");
     }
 
     setIsScheduling(true);
     try {
-      const res = await axios.post("http://localhost:5000/meetings", {
+      const res = await axios.post("/meetings", {
         title: newTitle,
-        campusId: newCampusId,
+        meetingType: meetingType,
+        campusId: meetingType === 'campus' ? newCampusId : null,
+        allocationId: meetingType === 'cohort' ? newAllocationId : null,
         date: newDate,
         time: newTime,
         link: newLink,
@@ -6276,7 +6791,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
   const handleSendReminder = async (meetId) => {
     setRemindLoading(meetId);
     try {
-      const res = await axios.post(`http://localhost:5000/meetings/${meetId}/remind`);
+      const res = await axios.post(`/meetings/${meetId}/remind`);
       if (res.data && res.data.success) {
         triggerToast(`Reminder dispatched! Notified ${res.data.notifiedEmails.length} coordinators with ${res.data.overdueCount} overdue items and ${res.data.blockerCount} blockers.`);
       }
@@ -6320,8 +6835,19 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {meetings.map((meet) => {
+          {meetings.filter(m => m.meetingType === meetingType || (meetingType === 'campus' && !m.meetingType)).map((meet) => {
             const spokeName = spokes.find(s => s.id === meet.campusId)?.name || "Unknown Spoke";
+            let targetLabel = spokeName;
+            let badgeBg = "rgba(99, 102, 241, 0.1)";
+            let badgeColor = "var(--primary)";
+            
+            if (meet.meetingType === 'cohort') {
+              const alloc = availableAllocations.find(a => a.id === meet.allocationId);
+              targetLabel = alloc ? `Cohort: ${alloc.projectCompany} (${alloc.targetCampusId === '3' ? 'KLE' : alloc.targetCampusId === '101' ? 'COEP' : alloc.targetCampusId === '102' ? 'MMCOEP' : 'RIT'})` : "Unknown Cohort";
+              badgeBg = "rgba(16, 185, 129, 0.1)";
+              badgeColor = "var(--accent)";
+            }
+
             const isReminderActive = remindLoading === meet.id;
             
             return (
@@ -6338,14 +6864,14 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                     <span style={{
                       fontSize: "10px",
                       fontWeight: "800",
-                      background: "rgba(99, 102, 241, 0.1)",
-                      color: "var(--primary)",
+                      background: badgeBg,
+                      color: badgeColor,
                       padding: "3px 8px",
                       borderRadius: "6px",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px"
                     }}>
-                      {spokeName}
+                      {targetLabel}
                     </span>
                     <h4 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-main)", marginTop: "8px", marginBottom: "0" }}>
                       {meet.title}
@@ -6388,22 +6914,39 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                     Join Sync Call (Teams/Zoom)
                   </a>
                   
-                  <button
-                    onClick={() => handleSendReminder(meet.id)}
-                    disabled={isReminderActive}
-                    className="btn-primary"
-                    style={{
-                      padding: "6px 14px",
-                      fontSize: "11.5px",
-                      borderRadius: "6px",
-                      background: "linear-gradient(135deg, var(--accent), var(--secondary))",
-                      border: "none",
-                      boxShadow: "0 4px 12px rgba(249, 115, 22, 0.15)",
-                      cursor: "pointer"
-                    }}
-                  >
-                    {isReminderActive ? "Relaying alerts..." : "Dispatch Prep Reminder"}
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => setInviteModalMeeting(meet)}
+                      className="btn-primary"
+                      style={{
+                        padding: "6px 14px",
+                        fontSize: "11.5px",
+                        borderRadius: "6px",
+                        background: "linear-gradient(135deg, #3B82F6, #2563EB)",
+                        border: "none",
+                        boxShadow: "0 4px 12px rgba(59, 130, 246, 0.15)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      Invite Users
+                    </button>
+                    <button
+                      onClick={() => handleSendReminder(meet.id)}
+                      disabled={isReminderActive}
+                      className="btn-primary"
+                      style={{
+                        padding: "6px 14px",
+                        fontSize: "11.5px",
+                        borderRadius: "6px",
+                        background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                        border: "none",
+                        boxShadow: "0 4px 12px rgba(249, 115, 22, 0.15)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {isReminderActive ? "Relaying alerts..." : "Dispatch Prep Reminder"}
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -6415,6 +6958,19 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
           )}
         </div>
       </div>
+
+      {inviteModalMeeting && (
+        <InviteToMeetingModal
+          meeting={inviteModalMeeting}
+          currentUser={sessionUser}
+          onClose={() => setInviteModalMeeting(null)}
+          onInviteSuccess={() => {
+            setInviteModalMeeting(null);
+            onRefresh();
+            triggerToast("Invites sent successfully!", "success");
+          }}
+        />
+      )}
 
       {/* RIGHT COLUMN: Schedule Form */}
       <div className="glass-panel" style={{ padding: "24px" }}>
@@ -6436,32 +6992,60 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
               className="form-input"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="e.g. KLE Bi-weekly Sprint Sync"
+              placeholder={meetingType === 'campus' ? "e.g. KLE Bi-weekly Sprint Sync" : "e.g. NVIDIA Architecture Review"}
               style={{ width: "100%", padding: "10px 12px", fontSize: "13px" }}
             />
           </div>
 
-          <div>
-            <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
-              Target Institution Campus *
-            </label>
-            <select
-              className="form-select"
-              required
-              value={newCampusId}
-              onChange={(e) => setNewCampusId(e.target.value)}
-              style={{ width: "100%", padding: "10px 12px", fontSize: "13px" }}
-            >
-              {spokes.map(s => {
-                const status = getSpokeProjectStatus(s.name);
-                return (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.key}) — [{status}]
-                  </option>
-                );
-              })}
-            </select>
-          </div>
+          {meetingType === 'campus' ? (
+            <div>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
+                Target Institution Campus *
+              </label>
+              <select
+                className="form-select"
+                required
+                value={newCampusId}
+                onChange={(e) => setNewCampusId(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px", fontSize: "13px" }}
+              >
+                {spokes.map(s => {
+                  const status = getSpokeProjectStatus(s.name);
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.key}) — [{status}]
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
+                Target Student Cohort *
+              </label>
+              {availableAllocations.length === 0 ? (
+                <div style={{ padding: "10px", fontSize: "12px", color: "var(--text-muted)", background: "var(--bg-elevated)", borderRadius: "8px" }}>
+                  No active project cohorts available for syncs.
+                </div>
+              ) : (
+                <select
+                  className="form-select"
+                  required
+                  value={newAllocationId}
+                  onChange={(e) => setNewAllocationId(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: "13px" }}
+                >
+                  <option value="" disabled>Select Cohort</option>
+                  {availableAllocations.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.projectCompany} - {a.projectTitle} (Target: {a.targetCampusId === '3' ? 'KLE' : a.targetCampusId === '101' ? 'COEP' : a.targetCampusId === '102' ? 'MMCOEP' : 'RIT'})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div>
@@ -6544,7 +7128,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
   );
 }
 
-function CompanySponsorView({ projects, loading, onRefresh, sessionUser, triggerToast }) {
+function CompanySponsorView({ projects, loading, onRefresh, sessionUser, triggerToast, onOpenProgressModal }) {
   const [activeTab, setActiveTab] = useState("portfolio"); // "portfolio" or "submit"
   
   // Submit Form States
@@ -6559,7 +7143,8 @@ function CompanySponsorView({ projects, loading, onRefresh, sessionUser, trigger
 
   // Filter projects by current logged-in company name context
   const companyContext = sessionUser?.company || "NVIDIA";
-  const myProjects = projects.filter(p => p.company.toLowerCase() === companyContext.toLowerCase());
+  const safeProjects = Array.isArray(projects) ? projects : [];
+  const myProjects = safeProjects.filter(p => p.company && p.company.toLowerCase() === companyContext.toLowerCase());
 
   // Calculations for KPI Cards
   const totalSubmissions = myProjects.length;
@@ -6583,7 +7168,7 @@ function CompanySponsorView({ projects, loading, onRefresh, sessionUser, trigger
 
     setIsSubmitting(true);
     try {
-      await axios.post("http://localhost:5000/company/projects", {
+      await axios.post("/company/projects", {
         company: formCompany,
         title: formTitle,
         description: formDescription,
@@ -6608,7 +7193,7 @@ function CompanySponsorView({ projects, loading, onRefresh, sessionUser, trigger
     }
   };
 
-  if (loading && (!projects || projects.length === 0)) {
+  if (loading && safeProjects.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "400px", gap: "16px" }}>
         <div style={{
@@ -6659,7 +7244,8 @@ function CompanySponsorView({ projects, loading, onRefresh, sessionUser, trigger
       </div>
 
       {/* Sponsor Tab Switcher */}
-      <div style={{ display: "flex", gap: "12px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px" }}>
+      <div style={{ display: "flex", gap: "12px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "12px" }}>
         <button
           onClick={() => setActiveTab("portfolio")}
           style={{
@@ -6698,6 +7284,27 @@ function CompanySponsorView({ projects, loading, onRefresh, sessionUser, trigger
         >
           <span>🚀 Submit Corporate Project Proposal</span>
         </button>
+        </div>
+        <button 
+          onClick={onOpenProgressModal}
+          style={{
+            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))",
+            border: "1px solid var(--primary)",
+            color: "var(--text-main)",
+            padding: "8px 16px",
+            borderRadius: "6px",
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease"
+          }}
+          className="hover-glow"
+        >
+          <FaChartPie size={14} /> FIP Cohort Progress
+        </button>
       </div>
 
       {activeTab === "portfolio" ? (
@@ -6732,7 +7339,7 @@ function CompanySponsorView({ projects, loading, onRefresh, sessionUser, trigger
                 </thead>
                 <tbody>
                   {myProjects.map((proj, idx) => {
-                    const activeAllocations = proj.allocations || [];
+                    const activeAllocations = Array.isArray(proj.allocations) ? proj.allocations : [];
                     return (
                       <tr
                         key={proj.id}
@@ -7018,5 +7625,40 @@ function CompanySponsorView({ projects, loading, onRefresh, sessionUser, trigger
     </div>
   );
 }
+import React from 'react';
 
-export default App;
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: "50px", color: "red", background: "#111", minHeight: "100vh", fontFamily: "monospace", zIndex: 9999, position: "relative" }}>
+          <h1>React Runtime Crash Detected</h1>
+          <pre style={{ whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.5)", padding: "20px", marginTop: "20px" }}>
+            {this.state.error && this.state.error.toString()}
+          </pre>
+          <pre style={{ whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.5)", padding: "20px", marginTop: "10px", fontSize: "12px" }}>
+            {this.state.error && this.state.error.stack}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const AppWrapper = () => (
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
+
+export default AppWrapper;

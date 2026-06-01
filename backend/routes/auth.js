@@ -8,6 +8,35 @@ const verifyToken = require('../middleware/authMiddleware');
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-for-dev';
 
+// Register Endpoint
+router.post('/register', async (req, res) => {
+  const { name, email, password, role, campusId } = req.body;
+
+  try {
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email is already registered.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: role.toUpperCase(),
+        campusId,
+        status: 'PENDING'
+      }
+    });
+
+    res.json({ message: 'Registration successful! Your account is pending coordinator approval.' });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ error: 'Internal server error during registration.' });
+  }
+});
+
 // Login Endpoint
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -24,6 +53,10 @@ router.post('/login', async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    if (user.status === 'PENDING') {
+      return res.status(403).json({ error: 'Account pending coordinator approval.' });
     }
 
     // Generate JWT Token
@@ -152,11 +185,55 @@ router.post('/reset-password', async (req, res) => {
       }
     });
 
-    res.json({ message: 'Password reset successfully. You can now log in.' });
-
+    return res.status(200).json({ message: 'Password has been reset successfully.' });
   } catch (error) {
     console.error('Reset password error:', error);
-    res.status(500).json({ error: 'Internal server error during password reset.' });
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Get Pending Users (for Coordinator)
+router.get('/users/pending', async (req, res) => {
+  const { campusId } = req.query;
+  try {
+    const pendingUsers = await prisma.user.findMany({
+      where: {
+        status: 'PENDING',
+        ...(campusId ? { campusId } : {})
+      },
+      select: { id: true, name: true, email: true, role: true, campusId: true, createdAt: true }
+    });
+    res.json(pendingUsers);
+  } catch (error) {
+    console.error('Fetch pending users error:', error);
+    res.status(500).json({ error: 'Failed to fetch pending users.' });
+  }
+});
+
+// Approve User
+router.post('/users/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await prisma.user.update({
+      where: { id },
+      data: { status: 'ACTIVE' }
+    });
+    res.json({ message: 'User approved successfully.', user });
+  } catch (error) {
+    console.error('Approve user error:', error);
+    res.status(500).json({ error: 'Failed to approve user.' });
+  }
+});
+
+// Reject User
+router.post('/users/:id/reject', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.user.delete({ where: { id } });
+    res.json({ message: 'User rejected and removed successfully.' });
+  } catch (error) {
+    console.error('Reject user error:', error);
+    res.status(500).json({ error: 'Failed to reject user.' });
   }
 });
 

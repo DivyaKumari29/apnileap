@@ -3,10 +3,10 @@ const prisma = new PrismaClient();
 
 async function main() {
   const spokes = [
-    { id: "3", name: "KLE Spoke", jiraBoardKey: "AK", isActive: true },
-    { id: "101", name: "COEP Spoke", jiraBoardKey: "AK", isActive: true },
-    { id: "102", name: "MMCOEP Spoke", jiraBoardKey: "AK", isActive: true },
-    { id: "103", name: "RIT Spoke", jiraBoardKey: "AK", isActive: true }
+    { id: "3", name: "KLE Spoke", jiraBoardKey: "PNLP", isActive: true },
+    { id: "101", name: "COEP Spoke", jiraBoardKey: "PNLP", isActive: true },
+    { id: "102", name: "MMCOEP Spoke", jiraBoardKey: "PNLP", isActive: true },
+    { id: "103", name: "RIT Spoke", jiraBoardKey: "PNLP", isActive: true }
   ];
 
   for (const spoke of spokes) {

@@ -1,5 +1,8 @@
 const express = require("express");
 const axios = require("axios");
+const { sendFanOutEmail } = require("./utils/mailer");
+const multer = require("multer");
+const fs = require("fs");
 const cors = require("cors");
 require("dotenv").config();
 
@@ -15,16 +18,23 @@ const prisma = new PrismaClient();
 const authRoutes = require("./routes/auth");
 app.use("/api/auth", authRoutes);
 
+const documentsRoutes = require("./routes/documents");
+app.use("/api/documents", documentsRoutes);
+
+const path = require("path");
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+
 const auth = Buffer.from(
   `${process.env.JIRA_EMAIL}:${process.env.JIRA_API_TOKEN}`
 ).toString("base64");
 
 // ApniLeap Hub & Spoke Configurations
 const SPOKES = {
-  "3": { name: "KLE Spoke", key: "AK", live: true, boardId: 111 },
-  "101": { name: "COEP Spoke", key: "AK", live: true, boardId: 112 },
-  "102": { name: "MMCOEP Spoke", key: "AK", live: true, boardId: 113 },
-  "103": { name: "RIT Spoke", key: "AK", live: true, boardId: 114 },
+  "3": { name: "KLE Spoke", key: "PNLP", live: true, boardId: 152 },
+  "101": { name: "COEP Spoke", key: "PNLP", live: true, boardId: 153 },
+  "102": { name: "MMCOEP Spoke", key: "PNLP", live: true, boardId: 154 },
+  "103": { name: "RIT Spoke", key: "PNLP", live: true, boardId: 155 },
 };
 
 const LIVE_BOARD_IDS = Object.values(SPOKES).filter(s => s.live).map(s => s.boardId);
@@ -86,132 +96,6 @@ const MOCK_ASSIGNEES = [
   ...CAMPUS_TEAM_MEMBERS["103"],
 ];
 
-function initMockData() {
-  console.log("Pre-populating mock tasks for accepted multi-college B2B projects...");
-  
-  const b2bPreloads = [
-    {
-      boardId: "3", // KLE
-      epicKey: "AK-12",
-      company: "NVIDIA",
-      title: "Edge AI Smart Agriculture System",
-      description: "Build an AI-based system using Jetson Nano for precision agriculture monitoring, soil health inspection, and pest detection on crops.",
-      proposedDueDate: "2026-08-25",
-      taskStatuses: ["Done", "In Progress", "Backlog"] // 1 done, 1 in progress, 1 backlog = 33% progress!
-    },
-    {
-      boardId: "101", // COEP
-      epicKey: "AK-15",
-      company: "NVIDIA",
-      title: "Edge AI Smart Agriculture System",
-      description: "Build an AI-based system using Jetson Nano for precision agriculture monitoring, soil health inspection, and pest detection on crops.",
-      proposedDueDate: "2026-09-10",
-      taskStatuses: ["Done", "Done", "Backlog"] // 2 done, 0 in progress, 1 backlog = 67% progress!
-    },
-    {
-      boardId: "101", // COEP
-      epicKey: "AK-21",
-      company: "Intel",
-      title: "Automotive VLSI Controller Chip",
-      description: "Design and verify a micro-controller unit (MCU) for dashboard telemetry and advanced sensor fusion in electric vehicles.",
-      proposedDueDate: "2026-10-15",
-      taskStatuses: ["Backlog", "Backlog", "Backlog"] // 0% progress!
-    },
-    {
-      boardId: "3", // KLE
-      epicKey: "AK-22",
-      company: "Intel",
-      title: "Automotive VLSI Controller Chip",
-      description: "Design and verify a micro-controller unit (MCU) for dashboard telemetry and advanced sensor fusion in electric vehicles.",
-      proposedDueDate: "2026-09-05",
-      taskStatuses: ["Done", "Done", "Done"] // 100% progress!
-    }
-  ];
-
-  b2bPreloads.forEach(preload => {
-    const spoke = SPOKES[preload.boardId];
-    if (!spoke) return;
-
-    if (!mockTasksStore[preload.boardId]) {
-      mockTasksStore[preload.boardId] = [];
-    }
-
-    const spokeTasks = mockTasksStore[preload.boardId];
-    
-    // Create Epic
-    const epicSummary = `[${preload.company}] ${preload.title}`;
-    const descriptionText = `${preload.description}\n\nSponsor: ${preload.company}`;
-    
-    const newEpic = {
-      id: `mock-${preload.boardId}-epic-preload-${preload.epicKey}`,
-      key: preload.epicKey,
-      fields: {
-        summary: epicSummary,
-        description: descriptionText,
-        status: { name: preload.taskStatuses.every(s => s === "Done") ? "Done" : "In Progress" },
-        priority: { name: "High" },
-        issuetype: { name: "Epic" },
-        created: new Date().toISOString(),
-        dueDate: preload.proposedDueDate,
-        flagged: false,
-        timetracking: null,
-        subtasks: [],
-        labels: ["B2B-Sponsor", spoke.boardId === 75 ? "kle-spoke" : spoke.boardId === 76 ? "coep-spoke" : spoke.boardId === 77 ? "mmcoep-spoke" : "rit-spoke"],
-        parent: null
-      }
-    };
-    spokeTasks.push(newEpic);
-
-    // Create 3 child tasks
-    const standardTasks = [
-      `Phase 1: Lab Infrastructure Setup & Hardware Procurement`,
-      `Phase 2: Faculty Upskilling & Student Cohort Selection`,
-      `Phase 3: Development, Industry Mentorship & Evaluation`
-    ];
-
-    const finalDue = new Date(preload.proposedDueDate);
-    const start = new Date("2026-05-27");
-    const diffMs = finalDue.getTime() - start.getTime();
-    const t1DueDate = new Date(start.getTime() + Math.round(diffMs * 0.3)).toISOString().split("T")[0];
-    const t2DueDate = new Date(start.getTime() + Math.round(diffMs * 0.6)).toISOString().split("T")[0];
-    const t3DueDate = finalDue.toISOString().split("T")[0];
-    const taskDueDates = [t1DueDate, t2DueDate, t3DueDate];
-
-    standardTasks.forEach((taskSummary, idx) => {
-      const childKey = `${preload.epicKey}-${idx + 1}`;
-      const statusVal = preload.taskStatuses[idx] || "Backlog";
-      const newChild = {
-        id: `mock-${preload.boardId}-child-preload-${childKey}`,
-        key: childKey,
-        fields: {
-          summary: taskSummary,
-          description: `Automated child task created under Epic ${preload.epicKey} representing company project assigned to ${spoke.name}.`,
-          status: { name: statusVal },
-          priority: { name: "Medium" },
-          issuetype: { name: "Task" },
-          created: new Date().toISOString(),
-          dueDate: taskDueDates[idx],
-          flagged: false,
-          timetracking: { timeSpentSeconds: statusVal === "Done" ? 36000 : 0, originalEstimateSeconds: 36000, remainingEstimateSeconds: statusVal === "Done" ? 0 : 36000 },
-          subtasks: [],
-          labels: ["B2B-Task", spoke.boardId === 75 ? "kle-spoke" : spoke.boardId === 76 ? "coep-spoke" : spoke.boardId === 77 ? "mmcoep-spoke" : "rit-spoke"],
-          parent: {
-            id: newEpic.id,
-            key: preload.epicKey,
-            summary: epicSummary,
-            issueType: "Epic"
-          }
-        }
-      };
-      newChild.fields.status.name = statusVal; // Explicit assignment
-      spokeTasks.push(newChild);
-    });
-  });
-
-  console.log("Mock B2B Epic and task hierarchies successfully pre-populated!");
-}
-
-// initMockData(); // Disabled: starting with clean spoke data
 
 app.get("/spokes", (req, res) => {
   res.json(Object.values(SPOKES));
@@ -224,8 +108,10 @@ app.get("/spokes/:boardId/members", async (req, res) => {
 
   // 1. Fetch live JIRA assignable users
   try {
+    // Ensure dynamic key assignment instead of hardcoding 'AK'
+    const projectKey = SPOKES[boardId]?.key || "PNLP";
     const response = await axios.get(
-      `${process.env.JIRA_DOMAIN}/rest/api/2/user/assignable/search?project=AK`,
+      `${process.env.JIRA_DOMAIN}/rest/api/2/user/assignable/search?project=${projectKey}`,
       {
         headers: {
           Authorization: `Basic ${auth}`,
@@ -327,6 +213,116 @@ app.get("/tasks", async (req, res) => {
   }
 });
 
+app.get("/sprints", async (req, res) => {
+  const boardId = req.query.boardId || "3";
+  const spoke = SPOKES[boardId];
+
+  if (spoke && spoke.live) {
+    try {
+      const response = await axios.get(
+        `${process.env.JIRA_DOMAIN}/rest/agile/1.0/board/${spoke.boardId}/sprint?state=active,future`,
+        {
+          headers: {
+            Authorization: `Basic ${auth}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      let sprints = response.data.values || [];
+      if (sprints.length === 0) {
+        sprints = [
+          {
+            id: 9999,
+            name: "Mock Active Sprint (Demo)",
+            state: "active",
+            startDate: new Date().toISOString(),
+            endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            goal: "Complete frontend integration and user testing."
+          }
+        ];
+      }
+      res.json(sprints);
+    } catch (error) {
+      console.error(`Jira Fetch Error for sprints board ${spoke.boardId} (${spoke.name}):`, error.response?.data || error.message);
+      res.status(500).json({ error: "Failed to fetch Jira sprints", details: error.response?.data || error.message });
+    }
+  } else {
+    res.json([
+      {
+        id: 9999,
+        name: "Mock Active Sprint (Demo)",
+        state: "active",
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        goal: "Complete frontend integration and user testing."
+      }
+    ]);
+  }
+});
+
+// Create and start a new Sprint
+app.post("/sprints", async (req, res) => {
+  const { boardId, name, startDate, endDate, goal } = req.body;
+  const spoke = SPOKES[boardId];
+
+  if (!spoke) {
+    return res.status(404).json({ error: "Spoke/Board not found" });
+  }
+
+  if (spoke.live) {
+    try {
+      // 1. Create the sprint
+      const createResponse = await axios.post(
+        `${process.env.JIRA_DOMAIN}/rest/agile/1.0/sprint`,
+        {
+          name,
+          startDate,
+          endDate,
+          originBoardId: spoke.boardId,
+          goal
+        },
+        {
+          headers: {
+            Authorization: `Basic ${auth}`,
+            "Content-Type": "application/json",
+            Accept: "application/json"
+          }
+        }
+      );
+
+      const sprintId = createResponse.data.id;
+
+      // 2. Start the sprint (transition to 'active')
+      try {
+        await axios.post(
+          `${process.env.JIRA_DOMAIN}/rest/agile/1.0/sprint/${sprintId}`,
+          { state: "active", startDate, endDate },
+          {
+            headers: {
+              Authorization: `Basic ${auth}`,
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            }
+          }
+        );
+      } catch (startError) {
+        console.warn(`Could not start sprint ${sprintId} automatically (it may be empty or Jira rejected the state transition):`, startError.response?.data || startError.message);
+        // We don't fail the whole request, the sprint is successfully created as 'future'
+      }
+
+      res.status(201).json({ message: "Sprint created successfully", sprint: createResponse.data });
+    } catch (error) {
+      console.error(`Jira Sprint Creation Error for board ${spoke.boardId}:`, error.response?.data || error.message);
+      res.status(500).json({ error: "Failed to create Jira sprint", details: error.response?.data || error.message });
+    }
+  } else {
+    res.status(201).json({ 
+      message: "Mock sprint created successfully",
+      sprint: { id: Date.now(), name, state: "active", startDate, endDate, goal }
+    });
+  }
+});
+
 // Get currently authenticated Jira user profile details
 app.get("/myself", async (req, res) => {
   try {
@@ -381,7 +377,7 @@ app.post("/tasks", async (req, res) => {
       };
 
       issues.push(newIssue);
-      mockTasksStore[targetBoardId] = issues;
+      mockTasksStore[targetBoardId] = issues; saveMockStore();
 
       // Handle custom transitions if needed (e.g. if status is Done or In Progress on creation)
       // Transition already handled above in memory setup.
@@ -665,7 +661,7 @@ app.delete("/tasks/:key", async (req, res) => {
     const index = issues.findIndex(t => t.key === key);
     if (index !== -1) {
       issues.splice(index, 1);
-      mockTasksStore[boardId] = issues;
+      mockTasksStore[boardId] = issues; saveMockStore();
       return res.json({ success: true, message: `Deleted mock issue ${key} successfully.` });
     }
   }
@@ -983,7 +979,7 @@ app.post("/tasks/:key/subtask", async (req, res) => {
       };
 
       issues.push(newChild);
-      mockTasksStore[spoke.boardId] = issues;
+      mockTasksStore[spoke.boardId] = issues; saveMockStore();
 
       if (!isEpic) {
         if (!parentTask.fields.subtasks) parentTask.fields.subtasks = [];
@@ -1207,6 +1203,12 @@ app.get("/hub/metrics", async (req, res) => {
 
     const epicKeys = Object.keys(epicMetadata);
 
+    // Fetch DB records for counts
+    const dbUsers = await prisma.user.findMany();
+    const dbAllocations = await prisma.allocation.findMany({
+      where: { status: { not: "Proposed" } } // Active or Completed
+    });
+
     // 3. For each Spoke, compute metrics and dynamic Epic progress rates
     spokesList.forEach(boardId => {
       const spoke = SPOKES[boardId];
@@ -1278,6 +1280,11 @@ app.get("/hub/metrics", async (req, res) => {
         }
       });
 
+      const spokeUsers = dbUsers.filter(u => u.campusId === boardId);
+      const students = spokeUsers.filter(u => u.role === "Student").length;
+      const mentors = spokeUsers.filter(u => u.role === "Mentor" || u.role === "Faculty").length;
+      const projects = dbAllocations.filter(a => a.targetCampusId === boardId).length;
+
       hubData.spokes.push({
         id: boardId,
         name: spoke.name,
@@ -1287,7 +1294,10 @@ app.get("/hub/metrics", async (req, res) => {
         progress,
         backlog,
         blockersCount,
-        completionRate: total > 0 ? Math.round((done / total) * 100) : 0
+        completionRate: total > 0 ? Math.round((done / total) * 100) : 0,
+        students,
+        mentors,
+        projects
       });
 
       epicKeys.forEach(summary => {
@@ -1384,6 +1394,383 @@ app.get("/hub/metrics", async (req, res) => {
 // B2B MODERATOR PORTAL DATABASE & ENDPOINTS
 // ==========================================
 
+// GET: Fetch all available faculty mentors for a specific campus
+app.get("/mentors/:campusId", async (req, res) => {
+  const { campusId } = req.params;
+  try {
+    const mentors = await prisma.user.findMany({
+      where: {
+        campusId,
+        role: "MENTOR"
+      },
+      select: { id: true, name: true, email: true }
+    });
+    res.json(mentors);
+  } catch (error) {
+    console.error("Failed to fetch mentors:", error);
+    res.status(500).json({ error: "Failed to fetch mentors" });
+  }
+});
+
+// POST: Assign mentors to a specific project allocation
+app.post("/allocations/:allocationId/assign", async (req, res) => {
+  const { allocationId } = req.params;
+  const { facultyIds } = req.body;
+  const mentorIds = facultyIds || req.body.mentorIds; // Handle both payload shapes
+  try {
+    // Delete existing assignments for this allocation
+    await prisma.mentorAssignment.deleteMany({
+      where: { allocationId }
+    });
+    
+    // Create new assignments
+    if (mentorIds && mentorIds.length > 0) {
+      const assignments = mentorIds.map(id => ({
+        allocationId,
+        facultyId: id
+      }));
+      await prisma.mentorAssignment.createMany({
+        data: assignments
+      });
+    }
+
+    // Fetch the updated allocation to return
+    const updatedAllocation = await prisma.allocation.findUnique({
+      where: { id: allocationId },
+      include: {
+        mentorAssignments: {
+          include: { faculty: true }
+        }
+      }
+    });
+    
+    res.json({ success: true, allocation: updatedAllocation });
+  } catch (error) {
+    console.error("Failed to assign mentors:", error);
+    res.status(500).json({ error: "Failed to assign mentors" });
+  }
+});
+
+// ==========================================
+// STUDENT ASSIGNMENT ENDPOINTS
+// ==========================================
+
+app.get("/students/:campusId", async (req, res) => {
+  const { campusId } = req.params;
+  try {
+    const students = await prisma.user.findMany({
+      where: {
+        campusId,
+        role: "STUDENT"
+      },
+      select: { id: true, name: true, email: true }
+    });
+    res.json(students);
+  } catch (error) {
+    console.error("Failed to fetch students:", error);
+    res.status(500).json({ error: "Failed to fetch students" });
+  }
+});
+
+app.get("/students/:studentId/projects", async (req, res) => {
+  const { studentId } = req.params;
+  try {
+    const allocations = await prisma.allocation.findMany({
+      where: {
+        teams: {
+          some: {
+            studentAssignments: {
+              some: { studentId }
+            }
+          }
+        }
+      },
+      include: {
+        project: true,
+        mentorAssignments: {
+          include: { faculty: true }
+        },
+        teams: {
+          include: {
+            studentAssignments: {
+              include: { student: true }
+            }
+          }
+        }
+      }
+    });
+    
+    const results = allocations.map(a => {
+      const students = [];
+      a.teams?.forEach(t => {
+        t.studentAssignments?.forEach(sa => {
+          if (sa.student) students.push(sa.student);
+        });
+      });
+
+      return {
+        ...a,
+        projectId: a.project.id,
+        mentor: a.mentorAssignments?.length > 0 ? a.mentorAssignments[0].faculty : null,
+        students
+      };
+    });
+    
+    res.json(results);
+  } catch (error) {
+    console.error("Failed to fetch student projects:", error);
+    res.status(500).json({ error: "Failed to fetch student projects" });
+  }
+});
+
+app.get("/faculty/:facultyId/mentored", async (req, res) => {
+  const { facultyId } = req.params;
+  try {
+    const allocations = await prisma.allocation.findMany({
+      where: { mentorId: facultyId },
+      include: { project: true }
+    });
+    res.json(allocations);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch mentored projects" });
+  }
+});
+
+app.get("/projects", async (req, res) => {
+  try {
+    const { campusId } = req.query;
+    let whereClause = {};
+    if (campusId) {
+      whereClause = {
+        OR: [
+          { targetCampusId: campusId },
+          { allocations: { some: { targetCampusId: campusId } } }
+        ]
+      };
+    }
+    const projects = await prisma.project.findMany({ where: whereClause });
+    res.json(projects);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch projects" });
+  }
+});
+
+app.get("/allocations", async (req, res) => {
+  try {
+    const { campusId } = req.query;
+    const whereClause = campusId ? { targetCampusId: campusId } : {};
+    const allocations = await prisma.allocation.findMany({
+      where: whereClause,
+      include: { project: true }
+    });
+    res.json(allocations);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch allocations" });
+  }
+});
+
+// Create a new team under an allocation
+app.post("/allocations/:allocationId/teams", async (req, res) => {
+  const { allocationId } = req.params;
+  const { name } = req.body;
+  try {
+    const team = await prisma.team.create({
+      data: {
+        name,
+        allocationId
+      }
+    });
+    res.json({ success: true, team });
+  } catch (error) {
+    console.error("Failed to create team:", error);
+    res.status(500).json({ error: "Failed to create team" });
+  }
+});
+
+// Assign students to a team
+app.post("/teams/:teamId/assign-students", async (req, res) => {
+  const { teamId } = req.params;
+  const { studentIds } = req.body;
+  try {
+    await prisma.studentAssignment.deleteMany({
+      where: { teamId }
+    });
+    
+    if (studentIds && studentIds.length > 0) {
+      const assignments = studentIds.map(id => ({
+        teamId,
+        studentId: id
+      }));
+      await prisma.studentAssignment.createMany({
+        data: assignments
+      });
+    }
+
+    const updatedTeam = await prisma.team.findUnique({
+      where: { id: teamId },
+      include: {
+        studentAssignments: {
+          include: { student: true }
+        }
+      }
+    });
+    
+    res.json({ success: true, team: updatedTeam });
+  } catch (error) {
+    console.error("Failed to assign students:", error);
+    res.status(500).json({ error: "Failed to assign students" });
+  }
+});
+
+app.get("/allocations/:allocationId", async (req, res) => {
+  const { allocationId } = req.params;
+  try {
+    const allocation = await prisma.allocation.findUnique({
+      where: { id: allocationId },
+      include: {
+        project: true,
+        mentorAssignments: {
+          include: { faculty: { select: { id: true, name: true, email: true, role: true } } }
+        },
+        teams: {
+          include: {
+            studentAssignments: {
+              include: { student: { select: { id: true, name: true, email: true, role: true } } }
+            }
+          }
+        }
+      }
+    });
+
+    if (!allocation) {
+      return res.status(404).json({ error: "Allocation not found" });
+    }
+
+    const students = [];
+    allocation.teams?.forEach(team => {
+      team.studentAssignments?.forEach(sa => {
+        if (sa.student) {
+          students.push(sa.student);
+        }
+      });
+    });
+
+    const result = {
+      ...allocation,
+      mentor: allocation.mentorAssignments?.length > 0 ? allocation.mentorAssignments[0].faculty : null,
+      students
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to fetch allocation details:", error);
+    res.status(500).json({ error: "Failed to fetch allocation details" });
+  }
+});
+
+// ==========================================
+// TEAM CHAT ENDPOINTS
+// ==========================================
+
+app.get("/allocations/:allocationId/chat", async (req, res) => {
+  const { allocationId } = req.params;
+  try {
+    const messages = await prisma.message.findMany({
+      where: { allocationId },
+      include: { sender: { select: { name: true, role: true } } },
+      orderBy: { createdAt: 'asc' }
+    });
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch chat messages" });
+  }
+});
+
+app.post("/allocations/:allocationId/chat", async (req, res) => {
+  const { allocationId } = req.params;
+  const { senderId, content } = req.body;
+  try {
+    const newMessage = await prisma.message.create({
+      data: {
+        allocationId,
+        senderId,
+        content
+      },
+      include: { sender: { select: { name: true, role: true } } }
+    });
+    res.json(newMessage);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to post message" });
+  }
+});
+
+// ==========================================
+// HIERARCHICAL MEETING ENDPOINTS
+// ==========================================
+
+app.get("/allocations/:allocationId/meetings", async (req, res) => {
+  const { allocationId } = req.params;
+  try {
+    const meetings = await prisma.meeting.findMany({
+      where: { allocationId },
+      include: {
+        invites: {
+          include: { user: { select: { name: true, role: true, email: true } } }
+        }
+      }
+    });
+    res.json(meetings);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch meetings" });
+  }
+});
+
+app.post("/allocations/:allocationId/meetings", async (req, res) => {
+  const { allocationId } = req.params;
+  const { title, agenda, scheduledAt, meetingLink, organizerId, campusId } = req.body;
+  try {
+    const meeting = await prisma.meeting.create({
+      data: {
+        title,
+        agenda,
+        scheduledAt: new Date(scheduledAt),
+        meetingLink,
+        allocationId,
+        organizerId,
+        campusId
+      }
+    });
+    res.json(meeting);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create meeting" });
+  }
+});
+
+app.post("/meetings/:meetingId/invite", async (req, res) => {
+  const { meetingId } = req.params;
+  const { userIds, invitedBy } = req.body;
+  try {
+    if (userIds && userIds.length > 0) {
+      const invites = userIds.map(userId => ({
+        meetingId,
+        userId,
+        invitedBy
+      }));
+      await prisma.meetingInvite.createMany({
+        data: invites,
+        skipDuplicates: true
+      });
+    }
+    const updatedMeeting = await prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: { invites: { include: { user: { select: { name: true, role: true } } } } }
+    });
+    res.json(updatedMeeting);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to invite users" });
+  }
+});
+
 // B2B Project Intake uses the PostgreSQL database via Prisma (schema.prisma).
 // The static companyProjectsIntake array has been fully migrated to Postgres!
 
@@ -1463,7 +1850,22 @@ app.get("/moderator/projects", async (req, res) => {
     }
 
     const dbProjects = await prisma.project.findMany({
-      include: { allocations: true }
+      include: { 
+        allocations: {
+          include: {
+            mentorAssignments: {
+              include: { faculty: true }
+            },
+            teams: {
+              include: {
+                studentAssignments: {
+                  include: { student: true }
+                }
+              }
+            }
+          }
+        } 
+      }
     });
 
     const projectsWithProgress = dbProjects.map(proj => {
@@ -1510,7 +1912,9 @@ app.get("/moderator/projects", async (req, res) => {
           totalTasks,
           doneTasks,
           progressPercent: totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0,
-          phases
+          phases,
+          mentorAssignments: alloc.mentorAssignments,
+          teams: alloc.teams
         };
       });
 
@@ -1645,7 +2049,7 @@ app.post("/spoke/project/:projectId/accept", async (req, res) => {
     // Auto-calculate deadlines for 3 standard tasks based on the project final dueDate
     const finalDateStr = dueDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const finalDue = new Date(finalDateStr);
-    const start = new Date("2026-05-27");
+    const start = new Date();
     const diffMs = finalDue.getTime() - start.getTime();
 
     const t1Ms = start.getTime() + Math.round(diffMs * 0.3);
@@ -1766,7 +2170,7 @@ app.post("/spoke/project/:projectId/accept", async (req, res) => {
         }
       };
 
-      spokeTasks.push(newEpic);
+      spokeTasks.push(newEpic); saveMockStore();
 
       // Create only the single initial workstream task
       const initialTaskSummary = project.initialWorkstream || "Phase 1: Kickoff & Requirements Analysis";
@@ -1794,7 +2198,7 @@ app.post("/spoke/project/:projectId/accept", async (req, res) => {
           }
         }
       };
-      spokeTasks.push(newChild);
+      spokeTasks.push(newChild); saveMockStore();
     }
 
     // Update specific allocation status to Active in PostgreSQL
@@ -1954,7 +2358,7 @@ let scheduledMeetingsStore = [
     id: "meet-1",
     title: "KLE FIP Campus Sprint Sync",
     campusId: "3",
-    date: new Date("2026-05-27").toISOString().split("T")[0],
+    date: new Date().toISOString().split("T")[0],
     time: "14:30",
     link: "https://teams.microsoft.com/l/meetup-join/demo-kle-sync",
     agenda: "Sprint blocker escalation, VLSI laboratory setup progression, and Phase 1 milestone evaluation."
@@ -1977,22 +2381,37 @@ app.get("/meetings", (req, res) => {
 
 // POST: Schedule a new meeting
 app.post("/meetings", (req, res) => {
-  const { title, campusId, date, time, link, agenda } = req.body;
-  if (!title || !campusId || !date || !time) {
-    return res.status(400).json({ error: "Missing required meeting fields (title, campusId, date, time)" });
+  const { title, campusId, date, time, link, agenda, meetingType, allocationId } = req.body;
+  if (!title || !date || !time) {
+    return res.status(400).json({ error: "Missing required meeting fields (title, date, time)" });
+  }
+  
+  if (meetingType !== 'cohort' && !campusId) {
+    return res.status(400).json({ error: "Missing campusId for campus sync" });
+  }
+  
+  if (meetingType === 'cohort' && !allocationId) {
+    return res.status(400).json({ error: "Missing allocationId for cohort sync" });
   }
   
   const newMeeting = {
     id: `meet-${Date.now()}`,
     title,
-    campusId,
+    campusId: campusId || null,
+    meetingType: meetingType || 'campus',
+    allocationId: allocationId || null,
     date,
     time,
     link: link || "https://teams.microsoft.com/",
-    agenda: agenda || "General campus sync."
+    agenda: agenda || "General sync."
   };
   
   scheduledMeetingsStore.push(newMeeting);
+
+  // Send an immediate email notification about the new meeting!
+  const emailText = `New Sync Meeting Scheduled!\n\nTitle: ${newMeeting.title}\nDate: ${newMeeting.date}\nTime: ${newMeeting.time}\nLink: ${newMeeting.link}\nAgenda: ${newMeeting.agenda}\n\nPlease be prepared.`;
+  sendFanOutEmail("New Meeting Scheduled: " + newMeeting.title, emailText).catch(e => console.error("Email dispatch failed:", e));
+
   res.json({ success: true, meeting: newMeeting });
 });
 
@@ -2004,7 +2423,26 @@ app.post("/meetings/:id/remind", async (req, res) => {
     return res.status(404).json({ error: "Sync meeting not found" });
   }
 
-  const spoke = SPOKES[meeting.campusId];
+  let spoke = null;
+  let targetEpicKey = null;
+
+  if (meeting.meetingType === 'cohort') {
+    // Lookup the allocation in postgres
+    const allocation = await prisma.allocation.findUnique({
+      where: { id: meeting.allocationId },
+      include: {
+        project: true,
+        mentorAssignments: { include: { faculty: true } },
+        teams: { include: { studentAssignments: { include: { student: true } } } }
+      }
+    });
+    if (!allocation) return res.status(404).json({ error: "Allocation not found" });
+    spoke = SPOKES[allocation.targetCampusId];
+    targetEpicKey = allocation.jiraEpicKey;
+  } else {
+    spoke = SPOKES[meeting.campusId];
+  }
+
   if (!spoke) {
     return res.status(400).json({ error: "Invalid campus spoke associated with meeting" });
   }
@@ -2025,17 +2463,22 @@ app.post("/meetings/:id/remind", async (req, res) => {
       let issues = response.data.issues || [];
       if (LIVE_BOARD_IDS.includes(spoke.boardId)) {
         issues = issues.filter(issue => {
+          if (meeting.meetingType === 'cohort') {
+            // Filter issues by epic key or if it is the epic itself
+            return issue.fields?.epic?.key === targetEpicKey || issue.fields?.parent?.key === targetEpicKey || issue.key === targetEpicKey;
+          }
+
           const labels = issue.fields?.labels || [];
-          if (meeting.campusId === "3") {
+          if (spoke.id === "3" || spoke.boardId === "3") {
             // KLE Spoke: Show issues labeled "kle-spoke" OR issues that don't have other campus labels (preserving historic untagged)
             return labels.includes("kle-spoke") || (!labels.includes("rit-spoke") && !labels.includes("coep-spoke") && !labels.includes("mmcoep-spoke"));
-          } else if (meeting.campusId === "101") {
+          } else if (spoke.boardId === "101") {
             // COEP Spoke: Show ONLY issues labeled "coep-spoke"
             return labels.includes("coep-spoke");
-          } else if (meeting.campusId === "102") {
+          } else if (spoke.boardId === "102") {
             // MMCOEP Spoke: Show ONLY issues labeled "mmcoep-spoke"
             return labels.includes("mmcoep-spoke");
-          } else if (meeting.campusId === "103") {
+          } else if (spoke.boardId === "103") {
             // RIT Spoke: Show ONLY issues labeled "rit-spoke"
             return labels.includes("rit-spoke");
           }
@@ -2044,7 +2487,7 @@ app.post("/meetings/:id/remind", async (req, res) => {
       }
       tasks = issues;
     } else {
-      tasks = mockTasksStore[meeting.campusId] || [];
+      tasks = mockTasksStore[spoke.id] || [];
     }
 
     const overdueTasks = [];
@@ -2079,7 +2522,7 @@ app.post("/meetings/:id/remind", async (req, res) => {
 
       const dueDateStr = t.fields?.duedate || t.fields?.dueDate || null;
       if (status !== "Done" && dueDateStr) {
-        const today = new Date("2026-05-27");
+        const today = new Date();
         const due = new Date(dueDateStr);
         const dToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const dDue = new Date(due.getFullYear(), due.getMonth(), due.getDate());
@@ -2093,16 +2536,16 @@ app.post("/meetings/:id/remind", async (req, res) => {
       FIP MEETING INVITATION & SPRINT WARNING DIGEST
       ---------------------------------------------------------
       Meeting: ${meeting.title}
-      Campus: ${spoke.name}
+      Type: ${meeting.meetingType === 'cohort' ? 'Student Cohort Sync' : 'Campus Sync'}
       Sync Time: ${meeting.date} at ${meeting.time}
       Join Call: ${meeting.link}
       
       Agenda: ${meeting.agenda}
       
       ⚠️ URGENT PRE-MEETING PREPARATION ITEMS:
-      We have compiled the active sprint tasks for your campus that are currently blocking progression. Please resolve their statuses or prepare escalations for the sync.
+      We have compiled the active sprint tasks that are currently blocking progression. Please resolve their statuses or prepare escalations for the sync.
       
-      🚨 ACTIVE CAMPUS BLOCKERS (${blockedTasks.length}):
+      🚨 ACTIVE BLOCKERS (${blockedTasks.length}):
       ${blockedTasks.map(t => `- [${t.key}] ${t.summary} (Status: ${t.statusName || t.status}, Owner: ${t.assignee})`).join("\n") || "None! Excellent team progression."}
       
       ⏰ OVERDUE DEADLINE BREACHES (${overdueTasks.length}):
@@ -2112,11 +2555,17 @@ app.post("/meetings/:id/remind", async (req, res) => {
       -- Sent automatically by ApniLeap Moderator
     `;
 
-    console.log(`[SMTP SIMULATOR] Dispatching pre-meeting warning digest to: ${Array.from(notifyCoordinators).join(", ")}`);
+    console.log(`Dispatching real pre-meeting warning digest to: ${Array.from(notifyCoordinators).join(", ")}`);
+    
+    // Actually send the email using our Nodemailer fan-out system
+    await sendFanOutEmail(
+      `Pre-Meeting Digest: ${meeting.title}`, 
+      emailBody.replace(/\n      /g, "\n")
+    );
 
     res.json({
       success: true,
-      message: `Pre-meeting alerts successfully dispatched to ${notifyCoordinators.size} campus coordinators!`,
+      message: `Pre-meeting alerts successfully dispatched via Email to ${notifyCoordinators.size} campus coordinators!`,
       notifiedEmails: Array.from(notifyCoordinators),
       overdueCount: overdueTasks.length,
       blockerCount: blockedTasks.length,
@@ -2137,16 +2586,11 @@ app.post("/moderator/alerts/check", async (req, res) => {
   const triggeredAlerts = [];
 
   try {
-    const dbProjects = await prisma.project.findMany();
+    const spokesList = Object.keys(SPOKES);
+    const allCampusIssues = {};
 
-    for (const project of dbProjects) {
-      if (!project.assignedTo || !project.assignedKey) continue;
-      
-      const boardId = Object.keys(SPOKES).find(k => SPOKES[k].name === project.assignedTo);
-      if (!boardId) continue;
+    for (const boardId of spokesList) {
       const spoke = SPOKES[boardId];
-
-      let tasks = [];
       if (spoke.live) {
         try {
           const response = await axios.get(
@@ -2159,24 +2603,49 @@ app.post("/moderator/alerts/check", async (req, res) => {
               timeout: 4000
             }
           );
-          tasks = response.data.issues || [];
+          let issues = response.data.issues || [];
+          if (LIVE_BOARD_IDS.includes(spoke.boardId)) {
+            issues = issues.filter(issue => {
+              const labels = issue.fields?.labels || [];
+              if (boardId === "3") return labels.includes("kle-spoke") || (!labels.includes("rit-spoke") && !labels.includes("coep-spoke") && !labels.includes("mmcoep-spoke"));
+              if (boardId === "101") return labels.includes("coep-spoke");
+              if (boardId === "102") return labels.includes("mmcoep-spoke");
+              if (boardId === "103") return labels.includes("rit-spoke");
+              return true;
+            });
+          }
+          allCampusIssues[boardId] = issues;
         } catch (err) {
-          console.warn(`Failed to fetch live tasks for spoke ${spoke.name} during alerts check.`);
-          continue;
+          console.warn(`Failed to fetch live tasks for spoke ${spoke.name} during alerts check. Falling back to mock store.`);
+          allCampusIssues[boardId] = mockTasksStore[boardId] || [];
         }
       } else {
-        tasks = mockTasksStore[boardId] || [];
+        allCampusIssues[boardId] = mockTasksStore[boardId] || [];
       }
+    }
+
+    const dbProjects = await prisma.project.findMany();
+
+    for (const project of dbProjects) {
+      if (!project.assignedTo || !project.assignedKey) continue;
+      
+      const boardId = Object.keys(SPOKES).find(k => SPOKES[k].name === project.assignedTo);
+      if (!boardId) continue;
+
+      let tasks = allCampusIssues[boardId] || [];
 
       const projectEpic = tasks.find(t => t.key === project.assignedKey && (t.fields?.issuetype?.name === "Epic" || t.fields?.issueType === "Epic"));
-      if (!projectEpic) continue;
 
+      const expectedSummary = `[${project.company}] ${project.title}`;
       const childTasks = tasks.filter(t => {
         const parentKey = t.fields?.parent?.key || t.parent?.key;
-        return parentKey === project.assignedKey;
+        const parentSummary = t.fields?.parent?.fields?.summary || t.fields?.parent?.summary || t.parent?.fields?.summary || t.parent?.summary;
+        return (project.assignedKey && parentKey === project.assignedKey) || (parentSummary && parentSummary === expectedSummary);
       });
 
       const totalChildren = childTasks.length;
+      if (totalChildren === 0) continue; // Skip if no phases found
+
       const completedChildren = childTasks.filter(t => {
         const status = t.fields?.status?.name || t.fields?.status || "Backlog";
         return status === "Done";
@@ -2185,12 +2654,14 @@ app.post("/moderator/alerts/check", async (req, res) => {
       const completionRate = totalChildren > 0 ? Math.round((completedChildren / totalChildren) * 100) : 0;
       const isCompleted = totalChildren > 0 && completedChildren === totalChildren;
 
-      const epicDueDate = projectEpic.fields?.duedate || projectEpic.fields?.dueDate || projectEpic.dueDate || null;
+      // Try to get due date from allocation first, then epic, then project
+      const allocation = await prisma.allocation.findFirst({ where: { projectId: project.id, targetCampusId: boardId } });
+      const epicDueDate = projectEpic?.fields?.duedate || projectEpic?.fields?.dueDate || projectEpic?.dueDate || allocation?.proposedDueDate || project.proposedDueDate || null;
       let isBreached = false;
       let daysOverdue = 0;
 
       if (!isCompleted && epicDueDate) {
-        const today = new Date("2026-05-27");
+        const today = new Date();
         const due = new Date(epicDueDate);
         const dToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const dDue = new Date(due.getFullYear(), due.getMonth(), due.getDate());
@@ -2241,6 +2712,12 @@ app.post("/moderator/alerts/check", async (req, res) => {
           daysOverdue,
           emailAlertBody: warningBody
         });
+        
+        try {
+          await sendFanOutEmail(`Urgent Deadline Breach: ${project.title}`, warningBody.replace(/\n          /g, '\n'));
+        } catch (e) {
+          console.error("Failed to send breach email:", e);
+        }
       }
     }
 
@@ -2348,6 +2825,158 @@ async function syncAcceptedProjectsWithJira() {
   }
 }
 
+// ==========================================
+// DOCUMENT UPLOAD SYSTEM (LOCAL)
+// ==========================================
+
+if (!fs.existsSync('./uploads')) {
+  fs.mkdirSync('./uploads');
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+const upload = multer({ storage: storage });
+
+app.use('/uploads', express.static('uploads'));
+
+app.post("/documents/upload", upload.single('document'), async (req, res) => {
+  try {
+    const { uploadedById, allocationId, projectId } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const document = await prisma.document.create({
+      data: {
+        filename: file.originalname,
+        filepath: file.path,
+        fileType: file.mimetype,
+        uploadedById: uploadedById,
+        allocationId: allocationId || null,
+        projectId: projectId || null,
+      }
+    });
+
+    res.json({ success: true, document });
+  } catch (error) {
+    console.error("Upload error:", error);
+    res.status(500).json({ error: "Failed to upload document" });
+  }
+});
+
+app.get("/documents", async (req, res) => {
+  try {
+    const { projectId, allocationId } = req.query;
+    let where = {};
+    if (projectId) where.projectId = projectId;
+    if (allocationId) where.allocationId = allocationId;
+
+    const documents = await prisma.document.findMany({
+      where,
+      include: { uploadedBy: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json(documents);
+  } catch (error) {
+    console.error("Error fetching documents:", error);
+    res.status(500).json({ error: "Failed to fetch documents" });
+  }
+});
+
+// ==========================================
+// JIRA WEBHOOK FAN-OUT INTEGRATION
+// ==========================================
+
+app.post("/jira/webhook/fanout", async (req, res) => {
+  try {
+    const payload = req.body;
+    console.log("🔔 Received Jira Webhook Fanout Trigger!");
+
+    // Basic validation to ensure it's a Jira issue event
+    if (!payload || !payload.issue || !payload.issue.key) {
+      return res.status(400).json({ error: "Invalid Jira payload" });
+    }
+
+    const epicKey = payload.issue.key;
+    const summary = payload.issue.fields.summary;
+    let messageBody = "There has been an update to your assigned project.";
+
+    // Determine the type of webhook event (comment added, issue updated, etc.)
+    if (payload.webhookEvent === 'jira:issue_updated') {
+      messageBody = `The project "${summary}" has been updated in Jira.`;
+      
+      // If a comment was added
+      if (payload.comment) {
+        messageBody = `New comment on project "${summary}":\n\n"${payload.comment.body}"\n\n- ${payload.comment.author.displayName}`;
+      }
+    }
+
+    // 1. Find the allocation in PostgreSQL that matches this Jira Epic
+    const allocation = await prisma.allocation.findFirst({
+      where: { jiraEpicKey: epicKey },
+      include: {
+        project: true,
+        mentorAssignments: { include: { faculty: true } },
+        teams: { include: { studentAssignments: { include: { student: true } } } }
+      }
+    });
+
+    if (!allocation) {
+      console.log(`⚠️ No local allocation found for Epic ${epicKey}. Ignoring webhook.`);
+      return res.json({ success: false, message: "No allocation found" });
+    }
+
+    // 2. Gather all headless users attached to this allocation
+    const targetEmails = [];
+    
+    allocation.mentorAssignments.forEach(ma => {
+      if (ma.faculty && ma.faculty.email) targetEmails.push(ma.faculty.email);
+    });
+    
+    allocation.teams?.forEach(team => {
+      team.studentAssignments?.forEach(sa => {
+        if (sa.student && sa.student.email) targetEmails.push(sa.student.email);
+      });
+    });
+
+    if (targetEmails.length === 0) {
+      console.log(`⚠️ No faculty or students assigned to ${epicKey} yet. Nobody to email.`);
+      return res.json({ success: true, message: "No recipients" });
+    }
+
+    // 3. Fan-out the email using Nodemailer
+    const subject = `[ApniLeap] Update on Project: ${allocation.project.title}`;
+    const htmlBody = `
+      <h3>Update on your industry project!</h3>
+      <p><strong>Project:</strong> ${allocation.project.title}</p>
+      <p><strong>Sponsor:</strong> ${allocation.project.company}</p>
+      <hr />
+      <p>${messageBody.replace(/\n/g, '<br/>')}</p>
+      <br/>
+      <p><small>This is an automated notification from your ApniLeap Hub.</small></p>
+    `;
+
+    await sendFanOutEmail(targetEmails, subject, messageBody, htmlBody);
+
+    return res.json({ success: true, recipients: targetEmails.length });
+
+  } catch (error) {
+    console.error("❌ Error processing webhook:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// START SERVER
 app.listen(5000, () => {
   console.log("Server running on port 5000");
   syncAcceptedProjectsWithJira();
