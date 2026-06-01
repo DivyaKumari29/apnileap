@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+
 :root {
   /* Smart Premium Reference Dashboard Palette */
   --bg-main: linear-gradient(135deg, #1e293b 0%, #3b529a 50%, #6366f1 100%);  /* Brand Canvas Gradient */
@@ -55,7 +58,10 @@
   --priority-low-text: #16a34a;
 
   /* Typography & Transitions */
-  --font-sans: 'Outfit', 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+  --font-sans: 'Inter', 'Plus Jakarta Sans', 'Outfit', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
   --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --shadow-premium: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 8px -1px rgba(0, 0, 0, 0.02);
   --shadow-glow: 0 4px 15px rgba(59, 82, 154, 0.05);
@@ -116,6 +122,10 @@ body, div, nav, aside, main, header, section, span, h1, h2, h3, h4, h5, h6, p, b
   font-family: var(--font-sans);
 }
 
+input, select, textarea, button, optgroup, option {
+  font-family: var(--font-sans);
+}
+
 body {
   background-color: var(--bg-main);
   color: var(--text-main);
@@ -123,7 +133,16 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+  line-height: 1.5;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
 
 /* Scrollbar Styling */
 ::-webkit-scrollbar {

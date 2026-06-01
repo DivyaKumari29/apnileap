@@ -14,12 +14,32 @@ const CorporateProject = require("./models/CorporateProject");
 const MockTask = require("./models/MockTask");
 const Meeting = require("./models/Meeting");
 const Submission = require("./models/Submission");
+const Team = require("./models/Team");
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Secure JWT verification middleware to restrict API write endpoints
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Extract token from "Bearer <token>"
+
+  if (!token) {
+    return res.status(401).json({ error: "Access Denied: Secure JWT authorization token required." });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET || "apnileap_secret_session_token_key_123!", (err, user) => {
+    if (err) {
+      console.warn("[AUTH FAILURE] Invalid or expired JWT token received.");
+      return res.status(403).json({ error: "Access Denied: Invalid or expired session token." });
+    }
+    req.user = user;
+    next();
+  });
+}
 
 const auth = Buffer.from(
   `${process.env.JIRA_EMAIL}:${process.env.JIRA_API_TOKEN}`
@@ -143,8 +163,15 @@ const CAMPUS_TEAM_MEMBERS = {
 
 let jiraSimulatedAssigneeStore = {};
 
+const STUDENT_DEVELOPERS = [
+  { accountId: "mock-kle-student", displayName: "KLE Student Developer", emailAddress: "student@kle.edu", email: "student@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=12" } },
+  { accountId: "mock-coep-student", displayName: "COEP Student Developer", emailAddress: "student@coep.edu", email: "student@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=35" } },
+  { accountId: "mock-rit-student", displayName: "RIT Student Developer", emailAddress: "student@rit.edu", email: "student@rit.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=15" } }
+];
+
 const MOCK_ASSIGNEES = [
   { accountId: "mock-1", displayName: "Manasa Vasare (Coordinator)", emailAddress: "coordinator@kle.edu", email: "coordinator@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=32" } },
+  ...STUDENT_DEVELOPERS,
   ...CAMPUS_TEAM_MEMBERS["3"],
   ...CAMPUS_TEAM_MEMBERS["101"],
   ...CAMPUS_TEAM_MEMBERS["102"],
@@ -155,6 +182,15 @@ function initMockData() {
   console.log("Pre-populating mock tasks for accepted multi-college B2B projects...");
   
   const b2bPreloads = [
+    {
+      boardId: "103", // RIT Spoke
+      epicKey: "PNLP-3",
+      company: "NVIDIA",
+      title: "Real-Time Sign Language Translator",
+      description: "Develop a deep learning-based translator running on NVIDIA Jetson to convert sign language gestures to text/speech in real-time.",
+      proposedDueDate: "2026-02-25",
+      taskStatuses: ["Backlog"] // 0 done, 1 backlog = 0% progress! (Urgent deadline breach demo)
+    },
     {
       boardId: "3", // KLE
       epicKey: "AK-12",
@@ -193,6 +229,13 @@ function initMockData() {
     }
   ];
 
+  // Student Quick Login mappings to assign mock tasks and make dashboard fully functional
+  const studentUserMap = {
+    "3": { accountId: "mock-kle-student", displayName: "KLE Student Developer", emailAddress: "student@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=12" } },
+    "101": { accountId: "mock-coep-student", displayName: "COEP Student Developer", emailAddress: "student@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=35" } },
+    "103": { accountId: "mock-rit-student", displayName: "RIT Student Developer", emailAddress: "student@rit.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=15" } }
+  };
+
   b2bPreloads.forEach(preload => {
     const spoke = SPOKES[preload.boardId];
     if (!spoke) return;
@@ -221,7 +264,7 @@ function initMockData() {
         flagged: false,
         timetracking: null,
         subtasks: [],
-        labels: ["B2B-Sponsor", spoke.boardId === 75 ? "kle-spoke" : spoke.boardId === 76 ? "coep-spoke" : spoke.boardId === 77 ? "mmcoep-spoke" : "rit-spoke"],
+        labels: ["B2B-Sponsor", CAMPUS_LABELS[preload.boardId] || "kle-spoke"],
         parent: null
       }
     };
@@ -245,6 +288,25 @@ function initMockData() {
     standardTasks.forEach((taskSummary, idx) => {
       const childKey = `${preload.epicKey}-${idx + 1}`;
       const statusVal = preload.taskStatuses[idx] || "Backlog";
+      
+      // Determine assignee dynamically (Phase 1 is assigned to our logged in student developer account)
+      let taskAssignee = null;
+      if (idx === 0) {
+        taskAssignee = studentUserMap[preload.boardId] || null;
+      } else {
+        const team = CAMPUS_TEAM_MEMBERS[preload.boardId] || [];
+        const memberIdx = (idx - 1) % team.length;
+        const member = team[memberIdx];
+        if (member) {
+          taskAssignee = {
+            accountId: member.accountId,
+            displayName: member.displayName,
+            avatarUrls: member.avatarUrls,
+            emailAddress: member.emailAddress || member.email || ""
+          };
+        }
+      }
+
       const newChild = {
         id: `mock-${preload.boardId}-child-preload-${childKey}`,
         key: childKey,
@@ -254,12 +316,14 @@ function initMockData() {
           status: { name: statusVal },
           priority: { name: "Medium" },
           issuetype: { name: "Task" },
+          assignee: taskAssignee,
+          reporter: MOCK_ASSIGNEES[0],
           created: new Date().toISOString(),
           dueDate: taskDueDates[idx],
           flagged: false,
           timetracking: { timeSpentSeconds: statusVal === "Done" ? 36000 : 0, originalEstimateSeconds: 36000, remainingEstimateSeconds: statusVal === "Done" ? 0 : 36000 },
           subtasks: [],
-          labels: ["B2B-Task", spoke.boardId === 75 ? "kle-spoke" : spoke.boardId === 76 ? "coep-spoke" : spoke.boardId === 77 ? "mmcoep-spoke" : "rit-spoke"],
+          labels: ["B2B-Task", CAMPUS_LABELS[preload.boardId] || "kle-spoke"],
           parent: {
             id: newEpic.id,
             key: preload.epicKey,
@@ -308,7 +372,7 @@ app.get("/spokes/:boardId/members", async (req, res) => {
             Authorization: `Basic ${auth}`,
             Accept: "application/json",
           },
-          timeout: 1500
+          timeout: 10000
         }
       );
       members = response.data.map(u => ({
@@ -397,7 +461,7 @@ app.get("/tasks", async (req, res) => {
             Authorization: `Basic ${auth}`,
             Accept: "application/json",
           },
-          timeout: 1500
+          timeout: 10000
         }
       );
 
@@ -512,7 +576,7 @@ app.get("/myself", async (req, res) => {
           Authorization: `Basic ${auth}`,
           Accept: "application/json",
         },
-        timeout: 1500
+        timeout: 10000
       }
     );
     apiCache.myself = response.data;
@@ -540,8 +604,8 @@ app.get("/myself", async (req, res) => {
 });
 
 // Create new issue in Jira project dynamically resolved from active board issues
-app.post("/tasks", async (req, res) => {
-  const { summary, description, statusName, priorityName, assigneeId, reporterId, dueDate, issueTypeName, boardId } = req.body;
+app.post("/tasks", authenticateToken, async (req, res) => {
+  const { summary, description, statusName, priorityName, assigneeId, reporterId, dueDate, issueTypeName, boardId, parentId, parentKey, parentSummary } = req.body;
   const targetBoardId = boardId || "3";
   const spoke = SPOKES[targetBoardId];
 
@@ -562,6 +626,23 @@ app.post("/tasks", async (req, res) => {
         }
       } catch (err) {
         console.error("Failed to resolve persistent user for assignment:", err.message);
+      }
+    }
+    // Check if assignee is a custom Spoke Team persistently registered
+    if (!assignedUserObj && /^[0-9a-fA-F]{24}$/.test(assigneeId)) {
+      try {
+        const teamObj = await Team.findById(assigneeId);
+        if (teamObj) {
+          assignedUserObj = {
+            accountId: assigneeId,
+            displayName: `👥 [TEAM] ${teamObj.name}`,
+            avatarUrls: { "48x48": `https://ui-avatars.com/api/?name=${encodeURIComponent(teamObj.name)}&background=3b82f6&color=fff&rounded=true` },
+            emailAddress: `team-${assigneeId}@apnileap.com`,
+            isTeam: true
+          };
+        }
+      } catch (err) {
+        console.error("Failed to resolve custom team for assignment:", err.message);
       }
     }
     if (!assignedUserObj) {
@@ -624,7 +705,13 @@ app.post("/tasks", async (req, res) => {
           customfield_10021: null,
           subtasks: [],
           issuelinks: [],
-          labels: []
+          labels: parentId ? ["B2B-Task", CAMPUS_LABELS[targetBoardId] || "kle-spoke"] : [],
+          parent: parentId ? {
+            id: parentId,
+            key: parentKey,
+            summary: parentSummary,
+            issueType: "Epic"
+          } : null
         }
       };
 
@@ -686,8 +773,7 @@ app.post("/tasks", async (req, res) => {
         fields.assignee = { accountId: assigneeId };
       }
     }
-    
-    if (reporterId) fields.reporter = { accountId: reporterId };
+
 
     // 3. Post to Jira Create Issue endpoint
     const createRes = await axios.post(
@@ -792,7 +878,7 @@ app.post("/tasks", async (req, res) => {
 });
 
 // Update fields of an issue in Jira
-app.put("/tasks/:key", async (req, res) => {
+app.put("/tasks/:key", authenticateToken, async (req, res) => {
   const { key } = req.params;
   const { summary, description, dueDate, assignee, reporter, priority } = req.body;
 
@@ -946,8 +1032,7 @@ app.put("/tasks/:key", async (req, res) => {
       fields.assignee = assignee ? { accountId: assignee } : null;
     }
   }
-  
-  if (reporter !== undefined) fields.reporter = reporter ? { accountId: reporter } : null;
+
 
   try {
     await axios.put(
@@ -1082,7 +1167,7 @@ app.post("/tasks/:key/transition", async (req, res) => {
 });
 
 // Delete an issue from Jira
-app.delete("/tasks/:key", async (req, res) => {
+app.delete("/tasks/:key", authenticateToken, async (req, res) => {
   const { key } = req.params;
 
   const projectKey = key.split("-")[0];
@@ -1422,7 +1507,7 @@ app.get("/tasks/:key/worklog", async (req, res) => {
 });
 
 // Create a new child subtask under a parent issue inside Jira
-app.post("/tasks/:key/subtask", async (req, res) => {
+app.post("/tasks/:key/subtask", authenticateToken, async (req, res) => {
   const { key } = req.params;
   const { summary, assigneeId, parentIssueType } = req.body;
 
@@ -1499,7 +1584,11 @@ app.post("/tasks/:key/subtask", async (req, res) => {
     };
 
     if (assigneeId) {
-      fields.assignee = { accountId: assigneeId };
+      if (assigneeId.startsWith("mock-") || /^[0-9a-fA-F]{24}$/.test(assigneeId)) {
+        // Bypass live JIRA mapping validation
+      } else {
+        fields.assignee = { accountId: assigneeId };
+      }
     }
 
     const response = await axios.post(
@@ -1648,7 +1737,7 @@ app.get("/hub/metrics", async (req, res) => {
                   Authorization: `Basic ${auth}`,
                   Accept: "application/json",
                 },
-                timeout: 1500
+                timeout: 10000
               }
             );
             let issues = response.data.issues || [];
@@ -1909,6 +1998,30 @@ app.get("/hub/metrics", async (req, res) => {
 // In-memory Database for B2B Company Projects Intake
 let companyProjectsIntake = [
   {
+    id: "proj-overdue-sign-lang",
+    company: "NVIDIA",
+    logoUrl: "https://logo.clearbit.com/nvidia.com?size=80",
+    title: "Real-Time Sign Language Translator",
+    description: "Develop a deep learning-based translator running on NVIDIA Jetson to convert sign language gestures to text/speech in real-time.",
+    budget: "$30,000",
+    duration: "6 Months",
+    status: "Active",
+    assignedTo: "RIT Spoke",
+    targetCampusId: "103",
+    proposedDueDate: "2026-02-25",
+    assignedKey: "PNLP-3",
+    dateAdded: "2025-08-25",
+    allocations: [
+      {
+        targetCampusId: "103",
+        assignedTo: "RIT Spoke",
+        status: "Active",
+        proposedDueDate: "2026-02-25",
+        assignedKey: "PNLP-3"
+      }
+    ]
+  },
+  {
     id: "proj-1",
     company: "NVIDIA",
     logoUrl: "https://logo.clearbit.com/nvidia.com?size=80",
@@ -2032,7 +2145,7 @@ app.get("/moderator/projects", async (req, res) => {
                   Authorization: `Basic ${auth}`,
                   Accept: "application/json",
                 },
-                timeout: 1500 // Quick timeout to prevent blocking
+                timeout: 10000 // Quick timeout to prevent blocking
               }
             );
             let issues = response.data.issues || [];
@@ -2140,7 +2253,7 @@ app.get("/moderator/projects", async (req, res) => {
 });
 
 // POST: Ingest a new corporate B2B project proposal (Moderator Intake Portal)
-app.post("/moderator/projects", async (req, res) => {
+app.post("/moderator/projects", authenticateToken, async (req, res) => {
   try {
     const { company, title, description, budget, duration, proposedDueDate, problemStatementUrl } = req.body;
     
@@ -2179,8 +2292,55 @@ app.post("/moderator/projects", async (req, res) => {
   }
 });
 
+// PUT: Update corporate project proposal persistently
+app.put("/moderator/projects/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { company, title, description, budget, duration, proposedDueDate, status } = req.body;
+    const project = await CorporateProject.findById(id);
+    if (!project) {
+      return res.status(404).json({ error: "Corporate project not found." });
+    }
+
+    if (company) project.company = company;
+    if (title) project.title = title;
+    if (description) project.description = description;
+    if (budget) project.budget = budget;
+    if (duration) project.duration = duration;
+    if (proposedDueDate) project.proposedDueDate = proposedDueDate;
+    if (status) project.status = status;
+
+    await project.save();
+    invalidateCache(); // Purge cache so updates load immediately
+
+    console.log(`[PROJECT UPDATED] Persistently updated B2B project: ${project.title}`);
+    res.json({ success: true, project });
+  } catch (error) {
+    console.error("Failed to update project proposal:", error);
+    res.status(500).json({ error: "Failed to update corporate project proposal." });
+  }
+});
+
+// DELETE: Delete corporate project persistently
+app.delete("/moderator/projects/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleted = await CorporateProject.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ error: "Corporate project not found." });
+    }
+    invalidateCache(); // Purge cache so deletion loads immediately
+    console.log(`[PROJECT DELETED] Persistently deleted corporate project ID: ${id}`);
+    res.json({ success: true, message: "Corporate project successfully deleted." });
+  } catch (error) {
+    console.error("Failed to delete corporate project:", error);
+    res.status(500).json({ error: "Failed to delete corporate project." });
+  }
+});
+
+
 // POST: Propose a company project to a campus spoke (Awaiting acceptance)
-app.post("/moderator/assign", async (req, res) => {
+app.post("/moderator/assign", authenticateToken, async (req, res) => {
   try {
     const { projectId, targetBoardId, dueDate } = req.body;
     const project = await CorporateProject.findById(projectId);
@@ -2567,7 +2727,7 @@ app.post("/meetings/:id/remind", async (req, res) => {
               Authorization: `Basic ${auth}`,
               Accept: "application/json",
             },
-            timeout: 1500
+            timeout: 10000
           }
         );
         let issues = response.data.issues || [];
@@ -2600,6 +2760,14 @@ app.post("/meetings/:id/remind", async (req, res) => {
       tasks = apiCache.tasks[meeting.campusId]?.data || mockTasksStore[meeting.campusId] || [];
     }
 
+    // Merge local mock tasks for robust hybrid demo testing!
+    const localMocks = mockTasksStore[meeting.campusId] || [];
+    localMocks.forEach(mockTask => {
+      if (!tasks.some(t => t.key === mockTask.key)) {
+        tasks.push(mockTask);
+      }
+    });
+
     const overdueTasks = [];
     const blockedTasks = [];
     const notifyCoordinators = new Set(["manasa@apnileap.com", "coordinator@" + spoke.key.toLowerCase() + ".edu"]);
@@ -2618,7 +2786,7 @@ app.post("/meetings/:id/remind", async (req, res) => {
                 Authorization: `Basic ${auth}`,
                 Accept: "application/json",
               },
-              timeout: 1500
+              timeout: 10000
             }
           );
           if (Array.isArray(jiraRes.data)) {
@@ -2908,6 +3076,21 @@ app.post("/meetings/:id/remind", async (req, res) => {
   }
 });
 
+// DELETE: Cancel/Delete a sync meeting persistently from MongoDB
+app.delete("/meetings/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleted = await Meeting.findOneAndDelete({ id });
+    if (!deleted) {
+      return res.status(404).json({ error: "Sync meeting not found." });
+    }
+    res.json({ success: true, message: "Sync meeting cancelled and deleted successfully.", deleted });
+  } catch (error) {
+    console.error("Failed to delete meeting:", error);
+    res.status(500).json({ error: "Failed to delete meeting." });
+  }
+});
+
 // ==========================================
 // AUTOMATED OVERDUE PROJECTS SCAANER
 // ==========================================
@@ -2917,6 +3100,34 @@ app.post("/moderator/alerts/check", async (req, res) => {
   const triggeredAlerts = [];
 
   try {
+    const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+    let transporter;
+    let isTestAccount = false;
+
+    if (hasSmtpConfig) {
+      transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || "587"),
+        secure: process.env.SMTP_SECURE === "true",
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+    } else {
+      isTestAccount = true;
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+    }
+
     const companyProjects = await CorporateProject.find();
     for (const project of companyProjects) {
       if (!project.assignedTo || !project.assignedKey) continue;
@@ -2935,7 +3146,7 @@ app.post("/moderator/alerts/check", async (req, res) => {
                 Authorization: `Basic ${auth}`,
                 Accept: "application/json",
               },
-              timeout: 1500
+              timeout: 10000
             }
           );
           tasks = response.data.issues || [];
@@ -2947,6 +3158,14 @@ app.post("/moderator/alerts/check", async (req, res) => {
       } else {
         tasks = apiCache.tasks[boardId]?.data || mockTasksStore[boardId] || [];
       }
+
+      // Merge local mock tasks for robust hybrid demo testing!
+      const localMocks = mockTasksStore[boardId] || [];
+      localMocks.forEach(mockTask => {
+        if (!tasks.some(t => t.key === mockTask.key)) {
+          tasks.push(mockTask);
+        }
+      });
 
       const projectEpic = tasks.find(t => t.key === project.assignedKey && (t.fields?.issuetype?.name === "Epic" || t.fields?.issueType === "Epic"));
       if (!projectEpic) continue;
@@ -2985,6 +3204,134 @@ app.post("/moderator/alerts/check", async (req, res) => {
         project.status = `Assigned (BREACHED - Incomplete)`;
         await project.save();
         
+        const notifyCoordinators = new Set(["manasa@apnileap.com", "coordinator@" + spoke.key.toLowerCase() + ".edu"]);
+
+        // Gather all stakeholders for this Spoke to notify
+        try {
+          const personaMap = {
+            "3": "spoke-kle",
+            "101": "spoke-coep",
+            "102": "spoke-mmcoep",
+            "103": "spoke-rit"
+          };
+          const targetPersona = personaMap[boardId];
+          if (targetPersona) {
+            const dbUsers = await User.find({ persona: targetPersona });
+            dbUsers.forEach(u => {
+              if (u.email) {
+                notifyCoordinators.add(u.email.toLowerCase().trim());
+              }
+            });
+          }
+
+          const simulated = CAMPUS_TEAM_MEMBERS[boardId] || [];
+          simulated.forEach(u => {
+            const email = u.emailAddress || u.email;
+            if (email) {
+              notifyCoordinators.add(email.toLowerCase().trim());
+            }
+          });
+        } catch (memberErr) {
+          console.error("Failed to dynamically gather Spoke members in alerts check:", memberErr.message);
+        }
+
+        const recipientList = Array.from(notifyCoordinators);
+        const redirectEmail = process.env.SMTP_REDIRECT_TO || null;
+        const finalTo = redirectEmail ? redirectEmail : recipientList.join(", ");
+
+        const redirectBannerHtml = redirectEmail ? `
+          <div style="background: rgba(251, 146, 60, 0.08); border: 1px dashed rgba(251, 146, 60, 0.25); border-radius: 12px; padding: 16px; margin-bottom: 24px; font-size: 13px; color: #fb923c; text-align: center; line-height: 1.5;">
+            ⚙️ <strong>[Demo Rerouting Mode Active]</strong><br/>
+            This email was originally addressed to: <span style="font-family: monospace; font-weight: 750; color: #f97316;">${recipientList.join(", ")}</span>.<br/>
+            It has been rerouted to your administrator address (<strong style="color: white;">${redirectEmail}</strong>) for live verification.
+          </div>
+        ` : "";
+
+        const htmlTemplate = `
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #07090e; padding: 40px; color: #f3f4f6; min-height: 100%;">
+            <div style="max-width: 650px; margin: 0 auto; background: rgba(17, 24, 39, 0.9); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #ef4444, #b91c1c); padding: 30px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                <h1 style="margin: 0; font-size: 26px; font-weight: 800; color: white;">ApniLeap Hub</h1>
+                <p style="margin: 6px 0 0 0; opacity: 0.9; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fee2e2;">⚠️ URGENT DEADLINE BREACH WARNING</p>
+              </div>
+              
+              <!-- Body -->
+              <div style="padding: 40px 30px; line-height: 1.6;">
+                ${redirectBannerHtml}
+                
+                <div style="border-left: 4px solid #ef4444; padding-left: 16px; margin-bottom: 24px;">
+                  <h2 style="margin: 0; color: white; font-size: 18px; font-weight: 700;">Deadline Breached - Incomplete Project</h2>
+                  <p style="margin: 4px 0 0 0; font-size: 14px; color: #fca5a5;">Your campus has breached the target deadline for this industry-sponsored FIP.</p>
+                </div>
+
+                <!-- Project Details Card -->
+                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                  <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 15px; color: white;">📋 Project Information</h3>
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+                    <tr>
+                      <td style="padding: 6px 0; color: #9ca3af; font-weight: 600; width: 140px;">Company Project:</td>
+                      <td style="padding: 6px 0; color: #f3f4f6; font-weight: 700;">${project.title}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #9ca3af; font-weight: 600;">Sponsoring Partner:</td>
+                      <td style="padding: 6px 0; color: #ef4444; font-weight: 700;">${project.company}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #9ca3af; font-weight: 600;">Assigned Space:</td>
+                      <td style="padding: 6px 0; color: #f3f4f6;">${project.assignedTo} (<span style="font-family: monospace; color: #fca5a5;">${project.assignedKey}</span>)</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #9ca3af; font-weight: 600;">Target Deadline:</td>
+                      <td style="padding: 6px 0; color: #f3f4f6; font-weight: 700;">${epicDueDate}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #9ca3af; font-weight: 600;">Breach Duration:</td>
+                      <td style="padding: 6px 0; color: #ef4444; font-weight: 700;">Overdue by ${daysOverdue} days!</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- Metrics Section -->
+                <div style="background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                  <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 15px; color: #ef4444;">📊 Current Progress Metrics</h3>
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+                    <tr>
+                      <td style="padding: 4px 0; color: #9ca3af;">Overall Completion Rate:</td>
+                      <td style="padding: 4px 0; color: #ef4444; font-weight: 700; text-align: right;">${completionRate}%</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; color: #9ca3af;">Total Scope:</td>
+                      <td style="padding: 4px 0; color: #f3f4f6; font-weight: 600; text-align: right;">${totalChildren} Phase Deliverables</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; color: #9ca3af;">Deliverables Completed:</td>
+                      <td style="padding: 4px 0; color: #10b981; font-weight: 600; text-align: right;">${completedChildren} of ${totalChildren}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; color: #9ca3af;">Deliverables Remaining:</td>
+                      <td style="padding: 4px 0; color: #ef4444; font-weight: 700; text-align: right;">${totalChildren - completedChildren} INCOMPLETE</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- Action notice -->
+                <div style="background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 13px; color: #9ca3af; text-align: center;">
+                  🚨 <strong>URGENT ACTION REQUIRED:</strong><br/>
+                  Please contact the ApniLeap Moderator immediately or update your sprint task assignments in the Hub.
+                </div>
+
+              </div>
+
+              <!-- Footer -->
+              <div style="background-color: rgba(255, 255, 255, 0.01); padding: 20px 30px; text-align: center; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: #6b7280;">
+                This deadline breach alert was dispatched automatically by the ApniLeap automated deadline auditor.<br/>
+                Configure environmental variables inside the backend .env file to manage SMTP settings.
+              </div>
+            </div>
+          </div>
+        `;
+
         const warningBody = `
           ⚠️ URGENT DEADLINE BREACH WARNING - INCOMPLETE PROJECT
           ---------------------------------------------------------
@@ -3007,6 +3354,42 @@ app.post("/moderator/alerts/check", async (req, res) => {
           -- Dispatched by ApniLeap automated deadline auditor.
         `;
 
+        const mailInfo = await transporter.sendMail({
+          from: hasSmtpConfig
+            ? `"${process.env.SMTP_FROM_NAME || 'ApniLeap Hub'}" <${process.env.SMTP_USER}>`
+            : '"ApniLeap Deadline Auditor" <no-reply@apnileap.com>',
+          to: finalTo,
+          subject: `⚠️ [URGENT BREACH WARNING] Target Deadline Overdue: ${project.title} (${project.assignedTo})`,
+          text: warningBody,
+          html: htmlTemplate
+        });
+
+        let previewUrl = "";
+        if (isTestAccount) {
+          previewUrl = nodemailer.getTestMessageUrl(mailInfo);
+        }
+
+        console.log("\n");
+        console.log("┌────────────────────────────────────────────────────────┐");
+        console.log("│ 🚨   APNILEAP AUTOMATED DEADLINE AUDITOR WARNING       │");
+        console.log("├────────────────────────────────────────────────────────┤");
+        console.log(`│ PROJECT:    \x1b[31m${project.title}\x1b[0m`);
+        console.log(`│ PARTNER:    \x1b[33m${project.company}\x1b[0m`);
+        console.log(`│ SPACE:      \x1b[36m${project.assignedTo} (${project.assignedKey})\x1b[0m`);
+        console.log(`│ RECIPIENTS: \x1b[36m${recipientList.join(", ")}\x1b[0m`);
+        if (redirectEmail) {
+          console.log(`│ REROUTED TO:\x1b[33m ${redirectEmail} (Demo Rerouting Mode)\x1b[0m`);
+        }
+        console.log(`│ SUBJECT:    \x1b[31m⚠️ [URGENT BREACH WARNING] Target Deadline Overdue\x1b[0m`);
+        console.log("├────────────────────────────────────────────────────────┤");
+        if (isTestAccount) {
+          console.log(`│ PREVIEW:    \x1b[33m${previewUrl}\x1b[0m`);
+        } else {
+          console.log(`│ DISPATCH:   \x1b[32m Real SMTP Relay Gateway (${process.env.SMTP_HOST})\x1b[0m`);
+        }
+        console.log("└────────────────────────────────────────────────────────┘");
+        console.log("\n");
+
         triggeredAlerts.push({
           projectId: project._id.toString(),
           title: project.title,
@@ -3016,7 +3399,8 @@ app.post("/moderator/alerts/check", async (req, res) => {
           dueDate: epicDueDate,
           completionRate,
           daysOverdue,
-          emailAlertBody: warningBody
+          emailAlertBody: warningBody,
+          previewUrl: isTestAccount ? previewUrl : undefined
         });
       }
     }
@@ -3051,7 +3435,7 @@ async function syncAcceptedProjectsWithJira() {
               Authorization: `Basic ${auth}`,
               Accept: "application/json",
             },
-            timeout: 1500
+            timeout: 10000
           }
         );
         const issues = response.data.issues || [];
@@ -3143,43 +3527,63 @@ const CREDENTIALS_STORE = {
     displayName: "RIT Coordinator",
     role: "RIT Spoke Coordinator",
     persona: "spoke-rit"
+  },
+  "student@kle.edu": {
+    password: "student123",
+    displayName: "KLE Student Developer",
+    role: "Student Developer",
+    persona: "spoke-kle"
+  },
+  "student@coep.edu": {
+    password: "student123",
+    displayName: "COEP Student Developer",
+    role: "Student Developer",
+    persona: "spoke-coep"
+  },
+  "student@rit.edu": {
+    password: "student123",
+    displayName: "RIT Student Developer",
+    role: "Student Developer",
+    persona: "spoke-rit"
+  },
+  "sponsor@nvidia.com": {
+    password: "nvidia123",
+    displayName: "NVIDIA Sponsor",
+    role: "Corporate Partner",
+    persona: "sponsor-nvidia"
   }
 };
 
 // Seeding function to initialize the default users in MongoDB Atlas
 async function seedDefaultUsers() {
   try {
-    const userCount = await User.countDocuments();
-    if (userCount === 0) {
-      console.log("🌱 [SEEDING] MongoDB User collection is empty. Auto-seeding 7 default credentials...");
-      const usersToSeed = Object.keys(CREDENTIALS_STORE).map(email => ({
-        email: email.toLowerCase().trim(),
-        password: CREDENTIALS_STORE[email].password,
-        displayName: CREDENTIALS_STORE[email].displayName,
-        role: CREDENTIALS_STORE[email].role,
-        persona: CREDENTIALS_STORE[email].persona
-      }));
-      await User.insertMany(usersToSeed);
-      console.log(`🌱 [SEEDING SUCCESS] Seeded ${usersToSeed.length} default users into MongoDB Atlas!`);
-    } else {
-      console.log(`ℹ️ [DATABASE] User collection already populated with ${userCount} records. Seeding bypassed.`);
-    }
+    await User.deleteMany({});
+    console.log("🌱 [SEEDING] MongoDB User collection dropped and re-seeding default credentials...");
+    const usersToSeed = Object.keys(CREDENTIALS_STORE).map(email => ({
+      email: email.toLowerCase().trim(),
+      password: CREDENTIALS_STORE[email].password,
+      displayName: CREDENTIALS_STORE[email].displayName,
+      role: CREDENTIALS_STORE[email].role,
+      persona: CREDENTIALS_STORE[email].persona
+    }));
+    await User.insertMany(usersToSeed, { ordered: false });
+    console.log(`🌱 [SEEDING SUCCESS] Seeded ${usersToSeed.length} default users into MongoDB Atlas!`);
   } catch (err) {
-    console.error("❌ [SEEDING ERROR] Failed to seed default users:", err.message);
+    if (err.code === 11000) {
+      console.log("🌱 [SEEDING] Duplicate keys skipped gracefully during user seeding.");
+    } else {
+      console.error("❌ [SEEDING ERROR] Failed to seed default users:", err.message);
+    }
   }
 }
 
 // Seeding function to initialize B2B Corporate Projects in MongoDB Atlas
 async function seedDefaultProjects() {
   try {
-    const projectCount = await CorporateProject.countDocuments();
-    if (projectCount === 0) {
-      console.log("🌱 [SEEDING] CorporateProject collection is empty. Seeding 3 default projects...");
-      await CorporateProject.insertMany(companyProjectsIntake);
-      console.log(`🌱 [SEEDING SUCCESS] Seeded ${companyProjectsIntake.length} default projects into MongoDB Atlas!`);
-    } else {
-      console.log(`ℹ️ [DATABASE] CorporateProject collection already populated with ${projectCount} records. Seeding bypassed.`);
-    }
+    await CorporateProject.deleteMany({});
+    console.log("🌱 [SEEDING] CorporateProject collection dropped and re-seeding default B2B projects...");
+    await CorporateProject.insertMany(companyProjectsIntake);
+    console.log(`🌱 [SEEDING SUCCESS] Seeded ${companyProjectsIntake.length} default projects into MongoDB Atlas!`);
   } catch (err) {
     console.error("❌ [SEEDING ERROR] Failed to seed default projects:", err.message);
   }
@@ -3188,27 +3592,35 @@ async function seedDefaultProjects() {
 // Seeding function to initialize mock tasks persistently in MongoDB Atlas
 async function seedDefaultTasks() {
   try {
-    const taskCount = await MockTask.countDocuments();
-    if (taskCount === 0) {
-      console.log("🌱 [SEEDING] MockTask collection is empty. Seeding pre-populated tasks into MongoDB Atlas...");
-      const tasksToInsert = [];
-      Object.keys(mockTasksStore).forEach(boardId => {
-        mockTasksStore[boardId].forEach(task => {
+    await MockTask.deleteMany({});
+    console.log("🌱 [SEEDING] MockTask collection dropped and re-seeding mock tasks...");
+    const tasksToInsert = [];
+    const seenIds = new Set();
+    
+    Object.keys(mockTasksStore).forEach(boardId => {
+      mockTasksStore[boardId].forEach(task => {
+        if (task && task.id && !seenIds.has(task.id)) {
+          seenIds.add(task.id);
           tasksToInsert.push({
             id: task.id,
             key: task.key,
             boardId: boardId,
             fields: task.fields
           });
-        });
+        }
       });
-      await MockTask.insertMany(tasksToInsert);
-      console.log(`🌱 [SEEDING SUCCESS] Seeded ${tasksToInsert.length} mock tasks into MongoDB Atlas!`);
-    } else {
-      console.log(`ℹ️ [DATABASE] MockTask collection already populated with ${taskCount} records. Seeding bypassed.`);
+    });
+    
+    if (tasksToInsert.length > 0) {
+      await MockTask.insertMany(tasksToInsert, { ordered: false });
     }
+    console.log(`🌱 [SEEDING SUCCESS] Seeded ${tasksToInsert.length} mock tasks into MongoDB Atlas!`);
   } catch (err) {
-    console.error("❌ [SEEDING ERROR] Failed to seed default mock tasks:", err.message);
+    if (err.code === 11000) {
+      console.log("🌱 [SEEDING] Duplicate keys skipped gracefully during mock tasks seeding.");
+    } else {
+      console.error("❌ [SEEDING ERROR] Failed to seed default mock tasks:", err.message);
+    }
   }
 }
 
@@ -3250,15 +3662,42 @@ async function seedDefaultMeetings() {
 
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log("🌱 Connected to MongoDB Atlas successfully!");
-    seedDefaultUsers();
-    seedDefaultProjects();
-    seedDefaultTasks();
-    seedDefaultMeetings();
+    await seedDefaultUsers();
+    await seedDefaultProjects();
+    await seedDefaultTasks();
+    await seedDefaultMeetings();
+    
+    // Start listening on port 5000 only after database connection is fully established and seeded!
+    app.listen(5000, () => {
+      console.log("Server running on port 5000");
+      syncAcceptedProjectsWithJira().then(() => {
+        // Proactively warm up local caches in the background to make subsequent dashboard loads instant
+        setTimeout(async () => {
+          console.log("[CACHE] Warming up local endpoint caches...");
+          try {
+            await Promise.all([
+              axios.get("http://localhost:5000/tasks?boardId=3"),
+              axios.get("http://localhost:5000/tasks?boardId=101"),
+              axios.get("http://localhost:5000/tasks?boardId=102"),
+              axios.get("http://localhost:5000/tasks?boardId=103")
+            ]);
+            await Promise.all([
+              axios.get("http://localhost:5000/hub/metrics"),
+              axios.get("http://localhost:5000/moderator/projects")
+            ]);
+            console.log("[CACHE] Warm-up successful! Caches are fully populated.");
+          } catch (err) {
+            console.warn("[CACHE] Warm-up failed:", err.message);
+          }
+        }, 1000);
+      });
+    });
   })
   .catch(err => {
     console.error("❌ MongoDB connection failed:", err.message);
+    process.exit(1);
   });
 
 // POST /api/login - Validate credentials against persistent MongoDB records and return user details with a secure JWT token
@@ -3372,8 +3811,60 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
+// GET /api/teams - Get all Spoke custom Sprints Teams
+app.get("/api/teams", async (req, res) => {
+  try {
+    const { boardId } = req.query;
+    if (!boardId) {
+      return res.status(400).json({ error: "boardId query parameter is required." });
+    }
+    const teams = await Team.find({ boardId });
+    res.json(teams);
+  } catch (error) {
+    console.error("Fetch teams error:", error);
+    res.status(500).json({ error: "Failed to fetch Spoke teams." });
+  }
+});
+
+// POST /api/teams - Create a new Spoke Sprints Team persistently in MongoDB Atlas
+app.post("/api/teams", authenticateToken, async (req, res) => {
+  try {
+    const { name, boardId, members, mentor } = req.body;
+    if (!name || !boardId || !Array.isArray(members) || members.length === 0) {
+      return res.status(400).json({ error: "Team name, boardId, and a non-empty members array are required." });
+    }
+
+    const newTeam = new Team({
+      name,
+      boardId,
+      members,
+      mentor: mentor || null
+    });
+
+    await newTeam.save();
+    console.log(`[TEAM SUCCESS] Persistently created team "${name}" in MongoDB Atlas with ${members.length} members and mentor.`);
+    res.json({ success: true, team: newTeam });
+  } catch (error) {
+    console.error("Create team error:", error);
+    res.status(500).json({ error: "Failed to create Spoke team." });
+  }
+});
+
+// DELETE /api/teams/:id - Disband and delete a Spoke Team persistently
+app.delete("/api/teams/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Team.findByIdAndDelete(id);
+    console.log(`[TEAM DELETED] Disbanded team with ID: ${id}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete team error:", error);
+    res.status(500).json({ error: "Failed to disband Spoke team." });
+  }
+});
+
 // POST /tasks/:taskId/submit - Create a new student deliverable submission in MongoDB
-app.post("/tasks/:taskId/submit", async (req, res) => {
+app.post("/tasks/:taskId/submit", authenticateToken, async (req, res) => {
   try {
     const { taskId } = req.params;
     const { studentName, fileName, fileUrl, comments } = req.body;
@@ -3418,33 +3909,128 @@ app.get("/submissions", async (req, res) => {
   }
 });
 
+// PUT /submissions/:id/status - Update a student submission's approval status and feedback
+app.put("/submissions/:id/status", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, feedback } = req.body;
+    
+    if (!status || !["Approved", "Re-work Requested"].includes(status)) {
+      return res.status(400).json({ error: "Valid status ('Approved' or 'Re-work Requested') is required." });
+    }
+
+    const submission = await Submission.findById(id);
+    if (!submission) {
+      return res.status(404).json({ error: "Submission not found." });
+    }
+
+    submission.status = status;
+    submission.feedback = feedback || "";
+    await submission.save();
+
+    console.log(`[SUBMISSION AUDIT] Updated submission ${id} for task ${submission.taskId} to status: ${status}`);
+
+    // High-Value Reactive Integration: Automate Agile task state transitions based on Coordinator review!
+    try {
+      const taskId = submission.taskId;
+      const mockTask = await MockTask.findOne({ id: taskId });
+      
+      if (mockTask) {
+        // 1. Handle simulated/mock MongoDB tasks
+        if (status === "Approved") {
+          mockTask.fields.status.name = "Done";
+          mockTask.fields.flagged = false;
+          await mockTask.save();
+          console.log(`[REACTIVE AGENT] Automatically transitioned Mock Task ${taskId} to 'Done' on submission approval!`);
+        } else if (status === "Re-work Requested") {
+          mockTask.fields.status.name = "In Progress"; // Send back to active development
+          mockTask.fields.flagged = true; // Flag as blocked
+          mockTask.fields.description = `${mockTask.fields.description || ""}\n\n⚠️ [MENTOR FEEDBACK]: ${feedback}`;
+          await mockTask.save();
+          console.log(`[REACTIVE AGENT] Automatically flagged Mock Task ${taskId} as blocked due to re-work request.`);
+        }
+      } else if (shouldCheckJira()) {
+        // 2. Handle live JIRA tasks dynamically (board-independent transition logic)
+        console.log(`[REACTIVE AGENT] Resolving live JIRA task ${taskId} for automated status transition...`);
+        const targetStatusName = status === "Approved" ? "Done" : "In Progress";
+        
+        // Query available transitions for this issue in Jira
+        const transitionsRes = await axios.get(
+          `${process.env.JIRA_DOMAIN}/rest/api/3/issue/${taskId}/transitions`,
+          {
+            headers: {
+              Authorization: `Basic ${auth}`,
+              Accept: "application/json",
+            },
+            timeout: 10000
+          }
+        );
+        const transitions = transitionsRes.data.transitions || [];
+        
+        // Match transition path for target status name
+        const transition = transitions.find(t => 
+          t.name.toLowerCase() === targetStatusName.toLowerCase() ||
+          t.to.name.toLowerCase() === targetStatusName.toLowerCase()
+        );
+        
+        if (transition) {
+          // Post the transition to JIRA REST API
+          await axios.post(
+            `${process.env.JIRA_DOMAIN}/rest/api/3/issue/${taskId}/transitions`,
+            { transition: { id: transition.id } },
+            {
+              headers: {
+                Authorization: `Basic ${auth}`,
+                Accept: "application/json",
+                "Content-Type": "application/json"
+              },
+              timeout: 10000
+            }
+          );
+          console.log(`[REACTIVE AGENT] Successfully transitioned live JIRA issue ${taskId} to '${targetStatusName}'!`);
+          
+          // If re-work requested, add a native comment in JIRA with mentor feedback
+          if (status === "Re-work Requested") {
+            try {
+              await axios.post(
+                `${process.env.JIRA_DOMAIN}/rest/api/2/issue/${taskId}/comment`,
+                { body: `⚠️ [RE-WORK REQUESTED BY COORDINATOR]:\n${feedback}` },
+                {
+                  headers: {
+                    Authorization: `Basic ${auth}`,
+                    Accept: "application/json",
+                    "Content-Type": "application/json"
+                  },
+                  timeout: 10000
+                }
+              );
+              console.log(`[REACTIVE AGENT] Successfully appended re-work feedback comment to JIRA task ${taskId}.`);
+            } catch (commentErr) {
+              console.warn("Failed to add comment to JIRA:", commentErr.response?.data || commentErr.message);
+            }
+          }
+        } else {
+          console.warn(`[REACTIVE AGENT] No transition workflow path found to '${targetStatusName}' for live issue ${taskId}.`);
+        }
+      }
+    } catch (taskErr) {
+      console.warn("[REACTIVE AGENT] Failed to run automated task transitions on submission update:", taskErr.message);
+    }
+
+    // Invalidate caches globally so fresh JIRA status loads instantly on dashboard reload
+    invalidateCache();
+    res.json({ success: true, submission });
+  } catch (error) {
+    console.error("Failed to update submission status:", error);
+    res.status(500).json({ error: "Failed to update submission status" });
+  }
+});
+
 // POST /cache/clear - Clear in-memory server cache
 app.post("/cache/clear", (req, res) => {
   invalidateCache();
   res.json({ success: true, message: "Cache successfully purged!" });
 });
 
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
-  syncAcceptedProjectsWithJira().then(() => {
-    // Proactively warm up local caches in the background to make subsequent dashboard loads instant
-    setTimeout(async () => {
-      console.log("[CACHE] Warming up local endpoint caches...");
-      try {
-        await Promise.all([
-          axios.get("http://localhost:5000/tasks?boardId=3"),
-          axios.get("http://localhost:5000/tasks?boardId=101"),
-          axios.get("http://localhost:5000/tasks?boardId=102"),
-          axios.get("http://localhost:5000/tasks?boardId=103")
-        ]);
-        await Promise.all([
-          axios.get("http://localhost:5000/hub/metrics"),
-          axios.get("http://localhost:5000/moderator/projects")
-        ]);
-        console.log("[CACHE] Warm-up successful! Caches are fully populated.");
-      } catch (err) {
-        console.warn("[CACHE] Warm-up failed:", err.message);
-      }
-    }, 1000);
-  });
-});
+// Server startup listening has been moved inside the mongoose.connect().then() block above to guarantee correct database connection sync.
+// trigger nodemon reload for gmail config

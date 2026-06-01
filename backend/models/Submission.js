@@ -22,6 +22,15 @@ const SubmissionSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  status: {
+    type: String,
+    enum: ["Awaiting Review", "Approved", "Re-work Requested"],
+    default: "Awaiting Review"
+  },
+  feedback: {
+    type: String,
+    default: ""
+  },
   submittedAt: {
     type: Date,
     default: Date.now

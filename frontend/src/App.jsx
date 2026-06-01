@@ -6,6 +6,20 @@ import {
 } from "@hello-pangea/dnd";
 import axios from "axios";
 
+// Global Axios Interceptor to inject JWT authentication token automatically on outgoing requests
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("apnileap-token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Modern Lucide-style Icon setup using React Icons Fa
 import {
   FaTasks,
@@ -29,16 +43,43 @@ import {
   FaMoon,
   FaBriefcase,
   FaLock,
-  FaEye,
-  FaEyeSlash,
   FaUser,
+  FaUsers,
   FaHome,
   FaBook,
   FaCalendarAlt,
   FaComments,
   FaGraduationCap,
-  FaCog
+  FaCog,
+  FaCrown,
+  FaBug,
+  FaClipboardList,
+  FaInbox,
+  FaHourglassHalf,
+  FaCheckCircle,
+  FaLink,
+  FaCommentAlt,
+  FaFolderOpen,
+  FaMedal,
+  FaBuilding,
+  FaGlobe,
+  FaWrench,
+  FaTools,
+  FaBolt,
+  FaStar,
+  FaDollarSign,
+  FaClock,
+  FaTags,
+  FaExclamationCircle,
+  FaListUl,
+  FaDesktop,
+  FaSchool,
+  FaUniversity,
+  FaPaperclip,
+  FaFlag
 } from "react-icons/fa";
+
+let toastIdCounter = 0;
 
 import {
   PieChart,
@@ -202,6 +243,13 @@ const SPOKES = {
   "103": { name: "RIT Spoke", key: "AK", live: true }
 };
 
+const CAMPUS_LABELS = {
+  "3": "kle-spoke",
+  "101": "coep-spoke",
+  "102": "mmcoep-spoke",
+  "103": "rit-spoke"
+};
+
 function App() {
   // Authentication & Session States
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -232,6 +280,30 @@ function App() {
 
   // Navigation & UI States
   const [activeView, setActiveView] = useState("dashboard"); // "dashboard" or "kanban"
+  const [activeCoordinatorTab, setActiveCoordinatorTab] = useState("analytics"); // "analytics", "team", or "projects"
+
+  // Faculty Coordinator Add Team Member form states
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [isAddingMember, setIsAddingMember] = useState(false);
+
+  // Faculty Coordinator Assign Sprint Task form states
+  const [selectedEpicForTask, setSelectedEpicForTask] = useState("");
+  const [newSprintTaskTitle, setNewSprintTaskTitle] = useState("");
+  const [newSprintTaskAssignee, setNewSprintTaskAssignee] = useState("");
+  const [newSprintTaskPriority, setNewSprintTaskPriority] = useState("Medium");
+  const [newSprintTaskDueDate, setNewSprintTaskDueDate] = useState("");
+  const [newSprintTaskDesc, setNewSprintTaskDesc] = useState("");
+  const [isCreatingSprintTask, setIsCreatingSprintTask] = useState(false);
+
+  // Faculty Coordinator Custom Teams Builder states
+  const [spokeTeams, setSpokeTeams] = useState([]);
+  const [isTeamsLoading, setIsTeamsLoading] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [selectedTeamMembers, setSelectedTeamMembers] = useState([]);
+  const [selectedTeamMentor, setSelectedTeamMentor] = useState("");
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+
   const [theme, setTheme] = useState(() => localStorage.getItem("app-theme") || "dark");
 
   const [activeWorkspace, setActiveWorkspace] = useState(() => {
@@ -265,6 +337,16 @@ function App() {
   const [ingestDuration, setIngestDuration] = useState("");
   const [ingestDueDate, setIngestDueDate] = useState("2026-08-25");
   const [isIngesting, setIsIngesting] = useState(false);
+
+  // B2B Project Edit Form State
+  const [editingProject, setEditingProject] = useState(null);
+  const [editCompany, setEditCompany] = useState("NVIDIA");
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editBudget, setEditBudget] = useState("");
+  const [editDuration, setEditDuration] = useState("");
+  const [editDueDate, setEditDueDate] = useState("2026-08-25");
+  const [isUpdatingProject, setIsUpdatingProject] = useState(false);
 
   // Chat message history state (pre-populated with premium campus conversations)
   const [chatMessages, setChatMessages] = useState([
@@ -349,16 +431,18 @@ function App() {
 
   // Role-Based Access Control Simulation Guard
   useEffect(() => {
-    if (currentPersona === "executive") {
-      setActiveWorkspace("hub");
-      setActiveView("dashboard");
-    } else if (currentPersona === "moderator") {
-      setActiveWorkspace("moderator");
-      setActiveView("dashboard");
-    } else {
-      setActiveWorkspace(currentPersona);
-      setActiveView("dashboard");
-    }
+    Promise.resolve().then(() => {
+      if (currentPersona === "executive") {
+        setActiveWorkspace("hub");
+        setActiveView("dashboard");
+      } else if (currentPersona === "moderator") {
+        setActiveWorkspace("moderator");
+        setActiveView("dashboard");
+      } else {
+        setActiveWorkspace(currentPersona);
+        setActiveView("dashboard");
+      }
+    });
   }, [currentPersona]);
 
 
@@ -366,7 +450,6 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [spokeMembers, setSpokeMembers] = useState([]);
-  const [isMembersLoading, setIsMembersLoading] = useState(false);
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState("");
@@ -380,6 +463,7 @@ function App() {
   const [modalTab, setModalTab] = useState("overview"); // "overview", "subtasks", "worklog", "links"
   const [submissions, setSubmissions] = useState([]);
   const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false);
+  const [allSubmissions, setAllSubmissions] = useState([]);
   const [submitFileName, setSubmitFileName] = useState("");
   const [submitFileUrl, setSubmitFileUrl] = useState("");
   const [submitComments, setSubmitComments] = useState("");
@@ -418,7 +502,7 @@ function App() {
 
   // Trigger Toast Notification
   const triggerToast = (message, type = "success") => {
-    const id = Date.now();
+    const id = ++toastIdCounter;
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -432,6 +516,9 @@ function App() {
     }
     if (cleanEmail === "moderator@apnileap.com" || cleanEmail === "moderator" || cleanEmail.endsWith("@apnileap.com")) {
       return "moderator";
+    }
+    if (cleanEmail.includes("sponsor") || cleanEmail.includes("nvidia")) {
+      return "sponsor-nvidia";
     }
     if (cleanEmail.includes("kle") || cleanEmail.endsWith("@kletech.ac.in")) {
       return "spoke-kle";
@@ -543,7 +630,7 @@ function App() {
       setSignupRole("Student Developer");
       setShowSignup(false);
 
-      triggerToast(`Account created! Welcome to the platform, ${user.displayName}! 🎓`);
+      triggerToast(`Account created! Welcome to the platform, ${user.displayName}! `);
     } catch (err) {
       console.error("Signup Failure:", err);
       const errMsg = err.response?.data?.error || "Registration failure. Please check your backend connection.";
@@ -553,11 +640,13 @@ function App() {
     }
   };
 
-  const handleQuickConnect = async (email, name, boardId, persona) => {
+  const handleQuickConnect = async (email) => {
     setLoginEmail(email);
     // Select the correct password for each demo account
     let password = "moderator123";
-    if (email.includes("kle")) password = "kle123";
+    if (email.includes("student")) password = "student123";
+    else if (email.includes("sponsor") || email.includes("nvidia")) password = "nvidia123";
+    else if (email.includes("kle")) password = "kle123";
     else if (email.includes("coep") && !email.includes("mmcoep")) password = "coep123";
     else if (email.includes("mmcoep")) password = "mmcoep123";
     else if (email.includes("rit")) password = "rit123";
@@ -585,7 +674,7 @@ function App() {
         localStorage.setItem("apnileap-token", token);
       }
 
-      triggerToast(`Quick Connected as ${user.displayName}! ⚡`);
+      triggerToast(`Quick Connected as ${user.displayName}! `);
     } catch (err) {
       console.error("Quick Connect Failure:", err);
       const errMsg = err.response?.data?.error || "Connection failure. Please check if your backend is running on port 5000.";
@@ -630,7 +719,7 @@ function App() {
       });
 
       if (response.data && response.data.success) {
-        triggerToast(`🎉 Successfully ingested new proposal by ${ingestCompany}!`);
+        triggerToast(` Successfully ingested new proposal by ${ingestCompany}!`);
         setIsIngestOpen(false);
         // Reset form
         setIngestTitle("");
@@ -650,15 +739,141 @@ function App() {
     }
   };
 
+  const handleUpdateProjectSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingProject) return;
+    if (!editTitle.trim() || !editDescription.trim() || !editBudget.trim() || !editDuration.trim()) {
+      triggerToast("Please fill in all required fields.", "warning");
+      return;
+    }
+
+    setIsUpdatingProject(true);
+    try {
+      const response = await axios.put(`http://localhost:5000/moderator/projects/${editingProject.id}`, {
+        company: editCompany,
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        budget: editBudget.trim(),
+        duration: editDuration.trim(),
+        proposedDueDate: editDueDate
+      });
+
+      if (response.data && response.data.success) {
+        triggerToast(" Successfully updated B2B project details!");
+        setEditingProject(null);
+        fetchModeratorProjects(true);
+      }
+    } catch (err) {
+      console.error("Project Update Error:", err);
+      triggerToast(err.response?.data?.error || "Failed to update B2B project.", "error");
+    } finally {
+      setIsUpdatingProject(false);
+    }
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm("Are you sure you want to persistently delete this B2B corporate project? This will remove all campus spoke allocations!")) {
+      return;
+    }
+    try {
+      const response = await axios.delete(`http://localhost:5000/moderator/projects/${projectId}`);
+      if (response.data && response.data.success) {
+        triggerToast(" Corporate B2B project successfully deleted.");
+        fetchModeratorProjects(true);
+      }
+    } catch (err) {
+      console.error("Project Deletion Error:", err);
+      triggerToast("Failed to delete corporate project.", "error");
+    }
+  };
+
   const fetchSpokeMembers = async (boardId) => {
-    setIsMembersLoading(true);
     try {
       const res = await axios.get(`http://localhost:5000/spokes/${boardId}/members`);
       setSpokeMembers(res.data);
     } catch (err) {
       console.error("Failed to retrieve campus team members:", err);
+    }
+  };
+
+  const fetchSpokeTeams = async (boardId) => {
+    setIsTeamsLoading(true);
+    try {
+      const res = await axios.get(`http://localhost:5000/api/teams?boardId=${boardId}`);
+      setSpokeTeams(res.data || []);
+    } catch (err) {
+      console.error("Failed to retrieve campus teams:", err);
     } finally {
-      setIsMembersLoading(false);
+      setIsTeamsLoading(false);
+    }
+  };
+
+  const handleCreateTeam = async (e) => {
+    if (e) e.preventDefault();
+    if (!newTeamName.trim()) {
+      triggerToast("Please enter a name for the new team.", "warning");
+      return;
+    }
+    if (selectedTeamMembers.length === 0) {
+      triggerToast("Please select at least one student developer to form a team.", "warning");
+      return;
+    }
+
+    setIsCreatingTeam(true);
+    try {
+      const selectedMembersData = selectedTeamMembers.map(memberId => {
+        const found = spokeMembers.find(m => m.accountId === memberId);
+        return {
+          accountId: memberId,
+          displayName: found ? found.displayName.replace(/ \((Student Developer|Faculty Mentor|Coordinator)\)/g, "") : "Team Member",
+          emailAddress: found ? (found.emailAddress || found.email || "") : "",
+          avatarUrl: found ? found.avatarUrl : "https://i.pravatar.cc/150"
+        };
+      });
+
+      const foundMentor = spokeMembers.find(m => m.accountId === selectedTeamMentor);
+      const mentorData = foundMentor ? {
+        accountId: selectedTeamMentor,
+        displayName: foundMentor.displayName.replace(/ \((Faculty Mentor|Coordinator)\)/g, ""),
+        emailAddress: foundMentor.emailAddress || foundMentor.email || "",
+        avatarUrl: foundMentor.avatarUrl
+      } : null;
+
+      const res = await axios.post("http://localhost:5000/api/teams", {
+        name: newTeamName.trim(),
+        boardId: currentBoardId,
+        members: selectedMembersData,
+        mentor: mentorData
+      });
+
+      if (res.data && res.data.success) {
+        triggerToast(` Successfully created collaborative team "${newTeamName}"!`);
+        setNewTeamName("");
+        setSelectedTeamMembers([]);
+        setSelectedTeamMentor("");
+        fetchSpokeTeams(currentBoardId);
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast(err.response?.data?.error || "Failed to create custom spoke team.", "error");
+    } finally {
+      setIsCreatingTeam(false);
+    }
+  };
+
+  const handleDeleteTeam = async (teamId) => {
+    if (!window.confirm("Are you sure you want to disband and delete this Spoke Team persistently?")) {
+      return;
+    }
+    try {
+      const res = await axios.delete(`http://localhost:5000/api/teams/${teamId}`);
+      if (res.data && res.data.success) {
+        triggerToast("Spoke Team successfully disbanded.");
+        fetchSpokeTeams(currentBoardId);
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to disband Spoke Team.", "error");
     }
   };
 
@@ -809,6 +1024,16 @@ function App() {
     }
   };
 
+  // Retrieve all student deliverables in the system
+  const fetchAllSubmissions = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/submissions");
+      setAllSubmissions(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch all submissions:", err);
+    }
+  };
+
   // Trigger project proposal assignment (Moderator)
   const handleAssignProject = async (e) => {
     e.preventDefault();
@@ -841,7 +1066,7 @@ function App() {
     try {
       const res = await axios.post(`http://localhost:5000/spoke/project/${projectId}/accept`, { targetBoardId: currentBoardId });
       if (res.data && res.data.success) {
-        triggerToast("🎉 Project accepted! Jira workspace successfully provisioned with 3 standard Phase tasks!");
+        triggerToast(" Project accepted! Jira workspace successfully provisioned with 3 standard Phase tasks!");
         fetchModeratorProjects(false);
         fetchJiraTasks(false); // Refresh Jira board immediately
       }
@@ -872,19 +1097,24 @@ function App() {
 
   // Re-fetch issues or hub metrics whenever activeWorkspace or currentBoardId changes
   useEffect(() => {
-    fetchMeetings(true); // Fetch meetings silently to check for banner alerts
-    if (activeWorkspace === "hub") {
-      fetchHubMetrics(false);
-    } else if (activeWorkspace === "moderator") {
-      fetchModeratorProjects(false);
-    } else if (activeWorkspace === "meetings") {
-      fetchMeetings(false);
-    } else {
-      fetchJiraTasks(false);
-      fetchSpokeMembers(currentBoardId);
-      fetchModeratorProjects(true); // Fetch moderator projects silently to check for proposed B2B assignments
-      fetchHubMetrics(true); // Fetch hub metrics silently to feed leaderboards!
-    }
+    Promise.resolve().then(() => {
+      fetchMeetings(true); // Fetch meetings silently to check for banner alerts
+      if (activeWorkspace === "hub") {
+        fetchHubMetrics(false);
+      } else if (activeWorkspace === "moderator") {
+        fetchModeratorProjects(false);
+      } else if (activeWorkspace === "meetings") {
+        fetchMeetings(false);
+      } else {
+        fetchJiraTasks(false);
+        fetchSpokeMembers(currentBoardId);
+        fetchSpokeTeams(currentBoardId);
+        fetchModeratorProjects(true); // Fetch moderator projects silently to check for proposed B2B assignments
+        fetchHubMetrics(true); // Fetch hub metrics silently to feed leaderboards!
+        fetchAllSubmissions(); // Auto-load all submissions for deliverables review queue!
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeWorkspace, currentBoardId]);
 
   // On component mount, automatically fetch active session user profile
@@ -913,14 +1143,15 @@ function App() {
       } else {
         fetchJiraTasks(true);
         fetchSpokeMembers(currentBoardId);
+        fetchSpokeTeams(currentBoardId);
         fetchHubMetrics(true); // Poll hub metrics silently for leaderboards!
       }
     }, 60000); // 60s auto-polling
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeWorkspace, currentBoardId]);
 
-  // Dynamically extract all unique assignees and reporters present in active task lists (Live + Mock)
   // Ensures real Jira users are editable and filterable seamlessly.
   const activeAssignees = useMemo(() => {
     const list = [];
@@ -1409,7 +1640,7 @@ function App() {
 
     try {
       new URL(submitFileUrl);
-    } catch (_) {
+    } catch {
       triggerToast("Please enter a valid absolute artifact access link (e.g., https://github.com/...)", "warning");
       return;
     }
@@ -1417,7 +1648,7 @@ function App() {
     setIsSubmittingDeliverable(true);
     try {
       const res = await axios.post(`http://localhost:5000/tasks/${selectedTask.id}/submit`, {
-        studentName: currentUser?.displayName || currentUser?.email || "Student Developer",
+        studentName: sessionUser?.displayName || sessionUser?.email || currentUser?.displayName || currentUser?.email || "Student Developer",
         fileName: submitFileName,
         fileUrl: submitFileUrl,
         comments: submitComments
@@ -1435,6 +1666,26 @@ function App() {
       triggerToast("Failed to submit deliverable.", "error");
     } finally {
       setIsSubmittingDeliverable(false);
+    }
+  };
+
+  // Handle coordinator approving or requesting re-work on a student submission
+  const handleUpdateSubmissionStatus = async (subId, newStatus, coordinatorFeedback) => {
+    try {
+      const res = await axios.put(`http://localhost:5000/submissions/${subId}/status`, {
+        status: newStatus,
+        feedback: coordinatorFeedback
+      });
+
+      if (res.data && res.data.success) {
+        triggerToast(`Submission marked as ${newStatus} successfully!`);
+        fetchAllSubmissions(); // Refresh global queue
+        fetchJiraTasks(true); // Refresh JIRA/mock tasks to reflect Done or Blocked flags
+        fetchHubMetrics(true); // Refresh hub metrics silently to update velocity/leaderboard!
+      }
+    } catch (err) {
+      console.error("Failed to update submission status:", err);
+      triggerToast("Failed to update submission review status.", "error");
     }
   };
 
@@ -1796,132 +2047,261 @@ function App() {
               </p>
 
               {/* Quick Connect demo panel inside left visual panel */}
-              <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.15)", paddingTop: "20px", maxWidth: "420px" }}>
+              <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.15)", paddingTop: "16px", maxWidth: "420px", width: "100%", marginBottom: "20px" }}>
                 <span style={{
                   display: "block",
-                  fontSize: "11px",
+                  fontSize: "10.5px",
                   fontWeight: "900",
-                  color: "rgba(255, 255, 255, 0.7)",
+                  color: "rgba(255, 255, 255, 0.75)",
                   textTransform: "uppercase",
                   letterSpacing: "1.2px",
-                  marginBottom: "12px"
+                  marginBottom: "10px"
                 }}>
-                  ⚡ Quick Demo Connect
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBolt style={{ color: "#ff8c00" }} /> Quick Demo Connect</span>
                 </span>
                 
+                {/* Admin & Mentors Grid */}
                 <div style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "8px"
+                  gap: "6px",
+                  marginBottom: "12px"
                 }}>
                   <button
                     type="button"
-                    onClick={() => handleQuickConnect("admin@apnileap.com", "Executive Admin", "hub", "executive")}
+                    onClick={() => handleQuickConnect("admin@apnileap.com")}
                     style={{
-                      padding: "10px",
-                      borderRadius: "8px",
+                      padding: "8px",
+                      borderRadius: "6px",
                       background: "rgba(255, 255, 255, 0.12)",
                       border: "1px solid rgba(255, 255, 255, 0.2)",
                       color: "white",
                       fontWeight: "700",
-                      fontSize: "12px",
+                      fontSize: "11px",
                       cursor: "pointer",
                       transition: "var(--transition-smooth)"
                     }}
                     title="Connect as Executive Administrator"
                   >
-                    👑 Executive Admin
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaCrown style={{ color: "#ffb700" }} /> Executive Admin</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleQuickConnect("moderator@apnileap.com", "Central Moderator", "moderator", "moderator")}
+                    onClick={() => handleQuickConnect("moderator@apnileap.com")}
                     style={{
-                      padding: "10px",
-                      borderRadius: "8px",
+                      padding: "8px",
+                      borderRadius: "6px",
                       background: "rgba(255, 255, 255, 0.12)",
                       border: "1px solid rgba(255, 255, 255, 0.2)",
                       color: "white",
                       fontWeight: "700",
-                      fontSize: "12px",
+                      fontSize: "11px",
                       cursor: "pointer",
                       transition: "var(--transition-smooth)"
                     }}
                     title="Connect as Central Moderator"
                   >
-                    🛠️ Central Moderator
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaTools style={{ color: "#a855f7" }} /> Central Moderator</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleQuickConnect("coordinator@kle.edu", "KLE Coordinator", "3", "spoke-kle")}
+                    onClick={() => handleQuickConnect("coordinator@kle.edu")}
                     style={{
-                      padding: "9px",
-                      borderRadius: "8px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
+                      padding: "7px 8px",
+                      borderRadius: "6px",
+                      background: "rgba(255, 255, 255, 0.07)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
                       color: "white",
                       fontWeight: "600",
-                      fontSize: "11.5px",
+                      fontSize: "10.5px",
                       cursor: "pointer",
                       transition: "var(--transition-smooth)"
                     }}
                   >
-                    🏢 KLE Spoke (Live)
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> KLE Mentor</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleQuickConnect("coordinator@coep.edu", "COEP Coordinator", "101", "spoke-coep")}
+                    onClick={() => handleQuickConnect("coordinator@coep.edu")}
                     style={{
-                      padding: "9px",
-                      borderRadius: "8px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
+                      padding: "7px 8px",
+                      borderRadius: "6px",
+                      background: "rgba(255, 255, 255, 0.07)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
                       color: "white",
                       fontWeight: "600",
-                      fontSize: "11.5px",
+                      fontSize: "10.5px",
                       cursor: "pointer",
                       transition: "var(--transition-smooth)"
                     }}
                   >
-                    🏢 COEP Spoke
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> COEP Mentor</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleQuickConnect("coordinator@mmcoep.edu", "MMCOEP Coordinator", "102", "spoke-mmcoep")}
+                    onClick={() => handleQuickConnect("coordinator@mmcoep.edu")}
                     style={{
-                      padding: "9px",
-                      borderRadius: "8px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
+                      padding: "7px 8px",
+                      borderRadius: "6px",
+                      background: "rgba(255, 255, 255, 0.07)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
                       color: "white",
                       fontWeight: "600",
-                      fontSize: "11.5px",
+                      fontSize: "10.5px",
                       cursor: "pointer",
                       transition: "var(--transition-smooth)"
                     }}
                   >
-                    🏢 MMCOEP Spoke
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> MMCOEP Mentor</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleQuickConnect("coordinator@rit.edu", "RIT Coordinator", "103", "spoke-rit")}
+                    onClick={() => handleQuickConnect("coordinator@rit.edu")}
                     style={{
-                      padding: "9px",
-                      borderRadius: "8px",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
+                      padding: "7px 8px",
+                      borderRadius: "6px",
+                      background: "rgba(255, 255, 255, 0.07)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
                       color: "white",
                       fontWeight: "600",
-                      fontSize: "11.5px",
+                      fontSize: "10.5px",
                       cursor: "pointer",
                       transition: "var(--transition-smooth)"
                     }}
                   >
-                    🏢 RIT Spoke
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> RIT Mentor</span>
+                  </button>
+                </div>
+
+                {/* Corporate Partners Header */}
+                <span style={{
+                  display: "block",
+                  fontSize: "9px",
+                  fontWeight: "900",
+                  color: "rgba(255, 255, 255, 0.6)",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  marginBottom: "8px",
+                  borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+                  paddingTop: "10px"
+                }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBriefcase style={{ color: "#6366f1" }} /> Corporate Partners</span>
+                </span>
+
+                {/* Corporate Partners Grid */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr",
+                  gap: "6px",
+                  marginBottom: "12px"
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickConnect("sponsor@nvidia.com")}
+                    style={{
+                      padding: "8px",
+                      borderRadius: "6px",
+                      background: "rgba(118, 185, 0, 0.2)",
+                      border: "1px solid rgba(118, 185, 0, 0.4)",
+                      color: "white",
+                      fontWeight: "750",
+                      fontSize: "11px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    title="Connect as NVIDIA Corporate Partner"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(118, 185, 0, 0.35)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(118, 185, 0, 0.2)";
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaDesktop /> NVIDIA Sponsor Quick Connect</span>
+                  </button>
+                </div>
+
+                {/* Students Grid Header */}
+                <span style={{
+                  display: "block",
+                  fontSize: "9px",
+                  fontWeight: "900",
+                  color: "rgba(255, 255, 255, 0.6)",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  marginBottom: "8px",
+                  borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+                  paddingTop: "10px"
+                }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaGraduationCap style={{ color: "#3b529a" }} /> Student Developers</span>
+                </span>
+
+                {/* Students Grid */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "6px"
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickConnect("student@kle.edu")}
+                    style={{
+                      padding: "7px 4px",
+                      borderRadius: "6px",
+                      background: "rgba(99, 102, 241, 0.15)",
+                      border: "1px solid rgba(99, 102, 241, 0.3)",
+                      color: "white",
+                      fontWeight: "600",
+                      fontSize: "10px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    title="Connect as KLE Student Developer"
+                  >
+                    KLE Student
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickConnect("student@coep.edu")}
+                    style={{
+                      padding: "7px 4px",
+                      borderRadius: "6px",
+                      background: "rgba(99, 102, 241, 0.15)",
+                      border: "1px solid rgba(99, 102, 241, 0.3)",
+                      color: "white",
+                      fontWeight: "600",
+                      fontSize: "10px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    title="Connect as COEP Student Developer"
+                  >
+                    COEP Student
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickConnect("student@rit.edu")}
+                    style={{
+                      padding: "7px 4px",
+                      borderRadius: "6px",
+                      background: "rgba(99, 102, 241, 0.15)",
+                      border: "1px solid rgba(99, 102, 241, 0.3)",
+                      color: "white",
+                      fontWeight: "600",
+                      fontSize: "10px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    title="Connect as RIT Student Developer"
+                  >
+                    RIT Student
                   </button>
                 </div>
               </div>
@@ -1977,7 +2357,7 @@ function App() {
                         alignItems: "center",
                         gap: "8px"
                       }}>
-                        ⚠️ {loginError}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#f87171" }}><FaExclamationTriangle /> {loginError}</span>
                       </div>
                     )}
 
@@ -2051,10 +2431,10 @@ function App() {
                           animation: "slideIn 0.2s ease-out"
                         }}>
                           {recognizedPersona === "executive"
-                            ? "👑 Executive Administrator"
+                            ? "Executive Administrator"
                             : recognizedPersona === "moderator"
-                            ? "🛠️ Central Moderator"
-                            : `🏢 ${recognizedPersona.replace("spoke-", "").toUpperCase()} Spoke Coordinator`}
+                            ? "Central Moderator"
+                            : `${recognizedPersona.replace("spoke-", "").toUpperCase()} Spoke Coordinator`}
                         </div>
                       )}
                     </div>
@@ -2166,7 +2546,7 @@ function App() {
                       ) : (
                         <>
                           <span>Sign In</span>
-                          <span>🚀</span>
+                          <span><FaPaperPlane /></span>
                         </>
                       )}
                     </button>
@@ -2184,7 +2564,7 @@ function App() {
                         }}
                         style={{ color: "var(--secondary)", fontWeight: "700", textDecoration: "none" }}
                       >
-                        Register Student / Faculty 🎓
+                        Register Student / Faculty
                       </a>
                     </div>
                   </form>
@@ -2214,7 +2594,7 @@ function App() {
                         alignItems: "center",
                         gap: "8px"
                       }}>
-                        ⚠️ {signupError}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#f87171" }}><FaExclamationTriangle /> {signupError}</span>
                       </div>
                     )}
 
@@ -2407,8 +2787,8 @@ function App() {
                             transition: "var(--transition-smooth)"
                           }}
                         >
-                          <option value="Student Developer">🎓 Student Developer</option>
-                          <option value="Faculty Mentor">👨‍🏫 Faculty Mentor (Spoke Coordinator)</option>
+                          <option value="Student Developer">Student Developer</option>
+                          <option value="Faculty Mentor">Faculty Mentor (Spoke Coordinator)</option>
                         </select>
                         <div style={{
                           position: "absolute",
@@ -2464,10 +2844,10 @@ function App() {
                             transition: "var(--transition-smooth)"
                           }}
                         >
-                          <option value="3">🏢 KLE Spoke (Hub Campus)</option>
-                          <option value="101">🏢 COEP Spoke</option>
-                          <option value="102">🏢 MMCOEP Spoke</option>
-                          <option value="103">🏢 RIT Spoke</option>
+                          <option value="3">KLE Spoke (Hub Campus)</option>
+                          <option value="101">COEP Spoke</option>
+                          <option value="102">MMCOEP Spoke</option>
+                          <option value="103">RIT Spoke</option>
                         </select>
                         <div style={{
                           position: "absolute",
@@ -2513,7 +2893,7 @@ function App() {
                       ) : (
                         <>
                           <span>Register {signupRole === "Faculty Mentor" ? "Faculty" : "Student"} Account</span>
-                          <span>{signupRole === "Faculty Mentor" ? "👨‍🏫" : "🎓"}</span>
+                          <span>{signupRole === "Faculty Mentor" ? <FaUsers style={{ marginRight: "4px" }} /> : <FaGraduationCap style={{ marginRight: "4px" }} />}</span>
                         </>
                       )}
                     </button>
@@ -2531,7 +2911,7 @@ function App() {
                         }}
                         style={{ color: "var(--secondary)", fontWeight: "700", textDecoration: "none" }}
                       >
-                        Sign In here 🚀
+                        Sign In here
                       </a>
                     </div>
                   </form>
@@ -2634,7 +3014,7 @@ function App() {
 
           {/* Rail Utility Icons */}
           <div style={{ display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
-            {currentPersona === "executive" ? (
+            {isCentralAdmin ? (
               <div
                 onClick={() => {
                   setActiveWorkspace("hub");
@@ -2693,6 +3073,26 @@ function App() {
                   <FaCalendarAlt size={20} />
                 </div>
               </>
+            ) : sessionUser?.role === "Corporate Partner" ? (
+              <div
+                onClick={() => {
+                  setActiveWorkspace(currentPersona);
+                  setActiveView("dashboard");
+                  triggerToast(`Switched Workspace: Sponsor Dashboard`);
+                }}
+                style={{
+                  color: "#ffffff",
+                  opacity: (activeWorkspace === currentPersona && activeView === "dashboard") ? 1 : 0.75,
+                  cursor: "pointer",
+                  padding: "10px",
+                  borderRadius: "12px",
+                  background: (activeWorkspace === currentPersona && activeView === "dashboard") ? "rgba(255,255,255,0.15)" : "transparent",
+                  transition: "var(--transition-smooth)"
+                }}
+                title="Sponsor Portal"
+              >
+                <FaHome size={20} />
+              </div>
             ) : (
               <>
                 <div
@@ -2737,62 +3137,66 @@ function App() {
               </>
             )}
 
-            <div
-              onClick={() => {
-                setShowChatDrawer(true);
-                triggerToast("Opening FIP Cohort Live Chat...");
-              }}
-              style={{
-                color: "#ffffff",
-                opacity: showChatDrawer ? 1 : 0.75,
-                cursor: "pointer",
-                padding: "10px",
-                borderRadius: "12px",
-                background: showChatDrawer ? "rgba(255,255,255,0.15)" : "transparent",
-                transition: "var(--transition-smooth)"
-              }}
-              title="Cohort Forums Chat"
-            >
-              <FaComments size={20} />
-            </div>
+            {sessionUser?.role !== "Corporate Partner" && (
+              <>
+                <div
+                  onClick={() => {
+                    setShowChatDrawer(true);
+                    triggerToast("Opening FIP Cohort Live Chat...");
+                  }}
+                  style={{
+                    color: "#ffffff",
+                    opacity: showChatDrawer ? 1 : 0.75,
+                    cursor: "pointer",
+                    padding: "10px",
+                    borderRadius: "12px",
+                    background: showChatDrawer ? "rgba(255,255,255,0.15)" : "transparent",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  title="Cohort Forums Chat"
+                >
+                  <FaComments size={20} />
+                </div>
 
-            <div
-              onClick={() => {
-                setShowCohortModal(true);
-                triggerToast("Opening Academic Cohort Progress...");
-              }}
-              style={{
-                color: "#ffffff",
-                opacity: showCohortModal ? 1 : 0.75,
-                cursor: "pointer",
-                padding: "10px",
-                borderRadius: "12px",
-                background: showCohortModal ? "rgba(255,255,255,0.15)" : "transparent",
-                transition: "var(--transition-smooth)"
-              }}
-              title="Academic Cohorts"
-            >
-              <FaGraduationCap size={20} />
-            </div>
+                <div
+                  onClick={() => {
+                    setShowCohortModal(true);
+                    triggerToast("Opening Academic Cohort Progress...");
+                  }}
+                  style={{
+                    color: "#ffffff",
+                    opacity: showCohortModal ? 1 : 0.75,
+                    cursor: "pointer",
+                    padding: "10px",
+                    borderRadius: "12px",
+                    background: showCohortModal ? "rgba(255,255,255,0.15)" : "transparent",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  title="Academic Cohorts"
+                >
+                  <FaGraduationCap size={20} />
+                </div>
 
-            <div
-              onClick={() => {
-                setShowSettingsModal(true);
-                triggerToast("Opening System Settings...");
-              }}
-              style={{
-                color: "#ffffff",
-                opacity: showSettingsModal ? 1 : 0.75,
-                cursor: "pointer",
-                padding: "10px",
-                borderRadius: "12px",
-                background: showSettingsModal ? "rgba(255,255,255,0.15)" : "transparent",
-                transition: "var(--transition-smooth)"
-              }}
-              title="System Settings"
-            >
-              <FaCog size={20} />
-            </div>
+                <div
+                  onClick={() => {
+                    setShowSettingsModal(true);
+                    triggerToast("Opening System Settings...");
+                  }}
+                  style={{
+                    color: "#ffffff",
+                    opacity: showSettingsModal ? 1 : 0.75,
+                    cursor: "pointer",
+                    padding: "10px",
+                    borderRadius: "12px",
+                    background: showSettingsModal ? "rgba(255,255,255,0.15)" : "transparent",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  title="System Settings"
+                >
+                  <FaCog size={20} />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -2854,7 +3258,7 @@ function App() {
                   letterSpacing: "0.8px",
                   marginBottom: "8px"
                 }}>
-                  👤 Active Profile Role
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUser /> Active Profile Role</span>
                 </label>
                 <select
                   value={currentPersona}
@@ -2878,17 +3282,17 @@ function App() {
                     fontFamily: "var(--font-sans)"
                   }}
                 >
-                  <option value="moderator" style={{ background: "#3b529a" }}>👑 Central Moderator (Full)</option>
-                  <option value="spoke-kle" style={{ background: "#3b529a" }}>🏢 KLE Coordinator (Private)</option>
-                  <option value="spoke-coep" style={{ background: "#3b529a" }}>🏢 COEP Coordinator (Private)</option>
-                  <option value="spoke-mmcoep" style={{ background: "#3b529a" }}>🏢 MMCOEP Coordinator (Private)</option>
-                  <option value="spoke-rit" style={{ background: "#3b529a" }}>🏢 RIT Coordinator (Private)</option>
+                  <option value="moderator" style={{ background: "#3b529a" }}>Central Moderator (Full)</option>
+                  <option value="spoke-kle" style={{ background: "#3b529a" }}>KLE Coordinator (Private)</option>
+                  <option value="spoke-coep" style={{ background: "#3b529a" }}>COEP Coordinator (Private)</option>
+                  <option value="spoke-mmcoep" style={{ background: "#3b529a" }}>MMCOEP Coordinator (Private)</option>
+                  <option value="spoke-rit" style={{ background: "#3b529a" }}>RIT Coordinator (Private)</option>
                 </select>
               </div>
             )}
 
-            {/* Section 1: ACTIVE VIEW MODE (Hidden if viewing Hub or Moderator) */}
-            {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "meetings" && (
+            {/* Section 1: ACTIVE VIEW MODE (Hidden if viewing Hub or Moderator or Sponsor) */}
+            {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "meetings" && sessionUser?.role !== "Corporate Partner" && (
               <>
                 <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "rgba(255, 255, 255, 0.4)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "8px", marginBottom: "4px" }}>
                   View Mode
@@ -2916,10 +3320,10 @@ function App() {
               ApniLeap Portfolio
             </div>
             
-            {currentPersona === "executive" && (
+            {isCentralAdmin && (
               <SidebarNavItem
                 active={activeWorkspace === "hub"}
-                icon={<span style={{ fontSize: "16px" }}>🌐</span>}
+                icon={<FaGlobe style={{ fontSize: "16px" }} />}
                 label="Executive HUB"
                 collapsed={false}
                 onClick={() => setActiveWorkspace("hub")}
@@ -2937,7 +3341,7 @@ function App() {
                 />
                 <SidebarNavItem
                   active={activeWorkspace === "meetings"}
-                  icon={<span style={{ fontSize: "16px" }}>📅</span>}
+                  icon={<FaCalendarAlt style={{ fontSize: "16px" }} />}
                   label="Meetings & Syncs"
                   collapsed={false}
                   onClick={() => setActiveWorkspace("meetings")}
@@ -2949,7 +3353,7 @@ function App() {
             {(isCentralAdmin || currentPersona === "spoke-kle") && (
               <SidebarNavItem
                 active={activeWorkspace === "spoke-kle"}
-                icon={<span>🏢</span>}
+                icon={<FaBuilding />}
                 label="KLE Spoke (Live)"
                 collapsed={false}
                 onClick={() => {
@@ -2961,7 +3365,7 @@ function App() {
             {(isCentralAdmin || currentPersona === "spoke-coep") && (
               <SidebarNavItem
                 active={activeWorkspace === "spoke-coep"}
-                icon={<span>🏢</span>}
+                icon={<FaBuilding />}
                 label="COEP Spoke (Live)"
                 collapsed={false}
                 onClick={() => {
@@ -2973,7 +3377,7 @@ function App() {
             {(isCentralAdmin || currentPersona === "spoke-mmcoep") && (
               <SidebarNavItem
                 active={activeWorkspace === "spoke-mmcoep"}
-                icon={<span>🏢</span>}
+                icon={<FaBuilding />}
                 label="MMCOEP Spoke (Live)"
                 collapsed={false}
                 onClick={() => {
@@ -2985,7 +3389,7 @@ function App() {
             {(isCentralAdmin || currentPersona === "spoke-rit") && (
               <SidebarNavItem
                 active={activeWorkspace === "spoke-rit"}
-                icon={<span>🏢</span>}
+                icon={<FaBuilding />}
                 label="RIT Spoke (Live)"
                 collapsed={false}
                 onClick={() => {
@@ -3083,7 +3487,7 @@ function App() {
                 : activeWorkspace === "moderator"
                 ? "Moderator Project Assignment"
                 : activeWorkspace === "meetings"
-                ? "📅 FIP Sync Meetings & Collaboration"
+                ? "FIP Sync Meetings & Collaboration"
                 : activeView === "dashboard"
                 ? `${activeWorkspace === "playground" ? "Playground" : SPOKES[currentBoardId]?.name || "Spoke"} Analytics Dashboard`
                 : `${activeWorkspace === "playground" ? "Playground" : SPOKES[currentBoardId]?.name || "Spoke"} Active Sprint Kanban`}
@@ -3363,7 +3767,7 @@ function App() {
             <p style={{ color: "var(--text-muted)", fontSize: "14px", maxWidth: "450px", lineHeight: "1.6" }}>
               The dashboard was unable to fetch tasks because the local Express server is not running on port 5000. 
             </p>
-            <div style={{ background: "rgba(0,0,0,0.2)", padding: "16px 24px", borderRadius: "8px", fontFamily: "monospace", fontSize: "13px", color: "var(--text-main)", border: "1px solid var(--border-glass)" }}>
+            <div style={{ background: "rgba(0,0,0,0.2)", padding: "16px 24px", borderRadius: "8px", fontFamily: "var(--mono)", fontSize: "13px", color: "var(--text-main)", border: "1px solid var(--border-glass)" }}>
               cd backend<br/>
               npm start
             </div>
@@ -3381,8 +3785,8 @@ function App() {
             metrics={hubMetrics}
             loading={isHubLoading}
             onRefresh={() => fetchHubMetrics(false)}
-            moderatorProjects={moderatorProjects}
             onIngestClick={() => setIsIngestOpen(true)}
+            triggerToast={triggerToast}
           />
         ) : activeWorkspace === "moderator" ? (
           <ModeratorDashboardView
@@ -3394,6 +3798,41 @@ function App() {
               setIsAssignModalOpen(true);
             }}
             onIngestClick={() => setIsIngestOpen(true)}
+            onEditClick={(proj) => {
+              setEditingProject(proj);
+              setEditCompany(proj.company);
+              setEditTitle(proj.title);
+              setEditDescription(proj.description || "");
+              setEditBudget(proj.budget);
+              setEditDuration(proj.duration);
+              setEditDueDate(proj.proposedDueDate ? proj.proposedDueDate.split("T")[0] : "2026-08-25");
+            }}
+            onDeleteClick={(proj) => handleDeleteProject(proj.id)}
+          />
+        ) : sessionUser?.role === "Corporate Partner" ? (
+          <CorporateSponsorDashboardView
+            projects={moderatorProjects}
+            loading={isModeratorLoading}
+            onRefresh={() => fetchModeratorProjects(false)}
+            onSubmitProposal={async (payload) => {
+              try {
+                const res = await axios.post("http://localhost:5000/moderator/projects", {
+                  company: sessionUser?.displayName?.replace(" Sponsor", "") || "NVIDIA",
+                  ...payload
+                });
+                if (res.data && res.data.success) {
+                  triggerToast("Corporate project proposal submitted successfully!");
+                  fetchModeratorProjects(true);
+                }
+              } catch (err) {
+                console.error(err);
+                triggerToast("Failed to submit corporate project proposal.", "error");
+              }
+            }}
+            triggerToast={triggerToast}
+            sessionUser={sessionUser}
+            spokes={Object.entries(SPOKES).map(([id, spoke]) => ({ id, ...spoke }))}
+            tasks={tasks}
           />
         ) : activeWorkspace === "meetings" ? (
           <MeetingsPortalView
@@ -3407,7 +3846,7 @@ function App() {
         ) : (
           <>
             {/* Proposed B2B Project Decision Banner (Multi-tenant Coordinator Review Privilege) */}
-            {proposedProjectsForSpoke.map((proj) => (
+            {sessionUser?.role !== "Student Developer" && proposedProjectsForSpoke.map((proj) => (
               <div key={proj.id} className="glass-panel pulse-glow" style={{
                 background: theme === "dark"
                   ? "linear-gradient(135deg, rgba(45, 212, 191, 0.1), rgba(249, 115, 22, 0.1))"
@@ -3422,7 +3861,7 @@ function App() {
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "28px" }}>🎉</span>
+                    <span style={{ fontSize: "28px" }}><FaCheckCircle style={{ color: "var(--status-done-text)" }} /></span>
                     <div>
                       <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "850", color: "var(--text-main)" }}>
                         New Corporate Project Proposed!
@@ -3466,13 +3905,13 @@ function App() {
                     </p>
                     <div style={{ display: "flex", gap: "20px", marginTop: "12px", flexWrap: "wrap" }}>
                       <span style={{ fontSize: "12.5px", color: "var(--text-main)" }}>
-                        💰 <strong>Budget:</strong> {proj.budget}
+                        <strong>Budget:</strong> {proj.budget}
                       </span>
                       <span style={{ fontSize: "12.5px", color: "var(--text-main)" }}>
-                        ⏱️ <strong>Duration:</strong> {proj.duration}
+                        <strong>Duration:</strong> {proj.duration}
                       </span>
                       <span style={{ fontSize: "12.5px", color: "var(--text-main)" }}>
-                        📅 <strong>Proposed Deadline:</strong> <em>{proj.proposedDueDate}</em>
+                        <strong>Proposed Deadline:</strong> <em>{proj.proposedDueDate}</em>
                       </span>
                     </div>
                   </div>
@@ -3500,7 +3939,7 @@ function App() {
                         cursor: "pointer"
                       }}
                     >
-                      ❌ Decline Proposal
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaTimes /> Decline Proposal</span>
                     </button>
                     <button
                       onClick={() => handleAcceptProject(proj.id)}
@@ -3515,7 +3954,7 @@ function App() {
                         cursor: "pointer"
                       }}
                     >
-                      🚀 Accept Project & Provision Jira Board
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaCheck /> Accept Project & Provision Jira Board</span>
                     </button>
                   </div>
                 )}
@@ -3547,7 +3986,7 @@ function App() {
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "24px" }}>📅</span>
+                    <span style={{ fontSize: "24px" }}><FaCalendarAlt /></span>
                     <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "850", color: "var(--text-main)" }}>
                       Today's FIP Sprint Syncs Scheduled ({todayMeetingsForSpoke.length})
                     </h4>
@@ -3565,7 +4004,7 @@ function App() {
                       alignItems: "center",
                       gap: "4px"
                     }} className="pulse-glow">
-                      ⚠️ OVERLAP CONFLICT
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--accent)" }}><FaExclamationTriangle /> OVERLAP CONFLICT</span>
                     </span>
                   )}
                 </div>
@@ -3584,7 +4023,7 @@ function App() {
                     fontWeight: "600",
                     lineHeight: "1.4"
                   }}>
-                    <span>⚠️</span>
+                    <span><FaExclamationTriangle /></span>
                     <span>
                       <strong>Schedule Conflict:</strong> Multiple meetings are scheduled at the same time today. Please coordinate to resolve the conflict.
                     </span>
@@ -3623,7 +4062,7 @@ function App() {
                               borderRadius: "4px",
                               fontFamily: "var(--mono)"
                             }}>
-                              ⏰ {meet.time}
+                              <span><FaClock style={{ marginRight: "4px", verticalAlign: "middle" }} /> {meet.time}</span>
                             </span>
                             {hasConflict && (
                               <span style={{
@@ -3635,7 +4074,7 @@ function App() {
                                 padding: "2px 6px",
                                 borderRadius: "4px"
                               }} className="pulse-glow">
-                                ⚠️ Time Conflict
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--accent)" }}><FaExclamationTriangle /> Time Conflict</span>
                               </span>
                             )}
                             <strong style={{ fontSize: "14.5px", color: "var(--text-main)" }}>{meet.title}</strong>
@@ -3664,7 +4103,7 @@ function App() {
                               : "0 4px 12px rgba(45, 212, 191, 0.15)"
                           }}
                         >
-                          Join Meeting 🚀
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>Join Meeting <FaPaperPlane /></span>
                         </a>
                       </div>
                     );
@@ -3677,539 +4116,1782 @@ function App() {
             {activeView === "dashboard" && (
               <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
                 
-                {/* KPI Cards Row */}
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                  gap: "20px"
-                }}>
-                  <DashboardCard
-                    title="Total Scoped Issues"
-                    value={metrics.total}
-                    subtitle="Matching active filters"
-                    glow={true}
-                  />
-                  <DashboardCard
-                    title="Deadline Alerts"
-                    value={metrics.overdue}
-                    subtitle="Active overdue tickets"
-                    themeColor="var(--status-backlog-text)"
-                    pulse={metrics.overdue > 0}
-                    alert={metrics.overdue > 0}
-                  />
-                  <DashboardCard
-                    title="In Progress"
-                    value={metrics.progress}
-                    subtitle="Actively building"
-                    themeColor="var(--status-progress-text)"
-                    pulse={metrics.progress > 0}
-                  />
-                  <DashboardCard
-                    title="Done"
-                    value={metrics.done}
-                    subtitle="Shipped items"
-                    themeColor="var(--status-done-text)"
-                  />
-                  <DashboardCard
-                    title="Completion Rate"
-                    value={`${metrics.completionRate}%`}
-                    subtitle="Of total scoped tasks"
-                    progress={metrics.completionRate}
-                  />
-                  <DashboardCard
-                    title="Agile Velocity"
-                    value={metrics.done}
-                    subtitle="Tasks marked Done in sprint"
-                    themeColor="#a855f7"
-                    glow={true}
-                  />
-                  <DashboardCard
-                    title="On-Time Rate"
-                    value={`${metrics.onTimeRate}%`}
-                    subtitle="Completed on or before deadline"
-                    themeColor="#f43f5e"
-                    progress={metrics.onTimeRate}
-                    glow={metrics.onTimeRate > 80}
-                  />
-                </div>
-
-                {/* Accepted Ingested B2B Projects Panel */}
-                {acceptedProjectsForSpoke.length > 0 && (
-                  <div className="glass-panel" style={{
-                    background: "linear-gradient(135deg, rgba(45, 212, 191, 0.04), rgba(34, 211, 238, 0.02))",
-                    border: "1px solid var(--border-glass)",
-                    padding: "20px 24px",
-                    borderRadius: "16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "16px"
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px" }}>
-                      <span style={{ fontSize: "20px" }}>💼</span>
-                      <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "850", color: "var(--text-main)", letterSpacing: "-0.2px" }}>
-                        Active Corporate Projects Accepted by {SPOKES[currentBoardId]?.name || "Our Campus"} Spoke
-                      </h3>
+                {sessionUser?.role === "Student Developer" ? (
+                  // ==========================================
+                  // 💻 STUDENT DEVELOPER DASHBOARD VIEW
+                  // ==========================================
+                  <>
+                    {/* Student Persona Header */}
+                    <div className="glass-panel" style={{
+                      padding: "20px 24px",
+                      background: "linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.02))",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "16px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: "16px"
+                    }}>
+                      <div>
+                        <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "850", color: "var(--text-main)" }}>
+                          Welcome Back, {sessionUser?.displayName}!
+                        </h2>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-muted)" }}>
+                          Student Developer at <strong style={{ color: "var(--primary)" }}>{SPOKES[currentBoardId]?.name || "Our Campus Spoke"}</strong>. Track your active sprint tasks, review mentor feedback, and submit your deliverables.
+                        </p>
+                      </div>
+                      <span style={{
+                        fontSize: "11px",
+                        fontWeight: "800",
+                        background: "var(--primary-glow)",
+                        color: "var(--primary)",
+                        padding: "4px 12px",
+                        borderRadius: "20px",
+                        border: "1px solid rgba(99, 102, 241, 0.2)",
+                        textTransform: "uppercase"
+                      }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBolt style={{ color: "var(--accent)" }} /> Student Developer Active Session</span>
+                      </span>
                     </div>
 
+                    {/* Student Accountable Metrics Card Row */}
+                    {(() => {
+                      const mySpokeTasks = tasks.filter(t => {
+                        const spokeLabel = CAMPUS_LABELS[currentBoardId];
+                        const labels = t.fields?.labels || [];
+                        return labels.includes(spokeLabel);
+                      });
+
+                      const myTeams = Array.isArray(spokeTeams) ? spokeTeams.filter(team => 
+                        team && Array.isArray(team.members) && team.members.some(m => 
+                          m && (
+                            m.accountId === sessionUser?.accountId || 
+                            (m.emailAddress && sessionUser?.email && m.emailAddress.toLowerCase().trim() === sessionUser.email.toLowerCase().trim())
+                          )
+                        )
+                      ) : [];
+                      const myTeamIds = myTeams.map(team => team && team._id ? team._id.toString() : "");
+
+                      const myAssignedTasks = mySpokeTasks.filter(t => {
+                        const assigneeEmail = t.fields?.assignee?.email || t.fields?.assignee?.emailAddress || "";
+                        const assigneeAccountId = t.fields?.assignee?.accountId ? t.fields.assignee.accountId.toString() : "";
+                        const currentUserEmail = sessionUser?.email || "";
+                        const isDirectlyAssigned = assigneeEmail.toLowerCase().trim() === currentUserEmail.toLowerCase().trim();
+                        const isTeamAssigned = myTeamIds.includes(assigneeAccountId);
+                        return isDirectlyAssigned || isTeamAssigned;
+                      });
+
+                      const studentActiveTasks = myAssignedTasks.filter(t => (t.fields?.status?.name || t.fields?.status || "") !== "Done");
+                      const studentDoneTasks = myAssignedTasks.filter(t => (t.fields?.status?.name || t.fields?.status || "") === "Done");
+                      const studentBlockedTasks = myAssignedTasks.filter(t => t.fields?.flagged === true);
+
+                      const mySubmissionsList = allSubmissions.filter(sub => {
+                        return sub.studentName && (
+                          sub.studentName.toLowerCase().includes(sessionUser?.displayName?.toLowerCase()) || 
+                          sub.studentName.toLowerCase().includes(sessionUser?.email?.toLowerCase())
+                        );
+                      });
+
+                      const studentApprovedCount = mySubmissionsList.filter(sub => sub.status === "Approved").length;
+
+                      return (
+                        <div style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                          gap: "20px"
+                        }}>
+                          <DashboardCard
+                            title="My Active Tasks"
+                            value={studentActiveTasks.length}
+                            subtitle="Assigned tasks in build"
+                            glow={studentActiveTasks.length > 0}
+                          />
+                          <DashboardCard
+                            title="My Flagged Blockers"
+                            value={studentBlockedTasks.length}
+                            subtitle="Tasks requiring support"
+                            themeColor="var(--status-backlog-text)"
+                            pulse={studentBlockedTasks.length > 0}
+                            alert={studentBlockedTasks.length > 0}
+                          />
+                          <DashboardCard
+                            title="My Shipped Deliverables"
+                            value={studentDoneTasks.length}
+                            subtitle="Sprint tasks marked Done"
+                            themeColor="var(--status-done-text)"
+                          />
+                          <DashboardCard
+                            title="Verified by Faculty"
+                            value={studentApprovedCount}
+                            subtitle="Approved deliverables artifacts"
+                            themeColor="#a855f7"
+                            glow={studentApprovedCount > 0}
+                          />
+                        </div>
+                      );
+                    })()}
+
+                    {/* Student Dashboard 2-Column Split */}
                     <div style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "12px"
+                      display: "grid",
+                      gridTemplateColumns: "2fr 1fr",
+                      gap: "30px",
+                      alignItems: "flex-start"
                     }}>
-                      {acceptedProjectsForSpoke.map((proj) => {
-                        // Calculate days left relative to baseline May 26, 2026
-                        const today = new Date("2026-05-26");
-                        const due = new Date(proj.proposedDueDate);
-                        const diffTime = due.getTime() - today.getTime();
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      
+                      {/* Left: Active Tasks & Submissions Feedback */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
                         
-                        let daysText = "";
-                        let daysClassColor = "var(--primary)";
-                        let daysBgColor = "var(--primary-glow)";
-                        
-                        if (diffDays < 0) {
-                          daysText = `Overdue by ${Math.abs(diffDays)}d`;
-                          daysClassColor = "#ef4444";
-                          daysBgColor = "rgba(239, 68, 68, 0.1)";
-                        } else if (diffDays === 0) {
-                          daysText = "Due Today!";
-                          daysClassColor = "var(--accent)";
-                          daysBgColor = "rgba(251, 146, 60, 0.15)";
-                        } else if (diffDays <= 7) {
-                          daysText = `Only ${diffDays}d left! ⏰`;
-                          daysClassColor = "var(--accent)";
-                          daysBgColor = "rgba(251, 146, 60, 0.12)";
-                        } else {
-                          daysText = `${diffDays} days left`;
-                          daysClassColor = "var(--primary)";
-                          daysBgColor = "var(--primary-glow)";
-                        }
+                        {/* 1. Active Tasks Assigned to Me */}
+                        {(() => {
+                          const mySpokeTasks = tasks.filter(t => {
+                            const spokeLabel = CAMPUS_LABELS[currentBoardId];
+                            const labels = t.fields?.labels || [];
+                            return labels.includes(spokeLabel);
+                          });
 
-                        const expectedSummary = `[${proj.company}] ${proj.title}`;
-                        const epicKey = proj.allocations ? proj.allocations.find(a => a.targetCampusId === currentBoardId)?.assignedKey : proj.assignedKey;
-                        const projTasks = tasks.filter(t => {
-                          const parentKey = t.fields?.parent?.key || t.parent?.key;
-                          const parentSummary = t.fields?.parent?.fields?.summary || t.fields?.parent?.summary || t.parent?.fields?.summary || t.parent?.summary;
-                          return (epicKey && parentKey === epicKey) || (parentSummary && parentSummary === expectedSummary);
-                        });
-                        
-                        const totalT = projTasks.length;
-                        const doneT = projTasks.filter(t => (t.fields?.status?.name || t.fields?.status || "") === "Done").length;
-                        const progressPct = totalT > 0 ? Math.round((doneT / totalT) * 100) : 0;
+                          const myTeams = Array.isArray(spokeTeams) ? spokeTeams.filter(team => 
+                            team && Array.isArray(team.members) && team.members.some(m => 
+                              m && (
+                                m.accountId === sessionUser?.accountId || 
+                                (m.emailAddress && sessionUser?.email && m.emailAddress.toLowerCase().trim() === sessionUser.email.toLowerCase().trim())
+                              )
+                            )
+                          ) : [];
+                          const myTeamIds = myTeams.map(team => team && team._id ? team._id.toString() : "");
 
-                        return (
-                          <div key={proj.id} style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "16px",
-                            padding: "20px",
-                            background: "rgba(255, 255, 255, 0.015)",
-                            border: "1px solid var(--border-glass)",
-                            borderRadius: "8px",
-                            transition: "var(--transition-smooth)"
-                          }}>
-                            {/* Top Info Row */}
-                            <div style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              flexWrap: "wrap",
-                              gap: "16px"
-                            }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: "1 1 60%" }}>
-                                <CompanyLogo company={proj.company} size={42} />
-                                <div>
-                                  <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "800", color: "var(--text-main)" }}>
-                                    {proj.title}
-                                  </h4>
-                                  <p style={{ margin: "4px 0 0 0", fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4" }}>
-                                    {proj.description}
-                                  </p>
-                                  <div style={{ display: "flex", gap: "16px", marginTop: "8px", flexWrap: "wrap", fontSize: "11.5px", color: "var(--text-dim)" }}>
-                                    <span>Jira Epic: <strong style={{ color: "var(--text-main)", fontFamily: "var(--mono)" }}>{epicKey || "Epic Provisioned"}</strong></span>
-                                    <span>💰 Budget: <strong style={{ color: "var(--text-main)" }}>{proj.budget}</strong></span>
-                                    <span>📅 Ingested: <strong style={{ color: "var(--text-main)" }}>{proj.dateAdded}</strong></span>
-                                  </div>
-                                </div>
-                              </div>
+                          const myAssignedTasks = mySpokeTasks.filter(t => {
+                            const assigneeEmail = t.fields?.assignee?.email || t.fields?.assignee?.emailAddress || "";
+                            const assigneeAccountId = t.fields?.assignee?.accountId ? t.fields.assignee.accountId.toString() : "";
+                            const currentUserEmail = sessionUser?.email || "";
+                            const isDirectlyAssigned = assigneeEmail.toLowerCase().trim() === currentUserEmail.toLowerCase().trim();
+                            const isTeamAssigned = myTeamIds.includes(assigneeAccountId);
+                            return isDirectlyAssigned || isTeamAssigned;
+                          });
 
-                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
-                                <span style={{
-                                  fontSize: "11px",
-                                  fontWeight: "800",
-                                  background: daysBgColor,
-                                  color: daysClassColor,
-                                  padding: "4px 10px",
-                                  borderRadius: "6px",
-                                  border: `1px solid ${daysClassColor}30`,
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.5px"
-                                }}>
-                                  {daysText}
-                                </span>
-                                <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-                                  Target: <strong>{proj.proposedDueDate}</strong>
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Milestone Progress Bar Row */}
-                            <div style={{
-                              background: "rgba(255, 255, 255, 0.005)",
-                              border: "1px solid var(--border-glass)",
-                              borderRadius: "6px",
-                              padding: "12px 16px",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "8px"
-                            }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px" }}>
-                                <span style={{ fontWeight: "750", color: "var(--text-muted)" }}>🏢 Project Milestone Completion</span>
-                                <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{progressPct}% ({doneT} of {totalT} Phases Done)</strong>
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                <div style={{ flex: 1, height: "8px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "4px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
-                                  <div style={{
-                                    width: `${progressPct}%`,
-                                    height: "100%",
-                                    background: "linear-gradient(90deg, var(--primary), var(--secondary))",
-                                    borderRadius: "4px",
-                                    boxShadow: "0 0 8px var(--primary)",
-                                    transition: "width 0.5s cubic-bezier(0.1, 0.8, 0.1, 1)"
-                                  }}></div>
-                                </div>
-                              </div>
-
-                              {/* Accordion Detail list for Standard Phases */}
-                              {totalT > 0 && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px", borderTop: "1px solid var(--border-glass)", paddingTop: "10px" }}>
-                                  <div style={{ fontSize: "11px", fontWeight: "800", color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
-                                    Standard FIP Milestone Deliverables
-                                  </div>
-                                  {projTasks.map(t => {
+                          return (
+                            <div className="glass-panel" style={{ padding: "24px" }}>
+                              <h3 style={{ fontSize: "16px", fontWeight: "800", marginBottom: "16px", color: "var(--text-main)" }}>
+                                My Assigned Sprint Tasks ({myAssignedTasks.length})
+                              </h3>
+                              {myAssignedTasks.length > 0 ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                  {myAssignedTasks.map(t => {
                                     const tStatus = t.fields?.status?.name || t.fields?.status || "Backlog";
-                                    const tDue = t.fields?.dueDate || t.dueDate || "N/A";
                                     const isTDone = tStatus === "Done";
-                                    
+                                    const isTeamTask = t.fields?.assignee?.isTeam || 
+                                      t.fields?.assignee?.displayName?.includes("[TEAM]") || 
+                                      (t.fields?.assignee?.accountId && myTeamIds.includes(t.fields.assignee.accountId.toString()));
                                     return (
                                       <div key={t.id} style={{
                                         display: "flex",
                                         justifyContent: "space-between",
                                         alignItems: "center",
-                                        fontSize: "12px",
-                                        padding: "4px 8px",
-                                        background: "rgba(255,255,255,0.005)",
+                                        padding: "16px 20px",
+                                        background: "rgba(255, 255, 255, 0.015)",
                                         border: "1px solid var(--border-glass)",
-                                        borderRadius: "6px"
+                                        borderRadius: "12px"
                                       }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1 }}>
-                                          <span style={{ color: isTDone ? "#2dd4bf" : "var(--text-muted)", fontSize: "12px" }}>
-                                            {isTDone ? "🟢" : "🔘"}
-                                          </span>
+                                        <div style={{ minWidth: 0, flex: 1, display: "flex", alignItems: "center", gap: "12px" }}>
                                           <span style={{
+                                            fontFamily: "var(--mono)",
+                                            fontSize: "12px",
+                                            color: "var(--primary)",
+                                            background: "rgba(99, 102, 241, 0.1)",
+                                            padding: "3px 6px",
+                                            borderRadius: "4px",
+                                            fontWeight: "750"
+                                          }}>{t.key}</span>
+                                          <span style={{
+                                            fontWeight: "600",
+                                            fontSize: "13.5px",
                                             color: isTDone ? "var(--text-dim)" : "var(--text-main)",
                                             textDecoration: isTDone ? "line-through" : "none",
-                                            fontWeight: isTDone ? "400" : "600",
+                                            whiteSpace: "nowrap",
                                             overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                            whiteSpace: "nowrap"
-                                          }}>
-                                            {t.fields?.summary || t.summary}
-                                          </span>
+                                            textOverflow: "ellipsis"
+                                          }}>{t.fields.summary}</span>
+                                          {isTeamTask && (
+                                            <span style={{
+                                              fontSize: "10px",
+                                              fontWeight: "800",
+                                              background: "rgba(59, 130, 246, 0.12)",
+                                              color: "#3b82f6",
+                                              border: "1px solid rgba(59, 130, 246, 0.2)",
+                                              padding: "2px 6px",
+                                              borderRadius: "6px",
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                              gap: "6px"
+                                            }}>
+                                              <FaUsers size={12} />
+                                              <span>Team Task</span>
+                                            </span>
+                                          )}
                                         </div>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "10px", shrink: 0 }}>
-                                          <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>⏰ {tDue}</span>
-                                          <span style={{
-                                            fontSize: "9px",
-                                            fontWeight: "900",
-                                            background: isTDone 
-                                              ? "rgba(45, 212, 191, 0.08)" 
-                                              : (tStatus === "In Progress" ? "rgba(251, 146, 60, 0.08)" : "rgba(255, 255, 255, 0.02)"),
-                                            border: isTDone 
-                                              ? "1px solid rgba(45, 212, 191, 0.2)" 
-                                              : (tStatus === "In Progress" ? "1px solid rgba(251, 146, 60, 0.2)" : "1px solid var(--border-glass)"),
-                                            color: isTDone ? "#2dd4bf" : (tStatus === "In Progress" ? "var(--accent)" : "var(--text-muted)"),
-                                            padding: "1px 5px",
-                                            borderRadius: "3px",
-                                            textTransform: "uppercase"
-                                          }}>{tStatus}</span>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "16px", shrink: 0 }}>
+                                          <Badge status={tStatus} />
+                                          {!isTDone ? (
+                                            <button 
+                                              onClick={() => {
+                                                setSelectedTask(t);
+                                                setModalTab("deliverables");
+                                              }}
+                                              style={{
+                                                padding: "6px 12px",
+                                                background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                                                border: "none",
+                                                borderRadius: "6px",
+                                                color: "white",
+                                                fontSize: "11px",
+                                                fontWeight: "800",
+                                                cursor: "pointer",
+                                                boxShadow: "0 4px 10px rgba(99, 102, 241, 0.25)"
+                                              }}
+                                            >
+                                              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>Submit Work <FaPaperPlane /></span>
+                                            </button>
+                                          ) : (
+                                            <span style={{ fontSize: "11px", color: "var(--status-done-text)", fontWeight: "750" }}><span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><FaCheckCircle style={{ color: "var(--status-done-text)" }} /> Shipped</span></span>
+                                          )}
                                         </div>
                                       </div>
                                     );
                                   })}
                                 </div>
+                              ) : (
+                                <EmptyStateMessage text="No sprint tasks currently assigned to your account." showIcon={true} />
                               )}
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                          );
+                        })()}
 
-                {/* Analytical Charts Grid */}
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
-                  gap: "24px"
-                }}>
-                  {/* Status distribution chart */}
-                  <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "350px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
-                    <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "16px" }}>Status Distribution</h3>
-                    <div style={{ flex: 1, minHeight: 0 }}>
-                      {statusPieData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={statusPieData}
-                              cx="50%"
-                              cy="45%"
-                              innerRadius={60}
-                              outerRadius={85}
-                              paddingAngle={4}
-                              dataKey="value"
-                            >
-                              {statusPieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend verticalAlign="bottom" height={36} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <EmptyStateMessage text="No status data available matching filters." />
-                      )}
-                    </div>
-                  </div>
+                        {/* 2. My Submissions & Mentor Evaluation Timeline */}
+                        {(() => {
+                          const mySubmissionsList = allSubmissions.filter(sub => {
+                            return sub.studentName && (
+                              sub.studentName.toLowerCase().includes(sessionUser?.displayName?.toLowerCase()) || 
+                              sub.studentName.toLowerCase().includes(sessionUser?.email?.toLowerCase())
+                            );
+                          });
 
-                  {/* Priority chart */}
-                  <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "350px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
-                    <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "16px" }}>Priority Breakdown</h3>
-                    <div style={{ flex: 1, minHeight: 0 }}>
-                      {metrics.total > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={priorityBarData} margin={{ bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} />
-                            <YAxis stroke="var(--text-muted)" fontSize={11} allowDecimals={false} tickLine={false} />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.02)" }} />
-                            <Bar dataKey="count" name="Tasks Count" radius={[6, 6, 0, 0]}>
-                              {priorityBarData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <EmptyStateMessage text="No priority metrics available." />
-                      )}
-                    </div>
-                  </div>
+                          return (
+                            <div className="glass-panel" style={{ padding: "24px" }}>
+                              <h3 style={{ fontSize: "16px", fontWeight: "800", marginBottom: "16px", color: "var(--text-main)" }}>
+                                My Submissions & Mentor Evaluations ({mySubmissionsList.length})
+                              </h3>
+                              {mySubmissionsList.length > 0 ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                  {mySubmissionsList.map(sub => {
+                                    const badgeBg = sub.status === "Approved" ? "rgba(45, 212, 191, 0.08)" : sub.status === "Re-work Requested" ? "rgba(239, 68, 68, 0.08)" : "rgba(251, 146, 60, 0.08)";
+                                    const badgeColor = sub.status === "Approved" ? "#2dd4bf" : sub.status === "Re-work Requested" ? "#ef4444" : "var(--accent)";
+                                    const badgeBorder = sub.status === "Approved" ? "1px solid rgba(45, 212, 191, 0.2)" : sub.status === "Re-work Requested" ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)";
 
-                  {/* Assignee chart */}
-                  <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "350px", gridColumn: "span 1", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
-                    <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "16px" }}>Team Workload Distribution</h3>
-                    <div style={{ flex: 1, minHeight: 0 }}>
-                      {assigneeWorkloadData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={assigneeWorkloadData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis type="number" stroke="var(--text-muted)" fontSize={11} allowDecimals={false} tickLine={false} />
-                            <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={11} width={100} tickLine={false} />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.02)" }} />
-                            <Bar dataKey="tasks" name="Active Tasks" fill="var(--primary)" radius={[0, 4, 4, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <EmptyStateMessage text="No active work items assigned." />
-                      )}
-                    </div>
-                  </div>
+                                    return (
+                                      <div key={sub._id} style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "10px",
+                                        padding: "16px",
+                                        background: "rgba(255, 255, 255, 0.01)",
+                                        border: "1px solid var(--border-glass)",
+                                        borderRadius: "12px"
+                                      }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                            <span style={{ fontSize: "13px", fontWeight: "800", color: "var(--text-main)" }}>{sub.fileName}</span>
+                                            <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+                                              Task Ref: <strong style={{ color: "var(--primary)" }}>{sub.taskId}</strong> • Submitted: {new Date(sub.submittedAt).toLocaleDateString()}
+                                            </span>
+                                          </div>
+                                          <span style={{
+                                            fontSize: "9.5px",
+                                            fontWeight: "900",
+                                            background: badgeBg,
+                                            color: badgeColor,
+                                            border: badgeBorder,
+                                            padding: "2px 8px",
+                                            borderRadius: "4px",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.5px"
+                                          }}>{sub.status}</span>
+                                        </div>
 
-                  {/* Dynamic Campus Spoke Leaderboard */}
-                  <div className="glass-panel" style={{
-                    padding: "24px",
-                    display: "flex",
-                    flexDirection: "column",
-                    height: "350px",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    background: "rgba(17,24,39,0.2)",
-                    backdropFilter: "blur(12px)",
-                    boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                      <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", margin: 0 }}>🏆 Spoke Leaderboard</h3>
-                      <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: "750", background: "var(--primary-glow)", padding: "2px 8px", borderRadius: "20px" }}>Live Velocity</span>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto", flex: 1, paddingRight: "4px" }}>
-                      {leaderboardData.map((spoke, idx) => {
-                        const isCurrent = spoke.id === currentBoardId || (spoke.name && spoke.name.includes(SPOKES[currentBoardId]?.name));
-                        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "🏅";
-                        const glowBorder = isCurrent ? "1px solid var(--primary)" : "1px solid var(--border-glass)";
-                        const bgHighlight = isCurrent ? "var(--primary-glow)" : "rgba(255,255,255,0.01)";
-                        const pct = spoke.total > 0 ? Math.round((spoke.done / spoke.total) * 100) : 0;
+                                        <div style={{ display: "flex", gap: "12px", alignItems: "center", fontSize: "12px", marginTop: "4px" }}>
+                                          <a 
+                                            href={sub.fileUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            style={{
+                                              color: "var(--primary)",
+                                              fontWeight: "750",
+                                              textDecoration: "none"
+                                            }}
+                                          >
+                                            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaLink /> Open Deliverable Link</span>
+                                          </a>
+                                          {sub.comments && (
+                                            <span style={{ color: "var(--text-dim)" }}>
+                                              • Comments: <em style={{ color: "var(--text-muted)" }}>"{sub.comments}"</em>
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {sub.feedback && (
+                                          <div style={{
+                                            marginTop: "8px",
+                                            padding: "10px 14px",
+                                            background: sub.status === "Approved" ? "rgba(45, 212, 191, 0.03)" : "rgba(239, 68, 68, 0.03)",
+                                            borderLeft: `3px solid ${badgeColor}`,
+                                            borderRadius: "0 8px 8px 0",
+                                            fontSize: "12px"
+                                          }}>
+                                            <strong style={{ color: "var(--text-main)" }}>Faculty Feedback: </strong>
+                                            <span style={{ color: "var(--text-muted)" }}>{sub.feedback}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <EmptyStateMessage text="You haven't submitted any deliverables for review yet." showIcon={true} />
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                      </div>
+
+                      {/* Right: Spoke Leaderboard & B2B Projects */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
                         
-                        return (
-                          <div key={spoke.id || spoke.name} style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "6px",
-                            padding: "10px 14px",
-                            background: bgHighlight,
-                            border: glowBorder,
-                            borderRadius: "10px",
-                            boxShadow: isCurrent ? "0 0 15px rgba(99, 102, 241, 0.15)" : "none",
-                            transition: "var(--transition-smooth)"
-                          }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "16px" }}>{medal}</span>
-                                <span style={{ fontSize: "13px", fontWeight: isCurrent ? "800" : "600", color: isCurrent ? "var(--primary)" : "var(--text-main)" }}>
-                                  {spoke.name} {isCurrent && "⭐"}
+                        {/* Dynamic Leaderboard for Student Pride */}
+                        <div className="glass-panel" style={{ padding: "24px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                            <h3 style={{ fontSize: "14px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", margin: 0 }}>Spoke Leaderboard</h3>
+                            <span style={{ fontSize: "10px", color: "var(--primary)", fontWeight: "800", background: "var(--primary-glow)", padding: "2px 8px", borderRadius: "20px" }}>Live Rank</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            {leaderboardData.map((spoke, idx) => {
+                              const isCurrent = spoke.id === currentBoardId || (spoke.name && spoke.name.includes(SPOKES[currentBoardId]?.name));
+                              const medal = idx === 0 ? "1st" : idx === 1 ? "2nd" : idx === 2 ? "3rd" : "Rank";
+                              const pct = spoke.total > 0 ? Math.round((spoke.done / spoke.total) * 100) : 0;
+                              
+                              return (
+                                <div key={spoke.id || spoke.name} style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "6px",
+                                  padding: "10px 14px",
+                                  background: isCurrent ? "var(--primary-glow)" : "rgba(255,255,255,0.01)",
+                                  border: isCurrent ? "1px solid var(--primary)" : "1px solid var(--border-glass)",
+                                  borderRadius: "10px",
+                                  boxShadow: isCurrent ? "0 0 15px rgba(99, 102, 241, 0.12)" : "none"
+                                }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                      <span style={{ fontSize: "14px" }}>{medal}</span>
+                                      <span style={{ fontSize: "12px", fontWeight: isCurrent ? "800" : "600", color: isCurrent ? "var(--primary)" : "var(--text-main)" }}>
+                                        {spoke.name} {isCurrent && ""}
+                                      </span>
+                                    </div>
+                                    <span style={{ fontSize: "11px", fontFamily: "var(--mono)", color: "var(--text-main)", fontWeight: "750" }}>
+                                      {spoke.done} / {spoke.total} ({pct}%)
+                                    </span>
+                                  </div>
+                                  <div style={{ height: "4px", background: "rgba(255,255,255,0.03)", borderRadius: "2px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
+                                    <div style={{
+                                      width: `${pct}%`,
+                                      height: "100%",
+                                      background: idx === 0 
+                                        ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
+                                        : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
+                                      borderRadius: "2px"
+                                    }}></div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* My Collaborative Teams */}
+                        <div className="glass-panel" style={{ padding: "20px 24px", marginBottom: "20px" }}>
+                          <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                            My Collaborative Teams
+                          </h3>
+                          {(() => {
+                            const myTeamsList = Array.isArray(spokeTeams) ? spokeTeams.filter(team => 
+                              team && Array.isArray(team.members) && team.members.some(m => 
+                                m && (
+                                  m.accountId === sessionUser?.accountId || 
+                                  (m.emailAddress && sessionUser?.email && m.emailAddress.toLowerCase().trim() === sessionUser.email.toLowerCase().trim())
+                                )
+                              )
+                            ) : [];
+
+                            if (myTeamsList.length > 0) {
+                              return (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                  {myTeamsList.map((team) => (
+                                    <div key={team._id} style={{
+                                      padding: "14px",
+                                      background: "rgba(99, 102, 241, 0.02)",
+                                      border: "1px solid var(--border-glass)",
+                                      borderRadius: "10px",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "10px"
+                                    }}>
+                                      <strong style={{ fontSize: "13px", color: "var(--text-main)" }}>{team.name}</strong>
+                                      
+                                      {team.mentor && (
+                                        <div style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          background: "rgba(168, 85, 247, 0.05)",
+                                          border: "1px solid rgba(168, 85, 247, 0.15)",
+                                          borderRadius: "6px",
+                                          padding: "4px 8px"
+                                        }}>
+                                          <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
+                                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                                            Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong>
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      <div>
+                                        <div style={{ fontSize: "10px", color: "var(--text-dim)", fontWeight: "700", textTransform: "uppercase", marginBottom: "6px" }}>Team Members</div>
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                                          {team.members.map((m) => (
+                                            <div key={m.accountId} style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "4px",
+                                              background: "rgba(255, 255, 255, 0.03)",
+                                              border: "1px solid var(--border-glass)",
+                                              borderRadius: "12px",
+                                              padding: "2px 8px"
+                                            }}>
+                                              <img src={m.avatarUrl} alt={m.displayName} style={{ width: "14px", height: "14px", borderRadius: "50%" }} />
+                                              <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>
+                                                {m.displayName}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div style={{
+                                  fontSize: "12px",
+                                  color: "var(--text-dim)",
+                                  fontStyle: "italic",
+                                  textAlign: "center",
+                                  padding: "16px 0",
+                                  border: "1px dashed var(--border-glass)",
+                                  borderRadius: "8px",
+                                  background: "rgba(255,255,255,0.002)"
+                                }}>
+                                  Not assigned to any collaborative team yet. Contact your coordinator to join a team!
+                                </div>
+                              );
+                            }
+                          })()}
+                        </div>
+
+                        {/* Active B2B Spoke Project */}
+                        {acceptedProjectsForSpoke.length > 0 && (
+                          <div className="glass-panel" style={{ padding: "20px 24px" }}>
+                            <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                              Active B2B Sponsor Project
+                            </h3>
+                            {acceptedProjectsForSpoke.slice(0, 1).map((proj) => {
+                              const epicKey = proj.allocations ? proj.allocations.find(a => a.targetCampusId === currentBoardId)?.assignedKey : proj.assignedKey;
+                              return (
+                                <div key={proj.id} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                    <CompanyLogo company={proj.company} size={36} />
+                                    <div>
+                                      <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "var(--text-main)" }}>{proj.title}</h4>
+                                      <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Sponsor: <strong>{proj.company}</strong></span>
+                                    </div>
+                                  </div>
+                                  <div style={{
+                                    padding: "10px 14px",
+                                    background: "rgba(255, 255, 255, 0.01)",
+                                    border: "1px solid var(--border-glass)",
+                                    borderRadius: "8px",
+                                    fontSize: "11.5px",
+                                    display: "flex",
+                                    justifyContent: "space-between"
+                                  }}>
+                                    <span style={{ color: "var(--text-dim)" }}>Jira key: <strong style={{ color: "var(--text-main)", fontFamily: "var(--mono)" }}>{epicKey || "PNLP-3"}</strong></span>
+                                    <span style={{ color: "var(--text-dim)" }}>Deadline: <strong style={{ color: "var(--text-main)" }}>{proj.proposedDueDate}</strong></span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                      </div>
+
+                    </div>
+                  </>
+                ) : (
+                  // ==========================================
+                  // 🎓 FACULTY MENTOR (COORDINATOR) DASHBOARD
+                  // ==========================================
+                  <>
+                    {/* Faculty Dashboard Tab Navigation */}
+                    <div style={{
+                      display: "flex",
+                      gap: "10px",
+                      borderBottom: "1px solid var(--border-glass)",
+                      paddingBottom: "12px",
+                      marginBottom: "25px"
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveCoordinatorTab("analytics")}
+                        style={{
+                          padding: "8px 18px",
+                          borderRadius: "8px",
+                          border: "1px solid transparent",
+                          background: activeCoordinatorTab === "analytics" ? "rgba(99, 102, 241, 0.12)" : "transparent",
+                          color: activeCoordinatorTab === "analytics" ? "var(--primary)" : "var(--text-muted)",
+                          borderColor: activeCoordinatorTab === "analytics" ? "rgba(99, 102, 241, 0.25)" : "transparent",
+                          fontWeight: "750",
+                          fontSize: "12.5px",
+                          cursor: "pointer",
+                          transition: "var(--transition-smooth)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px"
+                        }}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><FaChartPie /></span> Analytics & Deliverables
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveCoordinatorTab("team")}
+                        style={{
+                          padding: "8px 18px",
+                          borderRadius: "8px",
+                          border: "1px solid transparent",
+                          background: activeCoordinatorTab === "team" ? "rgba(99, 102, 241, 0.12)" : "transparent",
+                          color: activeCoordinatorTab === "team" ? "var(--primary)" : "var(--text-muted)",
+                          borderColor: activeCoordinatorTab === "team" ? "rgba(99, 102, 241, 0.25)" : "transparent",
+                          fontWeight: "750",
+                          fontSize: "12.5px",
+                          cursor: "pointer",
+                          transition: "var(--transition-smooth)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px"
+                        }}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><FaUsers /></span> Spoke Team Directory
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveCoordinatorTab("projects")}
+                        style={{
+                          padding: "8px 18px",
+                          borderRadius: "8px",
+                          border: "1px solid transparent",
+                          background: activeCoordinatorTab === "projects" ? "rgba(99, 102, 241, 0.12)" : "transparent",
+                          color: activeCoordinatorTab === "projects" ? "var(--primary)" : "var(--text-muted)",
+                          borderColor: activeCoordinatorTab === "projects" ? "rgba(99, 102, 241, 0.25)" : "transparent",
+                          fontWeight: "750",
+                          fontSize: "12.5px",
+                          cursor: "pointer",
+                          transition: "var(--transition-smooth)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px"
+                        }}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><FaBriefcase /></span> B2B Project Allocator
+                      </button>
+                    </div>
+
+                    {/* TAB 1: ANALYTICS & DELIVERABLES */}
+                    {activeCoordinatorTab === "analytics" && (
+                      <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+                        {/* Faculty Stats Cards Row */}
+                        <div style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                          gap: "20px"
+                        }}>
+                          <DashboardCard
+                            title="Total Scoped Issues"
+                            value={metrics.total}
+                            subtitle="Matching active Spoke sprint"
+                            glow={true}
+                          />
+                          <DashboardCard
+                            title="Active Overdue Breaches"
+                            value={metrics.overdue}
+                            subtitle="Late sprint deadline tasks"
+                            themeColor="var(--status-backlog-text)"
+                            pulse={metrics.overdue > 0}
+                            alert={metrics.overdue > 0}
+                          />
+                          <DashboardCard
+                            title="Awaiting Verification"
+                            value={allSubmissions.filter(sub => {
+                              const userPersona = currentPersona.replace("spoke-", "");
+                              const subSpoke = sub.studentName && sub.studentName.toLowerCase();
+                              const targetSpoke = userPersona === "kle" ? "kle" : userPersona === "coep" ? "coep" : userPersona === "mmcoep" ? "mmcoep" : "rit";
+                              const isMatch = subSpoke && (subSpoke.includes(targetSpoke) || subSpoke.includes("student"));
+                              return isMatch && sub.status === "Awaiting Review";
+                            }).length}
+                            subtitle="Awaiting coordinator review"
+                            themeColor="var(--status-progress-text)"
+                            pulse={allSubmissions.filter(sub => {
+                              const userPersona = currentPersona.replace("spoke-", "");
+                              const subSpoke = sub.studentName && sub.studentName.toLowerCase();
+                              const targetSpoke = userPersona === "kle" ? "kle" : userPersona === "coep" ? "coep" : userPersona === "mmcoep" ? "mmcoep" : "rit";
+                              const isMatch = subSpoke && (subSpoke.includes(targetSpoke) || subSpoke.includes("student"));
+                              return isMatch && sub.status === "Awaiting Review";
+                            }).length > 0}
+                          />
+                          <DashboardCard
+                            title="Campus Agile Velocity"
+                            value={metrics.done}
+                            subtitle="Tasks marked Done"
+                            themeColor="#a855f7"
+                            glow={true}
+                          />
+                        </div>
+
+                        {/* Student Deliverables Verification Queue */}
+                        {(() => {
+                          const userPersona = currentPersona.replace("spoke-", "");
+                          const targetSpoke = userPersona === "kle" ? "kle" : userPersona === "coep" ? "coep" : userPersona === "mmcoep" ? "mmcoep" : "rit";
+                          
+                          const spokeSubmissions = allSubmissions.filter(sub => {
+                            const subSpoke = sub.studentName && sub.studentName.toLowerCase();
+                            const isMatch = subSpoke && (subSpoke.includes(targetSpoke) || subSpoke.includes("student"));
+                            return isMatch || currentPersona === "moderator" || currentPersona === "executive";
+                          });
+
+                          return (
+                            <div className="glass-panel" style={{
+                              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(168, 85, 247, 0.02))",
+                              border: "1px solid var(--border-glass)",
+                              padding: "24px",
+                              borderRadius: "16px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "16px"
+                            }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-glass)", paddingBottom: "14px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  <span style={{ fontSize: "20px", display: "inline-flex", alignItems: "center" }}><FaExclamationTriangle style={{ color: "var(--accent)" }} /></span>
+                                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "850", color: "var(--text-main)" }}>
+                                    Student Deliverables Verification Queue
+                                  </h3>
+                                </div>
+                                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                                  Review and approve code/documents uploaded by student developers
                                 </span>
                               </div>
-                              <span style={{ fontSize: "12.5px", fontFamily: "var(--mono)", color: "var(--text-main)", fontWeight: "750" }}>
-                                {spoke.done} / {spoke.total} Done ({pct}%)
-                              </span>
-                            </div>
-                            <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
-                              <div style={{
-                                width: `${pct}%`,
-                                height: "100%",
-                                background: idx === 0 
-                                  ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
-                                  : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
-                                borderRadius: "3px"
-                              }}></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Recent Task List Component */}
-                <div className="glass-panel" style={{ padding: "24px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                    <h3 style={{ fontSize: "18px", fontWeight: "700" }}>Scope Overview ({filteredTasks.length})</h3>
-                    <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Click any row to manage task details</span>
-                  </div>
+                              {spokeSubmissions.length > 0 ? (
+                                <div style={{ overflowX: "auto" }}>
+                                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "var(--text-main)", textAlign: "left" }}>
+                                    <thead>
+                                      <tr style={{ borderBottom: "1px solid var(--border-glass)", color: "var(--text-dim)" }}>
+                                        <th style={{ padding: "12px 8px", fontWeight: "750" }}>Developer</th>
+                                        <th style={{ padding: "12px 8px", fontWeight: "750" }}>Sprint Task</th>
+                                        <th style={{ padding: "12px 8px", fontWeight: "750" }}>Artifact Access</th>
+                                        <th style={{ padding: "12px 8px", fontWeight: "750" }}>Review Status</th>
+                                        <th style={{ padding: "12px 8px", fontWeight: "750", textAlign: "right" }}>Actions</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {spokeSubmissions.map((sub) => {
+                                        const badgeBg = sub.status === "Approved" ? "rgba(45, 212, 191, 0.08)" : sub.status === "Re-work Requested" ? "rgba(239, 68, 68, 0.08)" : "rgba(251, 146, 60, 0.08)";
+                                        const badgeColor = sub.status === "Approved" ? "#2dd4bf" : sub.status === "Re-work Requested" ? "#ef4444" : "var(--accent)";
+                                        const badgeBorder = sub.status === "Approved" ? "1px solid rgba(45, 212, 191, 0.2)" : sub.status === "Re-work Requested" ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)";
 
-                  {filteredTasks.length > 0 ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                      {filteredTasks.map(t => {
-                        const deadline = getDeadlineInfo(t.fields.dueDate, t.fields.status?.name);
-                        return (
-                          <div
-                            key={t.id}
-                            onClick={() => setSelectedTask(t)}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "16px 20px",
-                              background: "rgba(255, 255, 255, 0.02)",
-                              border: "1px solid var(--border-glass)",
-                              borderRadius: "12px",
-                              cursor: "pointer",
-                              transition: "var(--transition-smooth)"
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
-                              e.currentTarget.style.borderColor = "var(--border-glow)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
-                              e.currentTarget.style.borderColor = "var(--border-glass)";
-                            }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1, minWidth: 0 }}>
-                              <span style={{
-                                fontFamily: "var(--mono)",
-                                fontSize: "13px",
-                                color: "var(--primary)",
-                                fontWeight: "600",
-                                background: "rgba(99, 102, 241, 0.1)",
-                                padding: "4px 8px",
-                                borderRadius: "6px"
-                              }}>
-                                {t.key}
-                              </span>
-                              <span style={{
-                                fontWeight: "600",
-                                fontSize: "14px",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                color: "var(--text-main)"
-                              }}>
-                                {t.fields.summary}
-                              </span>
-                            </div>
-
-                            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                              {/* Deadline Badge */}
-                              {deadline && (
-                                <span className={deadline.type === "overdue" ? "overdue-badge-blink" : ""} style={{
-                                  fontSize: "11px",
-                                  fontWeight: "700",
-                                  padding: "3px 8px",
-                                  borderRadius: "4px",
-                                  backgroundColor:
-                                    deadline.type === "overdue" ? "var(--priority-high-bg)" :
-                                    deadline.type === "soon" ? "var(--priority-medium-bg)" : "rgba(255, 255, 255, 0.04)",
-                                  color:
-                                    deadline.type === "overdue" ? "var(--priority-high-text)" :
-                                    deadline.type === "soon" ? "var(--priority-medium-text)" : "var(--text-muted)",
-                                  border: "1px solid",
-                                  borderColor:
-                                    deadline.type === "overdue" ? "var(--priority-high-border)" :
-                                    deadline.type === "soon" ? "var(--priority-medium-border)" : "var(--border-glass)",
-                                }}>
-                                  {deadline.text}
-                                </span>
-                              )}
-
-                              {/* Priority Badge */}
-                              <Badge priority={t.fields.priority?.name} />
-
-                              {/* Status Badge */}
-                              <Badge status={t.fields.status?.name} />
-
-                              {/* Assignee Avatar */}
-                              {t.fields.assignee ? (
-                                <img
-                                  src={t.fields.assignee.avatarUrl}
-                                  alt={t.fields.assignee.displayName}
-                                  style={{ width: "24px", height: "24px", borderRadius: "50%" }}
-                                  title={t.fields.assignee.displayName}
-                                />
+                                        return (
+                                          <tr key={sub._id} style={{ borderBottom: "1px solid var(--border-glass)" }}>
+                                            <td style={{ padding: "14px 8px", fontWeight: "600" }}>{sub.studentName}</td>
+                                            <td style={{ padding: "14px 8px" }}>
+                                              <div style={{ display: "flex", flexDirection: "column" }}>
+                                                <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{sub.taskId}</strong>
+                                                {sub.comments && <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>"{sub.comments}"</span>}
+                                              </div>
+                                            </td>
+                                            <td style={{ padding: "14px 8px" }}>
+                                              <a 
+                                                href={sub.fileUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                style={{
+                                                  color: "var(--secondary)",
+                                                  fontWeight: "750",
+                                                  textDecoration: "none"
+                                                }}
+                                              >
+                                                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaLink /> {sub.fileName}</span>
+                                              </a>
+                                            </td>
+                                            <td style={{ padding: "14px 8px" }}>
+                                              <span style={{
+                                                fontSize: "9px",
+                                                fontWeight: "900",
+                                                background: badgeBg,
+                                                color: badgeColor,
+                                                border: badgeBorder,
+                                                padding: "2px 6px",
+                                                borderRadius: "3px",
+                                                textTransform: "uppercase"
+                                              }}>{sub.status}</span>
+                                            </td>
+                                            <td style={{ padding: "14px 8px", textAlign: "right" }}>
+                                              {sub.status === "Awaiting Review" ? (
+                                                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                                  <button 
+                                                    onClick={() => handleUpdateSubmissionStatus(sub._id, "Approved", "Meets all FIP B2B criteria. Excellent work!")}
+                                                    style={{
+                                                      padding: "6px 12px",
+                                                      background: "rgba(45, 212, 191, 0.15)",
+                                                      border: "1px solid rgba(45, 212, 191, 0.3)",
+                                                      borderRadius: "6px",
+                                                      color: "#2dd4bf",
+                                                      fontSize: "11px",
+                                                      fontWeight: "800",
+                                                      cursor: "pointer"
+                                                    }}
+                                                  >
+                                                    Approve
+                                                  </button>
+                                                  <button 
+                                                    onClick={() => {
+                                                      const feedback = prompt("Please enter evaluation comments / requested changes for the student developer:", "Re-work required: please refine your layout controller.");
+                                                      if (feedback !== null) {
+                                                        handleUpdateSubmissionStatus(sub._id, "Re-work Requested", feedback || "Please revise task artifacts.");
+                                                      }
+                                                    }}
+                                                    style={{
+                                                      padding: "6px 12px",
+                                                      background: "rgba(239, 68, 68, 0.15)",
+                                                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                                                      borderRadius: "6px",
+                                                      color: "#ef4444",
+                                                      fontSize: "11px",
+                                                      fontWeight: "800",
+                                                      cursor: "pointer"
+                                                    }}
+                                                  >
+                                                    Flag Re-work
+                                                  </button>
+                                                </div>
+                                              ) : sub.status === "Re-work Requested" ? (
+                                                <div style={{ display: "flex", gap: "10px", alignItems: "center", justifyContent: "flex-end" }}>
+                                                  <span style={{
+                                                    fontSize: "11px", 
+                                                    color: "#ef4444", 
+                                                    fontWeight: "750",
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: "6px"
+                                                  }}>
+                                                    <FaExclamationTriangle size={12} />
+                                                    <span>Revision Required</span>
+                                                  </span>
+                                                  <button 
+                                                    onClick={() => handleUpdateSubmissionStatus(sub._id, "Approved", "Re-evaluated and approved! Meets all B2B criteria.")}
+                                                    style={{
+                                                      padding: "6px 12px",
+                                                      background: "rgba(45, 212, 191, 0.15)",
+                                                      border: "1px solid rgba(45, 212, 191, 0.3)",
+                                                      borderRadius: "6px",
+                                                      color: "#2dd4bf",
+                                                      fontSize: "11px",
+                                                      fontWeight: "800",
+                                                      cursor: "pointer",
+                                                      transition: "all 0.2s ease"
+                                                    }}
+                                                  >
+                                                    Re-evaluate & Approve
+                                                  </button>
+                                                </div>
+                                              ) : (
+                                                <span style={{
+                                                  fontSize: "11px", 
+                                                  color: "#2dd4bf", 
+                                                  fontWeight: "600",
+                                                  display: "inline-flex",
+                                                  alignItems: "center",
+                                                  gap: "6px"
+                                                }}>
+                                                  <FaCheck size={11} />
+                                                  <span>Verified Shipped</span>
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
                               ) : (
                                 <div style={{
-                                  width: "24px",
-                                  height: "24px",
-                                  borderRadius: "50%",
-                                  border: "1px dashed var(--text-dim)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
+                                  textAlign: "center",
+                                  padding: "40px 20px",
+                                  border: "1px dashed var(--border-glass)",
+                                  borderRadius: "12px",
                                   color: "var(--text-dim)",
-                                  fontSize: "10px"
-                                }} title="Unassigned">
-                                  ?
+                                  fontSize: "13px"
+                                }}>
+                                  No deliverables have been submitted by Spoke student developers for review yet.
                                 </div>
                               )}
                             </div>
+                          );
+                        })()}
+
+                        {/* Analytical Charts Grid */}
+                        <div style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+                          gap: "24px"
+                        }}>
+                          {/* Status distribution chart */}
+                          <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "350px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
+                            <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "16px" }}>Status Distribution</h3>
+                            <div style={{ flex: 1, minHeight: 0 }}>
+                              {statusPieData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie
+                                      data={statusPieData}
+                                      cx="50%"
+                                      cy="45%"
+                                      innerRadius={60}
+                                      outerRadius={85}
+                                      paddingAngle={4}
+                                      dataKey="value"
+                                    >
+                                      {statusPieData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                      ))}
+                                    </Pie>
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend verticalAlign="bottom" height={36} />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              ) : (
+                                <EmptyStateMessage text="No status data available matching filters." />
+                              )}
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <EmptyStateMessage text="No tasks found matching current search queries or filters." showIcon={true} />
-                  )}
-                </div>
+
+                          {/* Priority chart */}
+                          <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "350px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
+                            <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "16px" }}>Priority Breakdown</h3>
+                            <div style={{ flex: 1, minHeight: 0 }}>
+                              {metrics.total > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={priorityBarData} margin={{ bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} />
+                                    <YAxis stroke="var(--text-muted)" fontSize={11} allowDecimals={false} tickLine={false} />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.02)" }} />
+                                    <Bar dataKey="count" name="Tasks Count" radius={[6, 6, 0, 0]}>
+                                      {priorityBarData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                      ))}
+                                    </Bar>
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              ) : (
+                                <EmptyStateMessage text="No priority metrics available." />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Assignee chart */}
+                          <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "350px", gridColumn: "span 1", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
+                            <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "16px" }}>Team Workload Distribution</h3>
+                            <div style={{ flex: 1, minHeight: 0 }}>
+                              {assigneeWorkloadData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={assigneeWorkloadData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis type="number" stroke="var(--text-muted)" fontSize={11} allowDecimals={false} tickLine={false} />
+                                    <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={11} width={100} tickLine={false} />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.02)" }} />
+                                    <Bar dataKey="tasks" name="Active Tasks" fill="var(--primary)" radius={[0, 4, 4, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              ) : (
+                                <EmptyStateMessage text="No active work items assigned." />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Dynamic Campus Spoke Leaderboard */}
+                          <div className="glass-panel" style={{
+                            padding: "24px",
+                            display: "flex",
+                            flexDirection: "column",
+                            height: "350px",
+                            border: "1px solid rgba(255,255,255,0.06)",
+                            background: "rgba(17,24,39,0.2)",
+                            backdropFilter: "blur(12px)",
+                            boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)"
+                          }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                              <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", margin: 0 }}>Spoke Leaderboard</h3>
+                              <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: "750", background: "var(--primary-glow)", padding: "2px 8px", borderRadius: "20px" }}>Live Velocity</span>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto", flex: 1, paddingRight: "4px" }}>
+                              {leaderboardData.map((spoke, idx) => {
+                                const isCurrent = spoke.id === currentBoardId || (spoke.name && spoke.name.includes(SPOKES[currentBoardId]?.name));
+                                const medal = idx === 0 ? "1st" : idx === 1 ? "2nd" : idx === 2 ? "3rd" : "Rank";
+                                const glowBorder = isCurrent ? "1px solid var(--primary)" : "1px solid var(--border-glass)";
+                                const bgHighlight = isCurrent ? "var(--primary-glow)" : "rgba(255,255,255,0.01)";
+                                const pct = spoke.total > 0 ? Math.round((spoke.done / spoke.total) * 100) : 0;
+                                
+                                return (
+                                  <div key={spoke.id || spoke.name} style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "6px",
+                                    padding: "10px 14px",
+                                    background: bgHighlight,
+                                    border: glowBorder,
+                                    borderRadius: "10px",
+                                    boxShadow: isCurrent ? "0 0 15px rgba(99, 102, 241, 0.15)" : "none",
+                                    transition: "var(--transition-smooth)"
+                                  }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span style={{ fontSize: "16px" }}>{medal}</span>
+                                        <span style={{ fontSize: "13px", fontWeight: isCurrent ? "800" : "600", color: isCurrent ? "var(--primary)" : "var(--text-main)" }}>
+                                          {spoke.name} {isCurrent && ""}
+                                        </span>
+                                      </div>
+                                      <span style={{ fontSize: "12.5px", fontFamily: "var(--mono)", color: "var(--text-main)", fontWeight: "750" }}>
+                                        {spoke.done} / {spoke.total} Done ({pct}%)
+                                      </span>
+                                    </div>
+                                    <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
+                                      <div style={{
+                                        width: `${pct}%`,
+                                        height: "100%",
+                                        background: idx === 0 
+                                          ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
+                                          : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
+                                        borderRadius: "3px"
+                                      }}></div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Recent Task List Component */}
+                        <div className="glass-panel" style={{ padding: "24px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                            <h3 style={{ fontSize: "18px", fontWeight: "700" }}>Scope Overview ({filteredTasks.length})</h3>
+                            <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Click any row to manage task details</span>
+                          </div>
+
+                          {filteredTasks.length > 0 ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                              {filteredTasks.map(t => {
+                                const deadline = getDeadlineInfo(t.fields.dueDate, t.fields.status?.name);
+                                return (
+                                  <div
+                                    key={t.id}
+                                    onClick={() => setSelectedTask(t)}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      padding: "16px 20px",
+                                      background: "rgba(255, 255, 255, 0.02)",
+                                      border: "1px solid var(--border-glass)",
+                                      borderRadius: "12px",
+                                      cursor: "pointer",
+                                      transition: "var(--transition-smooth)"
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
+                                      e.currentTarget.style.borderColor = "var(--border-glow)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
+                                      e.currentTarget.style.borderColor = "var(--border-glass)";
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1, minWidth: 0 }}>
+                                      <span style={{
+                                        fontFamily: "var(--mono)",
+                                        fontSize: "13px",
+                                        color: "var(--primary)",
+                                        fontWeight: "600",
+                                        background: "rgba(99, 102, 241, 0.1)",
+                                        padding: "4px 8px",
+                                        borderRadius: "6px"
+                                      }}>
+                                        {t.key}
+                                      </span>
+                                      <span style={{
+                                        fontWeight: "600",
+                                        fontSize: "14px",
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        color: "var(--text-main)"
+                                      }}>
+                                        {t.fields.summary}
+                                      </span>
+                                    </div>
+
+                                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                                      {/* Deadline Badge */}
+                                      {deadline && (
+                                        <span className={deadline.type === "overdue" ? "overdue-badge-blink" : ""} style={{
+                                          fontSize: "11px",
+                                          fontWeight: "700",
+                                          padding: "3px 8px",
+                                          borderRadius: "4px",
+                                          backgroundColor:
+                                            deadline.type === "overdue" ? "var(--priority-high-bg)" :
+                                            deadline.type === "soon" ? "var(--priority-medium-bg)" : "rgba(255, 255, 255, 0.04)",
+                                          color:
+                                            deadline.type === "overdue" ? "var(--priority-high-text)" :
+                                            deadline.type === "soon" ? "var(--priority-medium-text)" : "var(--text-muted)",
+                                          border: "1px solid",
+                                          borderColor:
+                                            deadline.type === "overdue" ? "var(--priority-high-border)" :
+                                            deadline.type === "soon" ? "var(--priority-medium-border)" : "var(--border-glass)",
+                                        }}>
+                                          {deadline.text}
+                                        </span>
+                                      )}
+
+                                      {/* Priority Badge */}
+                                      <Badge priority={t.fields.priority?.name} />
+
+                                      {/* Status Badge */}
+                                      <Badge status={t.fields.status?.name} />
+
+                                      {/* Assignee Avatar */}
+                                      {t.fields.assignee ? (
+                                        <img
+                                          src={t.fields.assignee.avatarUrl}
+                                          alt={t.fields.assignee.displayName}
+                                          style={{ width: "24px", height: "24px", borderRadius: "50%" }}
+                                          title={t.fields.assignee.displayName}
+                                        />
+                                      ) : (
+                                        <div style={{
+                                          width: "24px",
+                                          height: "24px",
+                                          borderRadius: "50%",
+                                          border: "1px dashed var(--text-dim)",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          color: "var(--text-dim)",
+                                          fontSize: "10px"
+                                        }} title="Unassigned">
+                                          ?
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <EmptyStateMessage text="No tasks found matching current search queries or filters." showIcon={true} />
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 2: 👥 SPOKE TEAM DIRECTORY */}
+                    {activeCoordinatorTab === "team" && (
+                      <div className="fade-in" style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.1fr 0.9fr",
+                        gap: "30px",
+                        alignItems: "flex-start"
+                      }}>
+                        {/* Left Column: Member Directory & Add Member Form */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+                          {/* Directory list */}
+                          <div className="glass-panel" style={{ padding: "24px" }}>
+                            <h3 style={{ fontSize: "16px", fontWeight: "800", marginBottom: "16px", color: "var(--text-main)" }}>
+                              <span><FaUsers style={{ marginRight: "6px" }} /> {SPOKES[currentBoardId]?.name || "Campus Spoke"} Member Pool ({spokeMembers.length})</span>
+                            </h3>
+                            <div style={{ overflowX: "auto" }}>
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "var(--text-main)", textAlign: "left" }}>
+                                <thead>
+                                  <tr style={{ borderBottom: "1px solid var(--border-glass)", color: "var(--text-dim)" }}>
+                                    <th style={{ padding: "10px 8px", fontWeight: "750" }}>Member</th>
+                                    <th style={{ padding: "10px 8px", fontWeight: "750" }}>Email Address</th>
+                                    <th style={{ padding: "10px 8px", fontWeight: "750" }}>Role</th>
+                                    <th style={{ padding: "10px 8px", fontWeight: "750", textAlign: "right" }}>Type</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {spokeMembers.map((m) => (
+                                    <tr key={m.accountId} style={{ borderBottom: "1px solid var(--border-glass)" }}>
+                                      <td style={{ padding: "12px 8px" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                          <img src={m.avatarUrl} alt={m.displayName} style={{ width: "28px", height: "28px", borderRadius: "50%" }} />
+                                          <strong style={{ color: "var(--text-main)" }}>{m.displayName.replace(/ \((Student Developer|Faculty Mentor|Coordinator)\)/g, "")}</strong>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: "12px 8px", fontFamily: "var(--mono)", fontSize: "12px", color: "var(--text-dim)" }}>
+                                        {m.emailAddress || "N/A"}
+                                      </td>
+                                      <td style={{ padding: "12px 8px" }}>
+                                        <span style={{
+                                          fontSize: "10.5px",
+                                          fontWeight: "750",
+                                          background: m.displayName.includes("Mentor") || m.displayName.includes("Coordinator") ? "rgba(168, 85, 247, 0.08)" : "rgba(99, 102, 241, 0.08)",
+                                          color: m.displayName.includes("Mentor") || m.displayName.includes("Coordinator") ? "#a855f7" : "var(--primary)",
+                                          padding: "3px 8px",
+                                          borderRadius: "6px"
+                                        }}>
+                                          {m.displayName.includes("Mentor") || m.displayName.includes("Coordinator") ? "Faculty Mentor" : "Student Developer"}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: "12px 8px", textAlign: "right" }}>
+                                        <span style={{
+                                          fontSize: "9px",
+                                          fontWeight: "850",
+                                          background: m.isPersistent ? "rgba(45, 212, 191, 0.08)" : "rgba(255, 255, 255, 0.02)",
+                                          border: m.isPersistent ? "1px solid rgba(45, 212, 191, 0.15)" : "1px solid var(--border-glass)",
+                                          color: m.isPersistent ? "#2dd4bf" : "var(--text-muted)",
+                                          padding: "2px 6px",
+                                          borderRadius: "4px",
+                                          textTransform: "uppercase"
+                                        }}>
+                                          {m.isPersistent ? "Persistent" : "Simulated"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Add team member form */}
+                          <div className="glass-panel" style={{
+                            padding: "24px",
+                            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(168, 85, 247, 0.01))"
+                          }}>
+                            <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "16px", marginTop: 0 }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Add Student Team Member</span>
+                            </h3>
+                            <p style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "18px" }}>
+                              Register a new student developer to the campus spoke. They will instantly appear in directories and become assignable on Kanban boards.
+                            </p>
+                            <form onSubmit={async (e) => {
+                              e.preventDefault();
+                              if (!newMemberName.trim() || !newMemberEmail.trim()) {
+                                triggerToast("Please fill in both the display name and email fields.", "warning");
+                                return;
+                              }
+                              if (!newMemberEmail.includes("@") || !newMemberEmail.includes(".")) {
+                                triggerToast("Please enter a valid academic email address.", "warning");
+                                return;
+                              }
+
+                              setIsAddingMember(true);
+                              try {
+                                const res = await axios.post("http://localhost:5000/api/register", {
+                                  displayName: newMemberName.trim(),
+                                  email: newMemberEmail.toLowerCase().trim(),
+                                  password: "student123", // standard default credentials
+                                  role: "Student Developer",
+                                  persona: currentPersona // sets active spoke group, e.g. "spoke-kle"
+                                });
+
+                                if (res.data && res.data.success) {
+                                  triggerToast(` Successfully added and registered developer ${newMemberName}!`);
+                                  setNewMemberName("");
+                                  setNewMemberEmail("");
+                                  fetchSpokeMembers(currentBoardId);
+                                }
+                              } catch (err) {
+                                console.error(err);
+                                triggerToast(err.response?.data?.error || "Failed to register new team member.", "error");
+                              } finally {
+                                setIsAddingMember(false);
+                              }
+                            }} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>DEVELOPER DISPLAY NAME</label>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  placeholder="e.g. Akash Gupta"
+                                  value={newMemberName}
+                                  onChange={(e) => setNewMemberName(e.target.value)}
+                                  disabled={isAddingMember}
+                                  style={{ padding: "10px 14px", fontSize: "13px" }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>CAMPUS EMAIL ADDRESS</label>
+                                <input
+                                  type="email"
+                                  className="form-input"
+                                  placeholder="e.g. akash@kle.edu"
+                                  value={newMemberEmail}
+                                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                                  disabled={isAddingMember}
+                                  style={{ padding: "10px 14px", fontSize: "13px" }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>ROLE POLICIES & CREDENTIALS</label>
+                                <div style={{
+                                  padding: "10px 14px",
+                                  border: "1px solid var(--border-glass)",
+                                  background: "rgba(0,0,0,0.15)",
+                                  borderRadius: "8px",
+                                  fontSize: "11.5px",
+                                  color: "var(--text-muted)"
+                                }}>
+                                  Role auto-assigned to <strong>Student Developer</strong>.<br/>
+                                  Password auto-set to <strong style={{ color: "var(--primary)" }}>student123</strong> for demo connection.
+                                </div>
+                              </div>
+                              <button
+                                type="submit"
+                                disabled={isAddingMember}
+                                className="btn-primary"
+                                style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
+                              >
+                                {isAddingMember ? "Registering Account..." : "Add to Team Directory"}
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+
+                        {/* Right Column: Spoke Teams & Creation Form */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+                          {/* Active Teams directory cards */}
+                          <div className="glass-panel" style={{ padding: "24px" }}>
+                            <h3 style={{ fontSize: "16px", fontWeight: "800", marginBottom: "16px", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUsers /> Active Collaborative Teams ({spokeTeams.length})</span>
+                            </h3>
+                            {isTeamsLoading ? (
+                              <div style={{ padding: "20px", textAlign: "center", color: "var(--text-dim)" }}>
+                                Loading teams...
+                              </div>
+                            ) : spokeTeams.length > 0 ? (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                {spokeTeams.map((team) => (
+                                  <div key={team._id} className="glass-panel" style={{
+                                    padding: "16px",
+                                    background: "rgba(255, 255, 255, 0.01)",
+                                    border: "1px solid var(--border-glass)",
+                                    borderRadius: "12px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "12px",
+                                    transition: "var(--transition-smooth)",
+                                    position: "relative"
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = "var(--primary)";
+                                    e.currentTarget.style.background = "rgba(99, 102, 241, 0.03)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = "var(--border-glass)";
+                                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.01)";
+                                  }}
+                                  >
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                      <strong style={{ color: "var(--text-main)", fontSize: "14px" }}>
+                                        {team.name}
+                                      </strong>
+                                      <button
+                                        onClick={() => handleDeleteTeam(team._id)}
+                                        style={{
+                                          background: "rgba(239, 68, 68, 0.08)",
+                                          border: "1px solid rgba(239, 68, 68, 0.15)",
+                                          borderRadius: "6px",
+                                          color: "#ef4444",
+                                          padding: "4px 8px",
+                                          fontSize: "11px",
+                                          fontWeight: "750",
+                                          cursor: "pointer",
+                                          transition: "var(--transition-smooth)"
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.background = "#ef4444";
+                                          e.currentTarget.style.color = "white";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                                          e.currentTarget.style.color = "#ef4444";
+                                        }}
+                                      >
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>Disband <FaTrashAlt /></span>
+                                      </button>
+                                    </div>
+                                    
+                                    {/* Faculty Mentor Display */}
+                                    {team.mentor ? (
+                                      <div style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        background: "rgba(168, 85, 247, 0.05)",
+                                        border: "1px solid rgba(168, 85, 247, 0.15)",
+                                        borderRadius: "8px",
+                                        padding: "6px 10px",
+                                        alignSelf: "flex-start"
+                                      }}>
+                                        <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
+                                        <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
+                                          <span>Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong></span>
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: "11px", color: "var(--text-dim)", fontStyle: "italic" }}>
+                                        No Faculty Coordinator assigned
+                                      </span>
+                                    )}
+
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+                                      {team.members.map((m) => (
+                                        <div key={m.accountId} style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "6px",
+                                          background: "rgba(255, 255, 255, 0.03)",
+                                          border: "1px solid var(--border-glass)",
+                                          borderRadius: "20px",
+                                          padding: "4px 10px 4px 6px"
+                                        }}>
+                                          <img src={m.avatarUrl} alt={m.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
+                                          <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600" }}>
+                                            {m.displayName}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div style={{ fontSize: "10px", color: "var(--text-dim)", alignSelf: "flex-end" }}>
+                                      Created {new Date(team.createdAt).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{
+                                padding: "30px",
+                                textAlign: "center",
+                                color: "var(--text-dim)",
+                                fontStyle: "italic",
+                                fontSize: "12.5px",
+                                border: "1px dashed var(--border-glass)",
+                                borderRadius: "8px",
+                                background: "rgba(255,255,255,0.002)"
+                              }}>
+                                No persistent teams have been formed yet. Form a new team below!
+                              </div>
+                            )}
+                          </div>
+
+                          {/* <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span> checkbox builder form */}
+                          <div className="glass-panel" style={{
+                            padding: "24px",
+                            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(45, 212, 191, 0.01))"
+                          }}>
+                            <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "12px", marginTop: 0 }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span>
+                            </h3>
+                            <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "16px" }}>
+                              Combine student developers into a persistent collaborative team and select a Faculty Coordinator to guide them.
+                            </p>
+                            <form onSubmit={handleCreateTeam} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TEAM NAME</label>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  placeholder="e.g. Agritech AI Drone Team"
+                                  value={newTeamName}
+                                  onChange={(e) => setNewTeamName(e.target.value)}
+                                  disabled={isCreatingTeam}
+                                  style={{ padding: "10px 14px", fontSize: "13px" }}
+                                />
+                              </div>
+                              
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>FACULTY COORDINATOR / MENTOR</label>
+                                <select
+                                  className="form-input"
+                                  value={selectedTeamMentor}
+                                  onChange={(e) => setSelectedTeamMentor(e.target.value)}
+                                  disabled={isCreatingTeam}
+                                  style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
+                                >
+                                  <option value="">-- Choose Faculty Coordinator --</option>
+                                  {spokeMembers.filter(m => m.displayName.includes("Mentor") || m.displayName.includes("Coordinator")).map(m => (
+                                    <option key={m.accountId} value={m.accountId}>{m.displayName.replace(/ \((Faculty Mentor|Coordinator)\)/g, "")}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>SELECT TEAM MEMBERS</label>
+                                <div style={{
+                                  maxHeight: "180px",
+                                  overflowY: "auto",
+                                  border: "1px solid var(--border-glass)",
+                                  borderRadius: "8px",
+                                  padding: "10px 14px",
+                                  background: "rgba(0, 0, 0, 0.15)",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "8px"
+                                }}>
+                                  {spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).length > 0 ? (
+                                    spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).map((m) => {
+                                      const isChecked = selectedTeamMembers.includes(m.accountId);
+                                      return (
+                                        <label key={m.accountId} style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "10px",
+                                          cursor: "pointer",
+                                          padding: "4px 0",
+                                          userSelect: "none"
+                                        }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            disabled={isCreatingTeam}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                setSelectedTeamMembers([...selectedTeamMembers, m.accountId]);
+                                              } else {
+                                                setSelectedTeamMembers(selectedTeamMembers.filter(id => id !== m.accountId));
+                                              }
+                                            }}
+                                            style={{ cursor: "pointer" }}
+                                          />
+                                          <img src={m.avatarUrl} alt={m.displayName} style={{ width: "22px", height: "22px", borderRadius: "50%" }} />
+                                          <span style={{ fontSize: "12.5px", color: isChecked ? "var(--text-main)" : "var(--text-muted)" }}>
+                                            {m.displayName.replace(/ \((Student Developer)\)/g, "")}
+                                          </span>
+                                        </label>
+                                      );
+                                    })
+                                  ) : (
+                                    <div style={{ fontSize: "12px", color: "var(--text-dim)", fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>
+                                      No students registered yet.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                type="submit"
+                                disabled={isCreatingTeam}
+                                className="btn-primary"
+                                style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
+                              >
+                                {isCreatingTeam ? "Creating Spoke Team..." : "Create Spoke Team"}
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 3: 💼 B2B PROJECT & SPRINT ALLOCATOR */}
+                    {activeCoordinatorTab === "projects" && (
+                      <div className="fade-in" style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.8fr 1.4fr",
+                        gap: "30px",
+                        alignItems: "flex-start"
+                      }}>
+                        {/* B2B projects overview list */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                          <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-main)", margin: "0 0 10px 0" }}>
+                            Active B2B Corporate Projects Allocated to {SPOKES[currentBoardId]?.name || "Our Campus"}
+                          </h3>
+
+                          {acceptedProjectsForSpoke.length > 0 ? (
+                            acceptedProjectsForSpoke.map((proj) => {
+                              // Calculate milestones progress
+                              const expectedSummary = `[${proj.company}] ${proj.title}`;
+                              const epicKey = proj.allocations ? proj.allocations.find(a => a.targetCampusId === currentBoardId)?.assignedKey : proj.assignedKey;
+                              const projTasks = tasks.filter(t => {
+                                const parentKey = t.fields?.parent?.key || t.parent?.key;
+                                const parentSummary = t.fields?.parent?.fields?.summary || t.fields?.parent?.summary || t.parent?.fields?.summary || t.parent?.summary;
+                                return (epicKey && parentKey === epicKey) || (parentSummary && parentSummary === expectedSummary);
+                              });
+                              
+                              const totalT = projTasks.length;
+                              const doneT = projTasks.filter(t => (t.fields?.status?.name || t.fields?.status || "") === "Done").length;
+                              const progressPct = totalT > 0 ? Math.round((doneT / totalT) * 100) : 0;
+
+                              return (
+                                <div key={proj.id} className="glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                      <CompanyLogo company={proj.company} size={36} />
+                                      <div>
+                                        <h4 style={{ margin: 0, fontSize: "13.5px", fontWeight: "800", color: "var(--text-main)" }}>{proj.title}</h4>
+                                        <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Sponsor: <strong>{proj.company}</strong> • Epic: <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{epicKey || "PNLP-3"}</strong></span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedEpicForTask(proj.id);
+                                        setNewSprintTaskDueDate(proj.proposedDueDate);
+                                        triggerToast(`Linked B2B Project: ${proj.company} ${proj.title}`);
+                                      }}
+                                      className="btn-secondary"
+                                      style={{ padding: "6px 12px", fontSize: "11px", borderColor: "rgba(99, 102, 241, 0.25)", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px" }}
+                                    >
+                                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaLink /> Link Form</span>
+                                    </button>
+                                  </div>
+                                  <p style={{ margin: 0, fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4" }}>{proj.description}</p>
+                                  <div style={{
+                                    background: "rgba(255, 255, 255, 0.005)",
+                                    border: "1px solid var(--border-glass)",
+                                    borderRadius: "8px",
+                                    padding: "10px 14px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "6px",
+                                    fontSize: "12px"
+                                  }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                      <span style={{ color: "var(--text-muted)" }}>Agile Sprint Milestone Completion</span>
+                                      <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{progressPct}% ({doneT}/{totalT} Phases)</strong>
+                                    </div>
+                                    <div style={{ height: "6px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
+                                      <div style={{ width: `${progressPct}%`, height: "100%", background: "linear-gradient(90deg, var(--primary), var(--secondary))", borderRadius: "3px" }}></div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="glass-panel" style={{ padding: "30px", textAlign: "center", color: "var(--text-dim)", fontStyle: "italic", fontSize: "13px" }}>
+                              No active corporate projects have been allocated to your campus spoke yet.
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Sprint task assignment form */}
+                        <div className="glass-panel" style={{
+                          padding: "24px",
+                          background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(45, 212, 191, 0.01))"
+                        }}>
+                          <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "16px", marginTop: 0 }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Assign Sprint Task under B2B Project</span>
+                          </h3>
+                          <p style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "18px" }}>
+                            Create a detailed sprint child task under an allocated B2B program, set its target milestones, and assign it directly to a Student Developer.
+                          </p>
+                          <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!selectedEpicForTask) {
+                              triggerToast("Please select the target B2B Project to link this sprint task under.", "warning");
+                              return;
+                            }
+                            if (!newSprintTaskTitle.trim()) {
+                              triggerToast("Please enter a sprint task title.", "warning");
+                              return;
+                            }
+                            if (!newSprintTaskAssignee) {
+                              triggerToast("Please select a student developer to assign this task to.", "warning");
+                              return;
+                            }
+
+                            const linkedEpicObj = acceptedProjectsForSpoke.find(p => p.id === selectedEpicForTask);
+                            if (!linkedEpicObj) {
+                              triggerToast("Selected B2B Project is invalid or inactive.", "warning");
+                              return;
+                            }
+
+                            const epicKey = linkedEpicObj.allocations ? linkedEpicObj.allocations.find(a => a.targetCampusId === currentBoardId)?.assignedKey : linkedEpicObj.assignedKey;
+                            const epicSummary = `[${linkedEpicObj.company}] ${linkedEpicObj.title}`;
+
+                            setIsCreatingSprintTask(true);
+                            try {
+                              const res = await axios.post("http://localhost:5000/tasks", {
+                                summary: newSprintTaskTitle.trim(),
+                                description: newSprintTaskDesc.trim(),
+                                statusName: "To Do",
+                                priorityName: newSprintTaskPriority,
+                                assigneeId: newSprintTaskAssignee,
+                                reporterId: currentUser?.accountId || "mock-1",
+                                dueDate: newSprintTaskDueDate || linkedEpicObj.proposedDueDate,
+                                issueTypeName: "Task",
+                                boardId: currentBoardId,
+                                parentId: `mock-${currentBoardId}-epic-preload-${epicKey || "PNLP-3"}`,
+                                parentKey: epicKey || "PNLP-3",
+                                parentSummary: epicSummary
+                              });
+
+                              if (res.data && res.data.success) {
+                                triggerToast(` Sprint task "${newSprintTaskTitle}" successfully provisioned and assigned!`);
+                                setNewSprintTaskTitle("");
+                                setNewSprintTaskDesc("");
+                                fetchJiraTasks(true);
+                                fetchHubMetrics(true); // Update portfolio stats
+                              }
+                            } catch (err) {
+                              console.error(err);
+                              triggerToast("Failed to create and assign sprint task.", "error");
+                            } finally {
+                              setIsCreatingSprintTask(false);
+                            }
+                          }} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                            <div>
+                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TARGET CORPORATE PROJECT (EPIC)</label>
+                              <select
+                                className="form-input"
+                                value={selectedEpicForTask}
+                                onChange={(e) => {
+                                  setSelectedEpicForTask(e.target.value);
+                                  const linked = acceptedProjectsForSpoke.find(p => p.id === e.target.value);
+                                  if (linked) {
+                                    setNewSprintTaskDueDate(linked.proposedDueDate);
+                                  }
+                                }}
+                                disabled={isCreatingSprintTask}
+                                style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
+                              >
+                                <option value="">-- Choose Corporate Project --</option>
+                                {acceptedProjectsForSpoke.map(p => (
+                                  <option key={p.id} value={p.id}>[{p.company}] {p.title}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>SPRINT TASK SUMMARY</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                placeholder="e.g. Integrate camera feeds into deep learning classifier"
+                                value={newSprintTaskTitle}
+                                onChange={(e) => setNewSprintTaskTitle(e.target.value)}
+                                disabled={isCreatingSprintTask}
+                                style={{ padding: "10px 14px", fontSize: "13px" }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>ASSIGNEE DEVELOPER</label>
+                              <select
+                                className="form-input"
+                                value={newSprintTaskAssignee}
+                                onChange={(e) => setNewSprintTaskAssignee(e.target.value)}
+                                disabled={isCreatingSprintTask}
+                                style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
+                              >
+                                <option value="">-- Choose Team or Developer --</option>
+                                {spokeTeams.length > 0 && (
+                                  <optgroup label="Collaborative Spoke Teams" style={{ background: "#111827", color: "var(--primary)", fontWeight: "bold" }}>
+                                    {spokeTeams.map(team => (
+                                      <option key={team._id} value={team._id} style={{ color: "white" }}>
+                                        <span><FaUsers style={{ marginRight: "6px" }} /> {team.name} ({team.members.length} ({team.members.length} Members)</span>
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                <optgroup label="Individual Student Developers" style={{ background: "#111827", color: "#a855f7", fontWeight: "bold" }}>
+                                  {spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).map(m => (
+                                    <option key={m.accountId} value={m.accountId} style={{ color: "white" }}>
+                                      <span><FaUser style={{ marginRight: "6px", color: "var(--primary)" }} /> {m.displayName.replace(/ \((Student Developer)\)/g, "")}</span>
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              </select>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>PRIORITY</label>
+                                <select
+                                  className="form-input"
+                                  value={newSprintTaskPriority}
+                                  onChange={(e) => setNewSprintTaskPriority(e.target.value)}
+                                  disabled={isCreatingSprintTask}
+                                  style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
+                                >
+                                  <option value="High">High</option>
+                                  <option value="Medium">Medium</option>
+                                  <option value="Low">Low</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>MILESTONE DUE DATE</label>
+                                <input
+                                  type="date"
+                                  className="form-input"
+                                  value={newSprintTaskDueDate}
+                                  onChange={(e) => setNewSprintTaskDueDate(e.target.value)}
+                                  disabled={isCreatingSprintTask}
+                                  style={{ padding: "8px 12px", fontSize: "12.5px" }}
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>DETAILED SPRINT SCOPE</label>
+                              <textarea
+                                className="form-input"
+                                placeholder="Describe specific deliverables, APIs, and expectations for this milestone phase..."
+                                value={newSprintTaskDesc}
+                                onChange={(e) => setNewSprintTaskDesc(e.target.value)}
+                                disabled={isCreatingSprintTask}
+                                style={{ padding: "10px 14px", fontSize: "13px", height: "65px", resize: "none" }}
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              disabled={isCreatingSprintTask}
+                              className="btn-primary"
+                              style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
+                            >
+                              {isCreatingSprintTask ? "Allocating sprint task..." : "Assign Sprint Task & Notify"}
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
               </div>
             )}
 
@@ -4378,10 +6060,10 @@ function App() {
                   value={newIssueType}
                   onChange={(e) => setNewIssueType(e.target.value)}
                 >
-                  <option value="Task">📋 Task</option>
-                  <option value="Story">📖 Story</option>
-                  <option value="Bug">🐛 Bug</option>
-                  <option value="Epic">👑 Epic</option>
+                  <option value="Task">Task</option>
+                  <option value="Story">Story</option>
+                  <option value="Bug">Bug</option>
+                  <option value="Epic">Epic</option>
                 </select>
               </div>
 
@@ -4543,9 +6225,9 @@ function App() {
                       selectedTask.fields.issueType === "Bug" ? "rgba(239, 68, 68, 0.25)" :
                       selectedTask.fields.issueType === "Story" ? "rgba(16, 185, 129, 0.25)" : "rgba(59, 130, 246, 0.25)"
                   }}>
-                    {selectedTask.fields.issueType === "Epic" ? "👑 Epic" :
-                     selectedTask.fields.issueType === "Bug" ? "🐛 Bug" :
-                     selectedTask.fields.issueType === "Story" ? "📖 Story" : "📋 Task"}
+                    {selectedTask.fields.issueType === "Epic" ? "Epic" :
+                     selectedTask.fields.issueType === "Bug" ? "Bug" :
+                     selectedTask.fields.issueType === "Story" ? "Story" : "Task"}
                   </span>
                 )}
               </div>
@@ -4612,11 +6294,11 @@ function App() {
                     transition: "var(--transition-smooth)"
                   }}
                 >
-                  {tabName === "overview" && "📋 General"}
-                  {tabName === "subtasks" && (selectedTask.fields.issueType === "Epic" ? `👑 Epic Tasks (${currentTaskChildren.length})` : `☑️ Subtasks (${currentTaskChildren.length})`)}
-                  {tabName === "worklog" && "⏱️ Worklogs"}
-                  {tabName === "links" && "🏷️ Links & Tags"}
-                  {tabName === "deliverables" && "📂 Deliverables"}
+                  {tabName === "overview" && "General"}
+                  {tabName === "subtasks" && (selectedTask.fields.issueType === "Epic" ? `Epic Tasks (${currentTaskChildren.length})` : `Subtasks (${currentTaskChildren.length})`)}
+                  {tabName === "worklog" && "Worklogs"}
+                  {tabName === "links" && "Links & Tags"}
+                  {tabName === "deliverables" && "Deliverables"}
                 </button>
               ))}
             </div>
@@ -4642,10 +6324,10 @@ function App() {
                   }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                       <span style={{ fontSize: "13.5px", fontWeight: "700", color: selectedTask.fields.flagged ? "var(--accent)" : "var(--text-main)" }}>
-                        ⚠️ Blocker Flag Impediment
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--accent)" }}><FaExclamationTriangle /> Blocker Flag Impediment</span>
                       </span>
                       <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                        {selectedTask.fields.flagged ? "🚨 Card flashing active on Kanban board." : "Flag issue as blocked by a dependency."}
+                        {selectedTask.fields.flagged ? "Blocked status flash active on board." : "Flag issue as blocked by a dependency."}
                       </span>
                     </div>
                     <button
@@ -4663,7 +6345,7 @@ function App() {
                         cursor: isCentralAdmin ? "not-allowed" : "pointer"
                       }}
                     >
-                      {selectedTask.fields.flagged ? "🚨 Blocked" : "Flag Blocker"}
+                      {selectedTask.fields.flagged ? "Blocked" : "Flag Blocker"}
                     </button>
                   </div>
 
@@ -4859,7 +6541,7 @@ function App() {
                     alignItems: "center"
                   }}>
                     <div>
-                      <label style={modalLabelStyle}>📅 Target Due Date</label>
+                      <label style={modalLabelStyle}><FaCalendarAlt style={{ marginRight: '6px' }} /> Target Due Date</label>
                       <input
                         type="date"
                         disabled={isCentralAdmin}
@@ -4907,7 +6589,7 @@ function App() {
               {modalTab === "subtasks" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   <h3 style={{ fontSize: "13.5px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
-                    {selectedTask.fields.issueType === "Epic" ? "👑 Epic Child Tasks" : "☑️ Child Checklist Items"}
+                    {selectedTask.fields.issueType === "Epic" ? "Epic Child Tasks" : "Child Checklist Items"}
                   </h3>
 
                   {/* Add subtask inline form */}
@@ -4931,7 +6613,7 @@ function App() {
                         onChange={(e) => setSubtaskAssigneeId(e.target.value)}
                         style={{ flex: "1 1 150px", padding: "10px 14px", fontSize: "13px", height: "auto" }}
                       >
-                        <option value="">👤 Assignee...</option>
+                        <option value="">Assignee...</option>
                         {activeAssignees.map(member => (
                           <option key={member.accountId} value={member.accountId}>
                             {member.name}
@@ -5009,7 +6691,7 @@ function App() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <h3 style={{ fontSize: "13.5px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
-                      ⏱️ Log Spent Hours
+                      Log Spent Hours
                     </h3>
                     {selectedTask.fields.timetracking && (
                       <span style={{ fontSize: "12px", color: "var(--primary)", fontWeight: "700" }}>
@@ -5074,7 +6756,7 @@ function App() {
                             }}
                           >
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                              <span style={{ fontWeight: "700", color: "var(--primary)" }}>⏱️ {log.timeSpent} spent</span>
+                              <span style={{ fontWeight: "700", color: "var(--primary)", display: "inline-flex", alignItems: "center", gap: "4px" }}><FaClock /> {log.timeSpent} spent</span>
                               <span style={{ color: "var(--text-dim)", fontSize: "10.5px" }}>{new Date(log.created).toLocaleDateString()}</span>
                             </div>
                             <p style={{ color: "var(--text-main)", fontStyle: "italic", margin: "0 0 4px 0", fontSize: "12px" }}>
@@ -5102,7 +6784,7 @@ function App() {
                   {/* Labels Organizer */}
                   <div>
                     <h3 style={{ fontSize: "13.5px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px" }}>
-                      🏷️ Labels & Custom Tags
+                      Labels & Custom Tags
                     </h3>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
                       {selectedTask.fields.labels && selectedTask.fields.labels.length > 0 ? (
@@ -5169,7 +6851,7 @@ function App() {
                   {/* Issue dependency linking */}
                   <div>
                     <h3 style={{ fontSize: "13.5px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px" }}>
-                      🔗 Issue Dependency Relations
+                      Issue Dependency Relations
                     </h3>
 
                     {currentPersona !== "moderator" && (
@@ -5266,14 +6948,14 @@ function App() {
                       color: "#ef4444",
                       fontSize: "13.5px"
                     }}>
-                      ⚠️ Epic Alert: Deliverables must be submitted on sprint child tasks, not Epics.
+                      Epic Alert: Deliverables must be submitted on sprint child tasks, not Epics.
                     </div>
                   ) : (
                     <>
                       {/* Submission Form */}
                       <div className="glass-panel" style={{ padding: "16px", background: "rgba(255,255,255,0.015)" }}>
                         <h3 style={{ fontSize: "13.5px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "12px", marginTop: 0 }}>
-                          ➕ Submit Sprint Deliverable Artifact
+                          Submit Sprint Deliverable Artifact
                         </h3>
                         <form onSubmit={handleSubmitDeliverable} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -5324,7 +7006,7 @@ function App() {
                       {/* Submissions History List */}
                       <div>
                         <h3 style={{ fontSize: "13.5px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "12px" }}>
-                          📂 Submitted Artifacts History
+                          Submitted Artifacts History
                         </h3>
                         <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "250px", overflowY: "auto" }}>
                           {isSubmissionsLoading ? (
@@ -5347,7 +7029,7 @@ function App() {
                                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, flex: 1, marginRight: "16px" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                     <span style={{ fontWeight: "700", color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                      📄 {sub.fileName}
+                                      <span><FaPaperclip style={{ marginRight: '6px' }} /> {sub.fileName}</span>
                                     </span>
                                     <span style={{ fontSize: "10px", color: "var(--text-dim)" }}>
                                       {new Date(sub.submittedAt).toLocaleString()}
@@ -5369,7 +7051,7 @@ function App() {
                                   className="btn-secondary"
                                   style={{ padding: "6px 12px", textDecoration: "none", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "6px" }}
                                 >
-                                  🔗 Open Artifact
+                                  <span><FaLink style={{ marginRight: '6px' }} /> Open Artifact</span>
                                 </a>
                               </div>
                             ))
@@ -5532,7 +7214,7 @@ function App() {
                 <textarea
                   required
                   className="form-input"
-                  style={{ minHeight: "180px", fontSize: "13px", lineHeight: "1.6", fontFamily: "monospace" }}
+                  style={{ minHeight: "180px", fontSize: "13px", lineHeight: "1.6", fontFamily: "var(--mono)" }}
                   value={emailBody}
                   onChange={(e) => setEmailBody(e.target.value)}
                 />
@@ -5609,7 +7291,7 @@ function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
               <div>
                 <h2 style={{ fontSize: "19px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span>🤝 Allocate Sponsor Project</span>
+                  <span>Allocate Sponsor Project</span>
                 </h2>
                 <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
                   Assigning <strong>{selectedAssignProject.title}</strong> by <strong>{selectedAssignProject.company}</strong>
@@ -5635,10 +7317,10 @@ function App() {
                   onChange={(e) => setAssignTargetCampus(e.target.value)}
                   style={{ width: "100%", padding: "10px 14px", height: "42px", fontSize: "14px" }}
                 >
-                  <option value="3">🏢 KLE Spoke (Live Jira - Key: AK)</option>
-                  <option value="101">🏢 COEP Spoke (Live Jira - Key: AK)</option>
-                  <option value="102">🏢 MMCOEP Spoke (Live Jira - Key: AK)</option>
-                  <option value="103">🏢 RIT Spoke (Live Jira - Key: AK)</option>
+                  <option value="3">KLE Spoke (Live Jira - Key: AK)</option>
+                  <option value="101">COEP Spoke (Live Jira - Key: AK)</option>
+                  <option value="102">MMCOEP Spoke (Live Jira - Key: AK)</option>
+                  <option value="103">RIT Spoke (Live Jira - Key: AK)</option>
                 </select>
                 <p style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "6px", lineHeight: "1.4" }}>
                   All Spoke campuses are 100% active and connected directly to their backing Agile boards in your Atlassian Jira Cloud instance.
@@ -5664,7 +7346,7 @@ function App() {
               {/* Standard FIP Workstreams Preview */}
               <div className="glass-panel" style={{ padding: "16px", background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)", borderRadius: "10px" }}>
                 <h4 style={{ fontSize: "11.5px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>
-                  ⚙️ Standard Auto-Provisioned Workstreams
+                  Standard Auto-Provisioned Workstreams
                 </h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "12.5px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-main)" }}>
@@ -5702,7 +7384,7 @@ function App() {
                     boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
                   }}
                 >
-                  Automate Provisioning ➔
+                  Automate Provisioning
                 </button>
               </div>
             </form>
@@ -5737,7 +7419,7 @@ function App() {
             boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
           }}>
             <h3 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-main)", marginBottom: "8px" }}>
-              🛠️ Ingest New Corporate Proposal
+              Ingest New Corporate Proposal
             </h3>
             <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginBottom: "24px" }}>
               Manually ingest a new corporate program proposal into the Central Project Intake pool.
@@ -5844,7 +7526,148 @@ function App() {
                   }}
                   disabled={isIngesting}
                 >
-                  {isIngesting ? "Ingesting..." : "Confirm Ingest 🚀"}
+                  {isIngesting ? "Ingesting..." : "Confirm Ingest"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT B2B PROJECT PROPOSAL MODAL */}
+      {editingProject && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          animation: "fadeIn 0.25s ease"
+        }}>
+          <div className="glass-panel" style={{
+            width: "500px",
+            padding: "32px",
+            position: "relative",
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-glass)",
+            borderRadius: "12px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+          }}>
+            <h3 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-main)", marginBottom: "8px" }}>
+              Edit Corporate Project
+            </h3>
+            <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginBottom: "24px" }}>
+              Update the specifications and budget parameters of the active B2B project contract.
+            </p>
+
+            <form onSubmit={handleUpdateProjectSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "10.5px", fontWeight: "700", color: "var(--text-muted)", marginBottom: "6px" }}>Company / Partner Sponsor</label>
+                <select
+                  className="form-select"
+                  value={editCompany}
+                  onChange={(e) => setEditCompany(e.target.value)}
+                  style={{ width: "100%", height: "38px" }}
+                >
+                  <option value="NVIDIA">NVIDIA</option>
+                  <option value="Intel">Intel</option>
+                  <option value="Google">Google</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "10.5px", fontWeight: "700", color: "var(--text-muted)", marginBottom: "6px" }}>Project Title</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Edge AI Smart Agriculture System"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  required
+                  style={{ padding: "8px 12px", fontSize: "13px" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "10.5px", fontWeight: "700", color: "var(--text-muted)", marginBottom: "6px" }}>Project Description</label>
+                <textarea
+                  className="form-input"
+                  placeholder="Detailed scope and deliverables of the company sponsorship program..."
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  required
+                  rows={3}
+                  style={{ padding: "8px 12px", fontSize: "13px", resize: "none" }}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "10.5px", fontWeight: "700", color: "var(--text-muted)", marginBottom: "6px" }}>Budget Funding</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. $25,000"
+                    value={editBudget}
+                    onChange={(e) => setEditBudget(e.target.value)}
+                    required
+                    style={{ padding: "8px 12px", fontSize: "13px" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "10.5px", fontWeight: "700", color: "var(--text-muted)", marginBottom: "6px" }}>Duration</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. 6 Months"
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(e.target.value)}
+                    required
+                    style={{ padding: "8px 12px", fontSize: "13px" }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "10.5px", fontWeight: "700", color: "var(--text-muted)", marginBottom: "6px" }}>Proposed Target Deadline</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={editDueDate}
+                  onChange={(e) => setEditDueDate(e.target.value)}
+                  required
+                  style={{ padding: "8px 12px", fontSize: "13px" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingProject(null)}
+                  className="btn-secondary"
+                  style={{ padding: "8px 18px" }}
+                  disabled={isUpdatingProject}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{
+                    padding: "8px 20px",
+                    background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                    borderColor: "transparent",
+                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)"
+                  }}
+                  disabled={isUpdatingProject}
+                >
+                  {isUpdatingProject ? "Saving Changes..." : "Save Changes"}
                 </button>
               </div>
             </form>
@@ -5878,7 +7701,7 @@ function App() {
             boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
           }}>
             <h3 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-main)", marginBottom: "8px" }}>
-              ⚙️ Platform System Settings
+              Platform System Settings
             </h3>
             <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginBottom: "24px" }}>
               Configure Atlassian Jira credentials, SMTP gateway settings, and manage cache.
@@ -5921,7 +7744,7 @@ function App() {
                 </div>
                 <div>
                   <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-                    💡 Ethereal Test SMTP Gateway auto-provisions in sandbox mode when custom fields are empty.
+                    Ethereal Test SMTP Gateway auto-provisions in sandbox mode when custom fields are empty.
                   </span>
                 </div>
               </div>
@@ -5944,10 +7767,10 @@ function App() {
                         const res = await fetch("http://localhost:5000/cache/clear", { method: "POST" });
                         const data = await res.json();
                         if (data.success) {
-                          triggerToast("🧹 Server cache successfully purged!");
+                          triggerToast("Server cache successfully purged!");
                         }
                       } catch {
-                        triggerToast("🧹 Cache cleared locally!");
+                        triggerToast("Cache cleared locally!");
                       }
                     }}
                     className="btn-primary"
@@ -6006,7 +7829,7 @@ function App() {
           }}>
             <div>
               <h3 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
-                💬 FIP Cohort Live Chat
+                FIP Cohort Live Chat
               </h3>
               <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                 Inter-campus student & mentor collaboration
@@ -6127,7 +7950,7 @@ function App() {
             boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
           }}>
             <h3 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-main)", marginBottom: "8px" }}>
-              🎓 FIP Campus Cohort Academic Progress
+              FIP Campus Cohort Academic Progress
             </h3>
             <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginBottom: "24px" }}>
               Overview of student cohorts, faculty mentors, and academic progress across all active campuses.
@@ -6146,28 +7969,28 @@ function App() {
                 </thead>
                 <tbody>
                   <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 10px", fontWeight: "700", color: "var(--text-main)" }}>🏢 KLE Spoke (Hub)</td>
+                    <td style={{ padding: "12px 10px", fontWeight: "700", color: "var(--text-main)" }}>KLE Spoke (Hub)</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>35 Students</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>4 Mentors</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>2 Projects</td>
                     <td style={{ textAlign: "right", padding: "12px 10px", fontWeight: "700", color: "var(--status-done-text)" }}>66%</td>
                   </tr>
                   <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 10px", fontWeight: "700", color: "var(--text-main)" }}>🏢 COEP Spoke</td>
+                    <td style={{ padding: "12px 10px", fontWeight: "700", color: "var(--text-main)" }}>COEP Spoke</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>24 Students</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>3 Mentors</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>2 Projects</td>
                     <td style={{ textAlign: "right", padding: "12px 10px", fontWeight: "700", color: "var(--status-progress-text)" }}>33%</td>
                   </tr>
                   <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 10px", fontWeight: "700", color: "var(--text-main)" }}>🏢 MMCOEP Spoke</td>
+                    <td style={{ padding: "12px 10px", fontWeight: "700", color: "var(--text-main)" }}>MMCOEP Spoke</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>18 Students</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>2 Mentors</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>1 Project</td>
                     <td style={{ textAlign: "right", padding: "12px 10px", fontWeight: "700", color: "var(--status-backlog-text)" }}>0%</td>
                   </tr>
                   <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 10px", fontWeight: "700", color: "var(--text-main)" }}>🏢 RIT Spoke</td>
+                    <td style={{ padding: "12px 10px", fontWeight: "700", color: "var(--text-main)" }}>RIT Spoke</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>20 Students</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>3 Mentors</td>
                     <td style={{ textAlign: "center", padding: "12px 10px", color: "var(--text-muted)" }}>1 Project</td>
@@ -6177,7 +8000,7 @@ function App() {
               </table>
 
               <div style={{ background: "var(--bg-subtle)", padding: "16px", borderRadius: "8px", border: "1px solid var(--border-subtle)", marginTop: "8px" }}>
-                <h4 style={{ fontWeight: "700", fontSize: "13px", color: "var(--text-main)", marginBottom: "6px" }}>🏆 Top Performing Cohort</h4>
+                <h4 style={{ fontWeight: "700", fontSize: "13px", color: "var(--text-main)", marginBottom: "6px" }}>Top Performing Cohort</h4>
                 <p style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4" }}>
                   <strong>KLE Spoke</strong> is leading portfolio progress with <strong>66% avg completion rate</strong> across scheduled milestones on the NVIDIA Edge AI project.
                 </p>
@@ -6410,7 +8233,7 @@ function ColumnHeader({ title, count, color, bgColor, pulse }) {
           }} className="pulse-glow"></span>
         )}
         <span style={{ fontWeight: "700", fontSize: "15px", letterSpacing: "0.2px" }}>
-          {title === "Backlog" ? "📥 " : title === "In Progress" ? "⚡ " : title === "Done" ? "✅ " : ""}
+          {title === "Backlog" ? <FaInbox style={{ marginRight: "6px", verticalAlign: "middle" }} /> : title === "In Progress" ? <FaHourglassHalf style={{ marginRight: "6px", verticalAlign: "middle" }} /> : title === "Done" ? <FaCheckCircle style={{ marginRight: "6px", verticalAlign: "middle" }} /> : ""}
           {title}
         </span>
       </div>
@@ -6505,9 +8328,9 @@ function DraggableCard({ task, index, onClick }) {
                     task.fields.issueType === "Bug" ? "rgba(239, 68, 68, 0.25)" :
                     task.fields.issueType === "Story" ? "rgba(16, 185, 129, 0.25)" : "rgba(59, 130, 246, 0.25)"
                 }}>
-                  {task.fields.issueType === "Epic" ? "👑 Epic" :
-                   task.fields.issueType === "Bug" ? "🐛 Bug" :
-                   task.fields.issueType === "Story" ? "📖 Story" : "📋 Task"}
+                  {task.fields.issueType === "Epic" ? "Epic" :
+                   task.fields.issueType === "Bug" ? "Bug" :
+                   task.fields.issueType === "Story" ? "Story" : "Task"}
                 </span>
               )}
               {task.fields.flagged && (
@@ -6521,7 +8344,7 @@ function DraggableCard({ task, index, onClick }) {
                   padding: "2px 6px",
                   letterSpacing: "0.2px"
                 }}>
-                  🚨 BLOCKED
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><FaExclamationTriangle style={{ color: "#ef4444" }} /> Blocked</span>
                 </span>
               )}
             </div>
@@ -6564,7 +8387,7 @@ function DraggableCard({ task, index, onClick }) {
               alignItems: "center",
               gap: "4px"
             }}>
-              <span>📁</span>
+              <span><FaFolderOpen /></span>
               <span>{task.fields.parent.summary}</span>
             </div>
           )}
@@ -6623,7 +8446,7 @@ function DraggableCard({ task, index, onClick }) {
                   alignItems: "center",
                   gap: "4px"
                 }} title="Subtask checklist completion">
-                  ☑️ {task.fields.subtasks.filter(s => s.statusName === "Done").length}/{task.fields.subtasks.length}
+                  <span><FaCheckSquare style={{ marginRight: "4px", verticalAlign: "middle" }} /> {task.fields.subtasks.filter(s => s.statusName === "Done").length}/{task.fields.subtasks.length}</span>
                 </span>
               )}
             </div>
@@ -6768,8 +8591,9 @@ const modalLabelStyle = {
 // ==========================================
 // APNILEAP EXECUTIVE HUB COMPONENTS
 // ==========================================
+function HubDashboardView({ metrics, loading, onRefresh, onIngestClick, triggerToast }) {
+  const [activeTab, setActiveTab] = useState("campus"); // "campus" or "b2b"
 
-function HubDashboardView({ metrics, loading, onRefresh, moderatorProjects, onIngestClick }) {
   if (loading || !metrics) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "400px", gap: "16px" }}>
@@ -6790,373 +8614,528 @@ function HubDashboardView({ metrics, loading, onRefresh, moderatorProjects, onIn
   const globalCompletionRate = totalIssues > 0 ? Math.round((totalDone / totalIssues) * 100) : 0;
   const totalBlockers = metrics.blockers.length;
 
+  // B2B Stats calculations
+  const b2bList = metrics.b2bProjects || [];
+  const totalB2BFunding = b2bList.reduce((sum, p) => {
+    const val = parseInt(p.budget.replace(/[^0-9]/g, "")) || 0;
+    return sum + val;
+  }, 0);
+  const activeB2BPlacements = b2bList.reduce((sum, p) => {
+    return sum + (p.allocations ? p.allocations.filter(a => a.status === "Active").length : 0);
+  }, 0);
+  const proposedB2BPlacements = b2bList.reduce((sum, p) => {
+    return sum + (p.allocations ? p.allocations.filter(a => a.status === "Proposed").length : 0);
+  }, 0);
+
+  // Calculate average progress percent across active placements
+  let totalAllocPct = 0;
+  let totalAllocCount = 0;
+  b2bList.forEach(p => {
+    if (p.allocations) {
+      p.allocations.forEach(a => {
+        if (a.status === "Active") {
+          totalAllocPct += a.progressPercent || 0;
+          totalAllocCount++;
+        }
+      });
+    }
+  });
+  const avgB2BProgress = totalAllocCount > 0 ? Math.round(totalAllocPct / totalAllocCount) : 0;
+
   return (
     <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
       
-      {/* Portfolio Summary KPI Cards */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: "20px"
+      {/* Title & Header Block */}
+      <div className="glass-panel" style={{
+        padding: "24px",
+        background: "linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(45, 212, 191, 0.02))",
+        border: "1px solid var(--border-glass)",
+        borderRadius: "16px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "16px"
       }}>
-        <DashboardCard
-          title="Global Scoped Tasks"
-          value={totalIssues}
-          subtitle="Across all active spokes"
-          glow={true}
-        />
-        <DashboardCard
-          title="Consolidated Completion"
-          value={`${globalCompletionRate}%`}
-          subtitle="Portfolio progress rate"
-          progress={globalCompletionRate}
-        />
-        <DashboardCard
-          title="Active Escalations"
-          value={totalBlockers}
-          subtitle="Critical cross-college blockers"
-          themeColor="var(--priority-high-text)"
-          pulse={totalBlockers > 0}
-          alert={totalBlockers > 0}
-        />
-        <DashboardCard
-          title="Active Spokes"
-          value="4 / 4"
-          subtitle="KLE, COEP, MMCOEP, RIT"
-          themeColor="var(--primary)"
-        />
+        <div>
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "900", color: "var(--text-main)", letterSpacing: "-0.5px" }}>
+            Global Executive Portfolio & Agile Hub
+          </h2>
+          <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.5" }}>
+            Oversee multi-tenant academic deliverables, critical spoke escalations, and B2B corporate sponsorship allocations.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={() => {
+              onRefresh();
+              if (triggerToast) triggerToast("Switched Workspace: Live Syncing Portfolio Data...");
+            }}
+            className="btn-secondary"
+            style={{ padding: "8px 16px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            Sync Hub
+          </button>
+          <span style={{
+            fontSize: "11px",
+            fontWeight: "800",
+            background: "var(--primary-glow)",
+            color: "var(--primary)",
+            padding: "4px 12px",
+            borderRadius: "20px",
+            border: "1px solid rgba(99, 102, 241, 0.2)",
+            textTransform: "uppercase"
+          }}>
+            Central Administrator View
+          </span>
+        </div>
       </div>
 
-      {/* College Comparison & Active Blockers Row */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))",
-        gap: "24px"
-      }}>
-        {/* Spokes Progress Bar Chart */}
-        <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "360px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
-          <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "16px" }}>
-            📊 College Spoke Progress
-          </h3>
-          <div style={{ flex: 1, minHeight: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.spokes} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 11 }} tickLine={false} />
-                <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} domain={[0, 100]} unit="%" tickLine={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.02)" }} />
-                <Bar dataKey="completionRate" name="Completion Rate" radius={[6, 6, 0, 0]}>
-                  {metrics.spokes.map((entry, index) => {
-                    const colors = ["#3b529a", "#0ea5e9", "#10b981", "#8b5cf6"];
-                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+      {/* Tab Switcher Navigation */}
+      <div style={{ display: "flex", gap: "12px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px" }}>
+        <button
+          onClick={() => setActiveTab("campus")}
+          style={{
+            background: activeTab === "campus" ? "var(--primary-glow)" : "rgba(255,255,255,0.02)",
+            border: `1px solid ${activeTab === "campus" ? "var(--primary)" : "var(--border-glass)"}`,
+            color: activeTab === "campus" ? "var(--primary)" : "var(--text-muted)",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            fontSize: "13px",
+            fontWeight: "800",
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}
+        >
+          <span><span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUniversity /> Spoke Institutions Hub</span></span>
+        </button>
+        <button
+          onClick={() => setActiveTab("b2b")}
+          style={{
+            background: activeTab === "b2b" ? "var(--primary-glow)" : "rgba(255,255,255,0.02)",
+            border: `1px solid ${activeTab === "b2b" ? "var(--primary)" : "var(--border-glass)"}`,
+            color: activeTab === "b2b" ? "var(--primary)" : "var(--text-muted)",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            fontSize: "13px",
+            fontWeight: "800",
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}
+        >
+          <span><span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBriefcase /> B2B Sponsorships Portfolio</span></span>
+        </button>
+      </div>
+
+      {activeTab === "campus" ? (
+        <>
+          {/* Portfolio Summary KPI Cards */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "20px"
+          }}>
+            <DashboardCard
+              title="Global Scoped Tasks"
+              value={totalIssues}
+              subtitle="Across all active spokes"
+              glow={true}
+            />
+            <DashboardCard
+              title="Consolidated Completion"
+              value={`${globalCompletionRate}%`}
+              subtitle="Portfolio progress rate"
+              progress={globalCompletionRate}
+            />
+            <DashboardCard
+              title="Active Escalations"
+              value={totalBlockers}
+              subtitle="Critical cross-college blockers"
+              themeColor="var(--priority-high-text)"
+              pulse={totalBlockers > 0}
+              alert={totalBlockers > 0}
+            />
+            <DashboardCard
+              title="Active Spokes"
+              value="4 / 4"
+              subtitle="KLE, COEP, MMCOEP, RIT"
+              themeColor="var(--primary)"
+            />
           </div>
-        </div>
 
-        {/* Blocker Feed Panel */}
-        <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "360px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
-          <h3 style={{ fontSize: "14px", fontWeight: "700", marginBottom: "16px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--priority-high-text)", display: "flex", alignItems: "center", gap: "8px" }}>
-            <FaExclamationTriangle className="pulse-glow" style={{ borderRadius: "50%" }} />
-            <span>⚠️ Critical Blockers & Escalations</span>
-          </h3>
-          
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", paddingRight: "4px" }}>
-            {metrics.blockers && metrics.blockers.length > 0 ? (
-              metrics.blockers.map(blocker => (
-                <div
-                  key={blocker.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "12px 14px",
-                    background: "rgba(239, 68, 68, 0.03)",
-                    border: "1px solid rgba(239, 68, 68, 0.15)",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    gap: "10px"
-                  }}
-                  className="pulse-glow"
-                >
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "11px", fontWeight: "800", color: "#f87171", background: "rgba(239, 68, 68, 0.1)", padding: "1px 6px", borderRadius: "4px" }}>
-                        {blocker.key}
-                      </span>
-                      <span style={{ fontSize: "10px", color: "var(--text-dim)", fontWeight: "700", textTransform: "uppercase" }}>
-                        {blocker.spokeName}
-                      </span>
-                    </div>
-                    <span style={{ color: "var(--text-main)", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {blocker.summary}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", shrink: 0 }}>
-                    {blocker.assignee ? (
-                      <img
-                        src={blocker.assignee.avatarUrl}
-                        alt={blocker.assignee.displayName}
-                        style={{ width: "24px", height: "24px", borderRadius: "50%", border: "1.5px solid var(--border-glass)" }}
-                        title={`Assigned to ${blocker.assignee.displayName}`}
-                      />
-                    ) : (
-                      <span style={{ fontSize: "11px", color: "var(--text-dim)", fontStyle: "italic" }}>Unassigned</span>
-                    )}
-                    <span style={{ fontSize: "11px", fontWeight: "700", padding: "3px 8px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
-                      {blocker.priority}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", fontStyle: "italic", fontSize: "13px" }}>
-                <span>✨ No cross-college blockers active. Excellent execution!</span>
+          {/* College Comparison & Active Blockers Row */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))",
+            gap: "24px"
+          }}>
+            {/* Spokes Progress Bar Chart */}
+            <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "360px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "16px" }}>
+                College Spoke Progress
+              </h3>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={metrics.spokes} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 11 }} tickLine={false} />
+                    <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} domain={[0, 100]} unit="%" tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.02)" }} />
+                    <Bar dataKey="completionRate" name="Completion Rate" radius={[6, 6, 0, 0]}>
+                      {metrics.spokes.map((entry, index) => {
+                        const colors = ["#3b529a", "#0ea5e9", "#10b981", "#8b5cf6"];
+                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </div>
 
-      {/* 15 Standard Workstreams Progress Matrix */}
-      <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "18px" }}>
-        <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
-          👑 15 Standard Workstreams Matrix
-        </h3>
-        
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
-            <thead>
-              <tr style={{ borderBottom: "1.5px solid var(--border-glass)" }}>
-                <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", width: "40%" }}>Workstream / Standard Epic</th>
-                <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", textAlign: "center" }}>KLE Spoke (Live)</th>
-                <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", textAlign: "center" }}>COEP Spoke</th>
-                <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", textAlign: "center" }}>MMCOEP Spoke</th>
-                <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", textAlign: "center" }}>RIT Spoke</th>
-              </tr>
-            </thead>
-            <tbody>
-              {metrics.workstreams.map((ws, idx) => (
-                <tr
-                  key={ws.name}
-                  style={{
-                    borderBottom: "1px solid var(--border-glass)",
-                    background: idx % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  className="table-row-hover"
-                >
-                  <td style={{ padding: "14px 16px", fontWeight: "600", color: "var(--text-main)" }}>
-                    <span style={{ marginRight: "10px", color: "var(--primary)" }}>{idx + 1}.</span>
-                    {ws.name}
-                  </td>
-                  <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                    <ProgressBadge pct={ws.KLE} />
-                  </td>
-                  <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                    <ProgressBadge pct={ws.COEP} />
-                  </td>
-                  <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                    <ProgressBadge pct={ws.MMCOEP} />
-                  </td>
-                  <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                    <ProgressBadge pct={ws.RIT} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            {/* Blocker Feed Panel */}
+            <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "360px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "700", marginBottom: "16px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--priority-high-text)", display: "flex", alignItems: "center", gap: "8px" }}>
+                <FaExclamationTriangle className="pulse-glow" style={{ borderRadius: "50%" }} />
+                <span><FaExclamationTriangle style={{ color: "var(--accent)", marginRight: "6px" }} /> Critical Blockers & Escalations</span>
+              </h3>
+              
+              <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", paddingRight: "4px" }}>
+                {metrics.blockers && metrics.blockers.length > 0 ? (
+                  metrics.blockers.map(blocker => (
+                    <div
+                      key={blocker.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "12px 14px",
+                        background: "rgba(239, 68, 68, 0.03)",
+                        border: "1px solid rgba(239, 68, 68, 0.15)",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        gap: "10px"
+                      }}
+                      className="pulse-glow"
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "11px", fontWeight: "800", color: "#f87171", background: "rgba(239, 68, 68, 0.1)", padding: "1px 6px", borderRadius: "4px" }}>
+                            {blocker.key}
+                          </span>
+                          <span style={{ fontSize: "10px", color: "var(--text-dim)", fontWeight: "700", textTransform: "uppercase" }}>
+                            {blocker.spokeName}
+                          </span>
+                        </div>
+                        <span style={{ color: "var(--text-main)", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {blocker.summary}
+                        </span>
+                      </div>
 
-      {/* 💼 Active Corporate Partnerships Tracker */}
-      <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "20px" }}>💼</span>
-            <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "850", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
-              Corporate Partnerships & Campus Deployments
-            </h3>
-          </div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <button
-              onClick={onIngestClick}
-              className="btn-primary"
-              style={{ padding: "6px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "linear-gradient(135deg, var(--primary), var(--secondary))", cursor: "pointer" }}
-            >
-              <FaPlus size={10} />
-              <span>Ingest New Project</span>
-            </button>
-            <span style={{ fontSize: "11px", fontWeight: "750", background: "var(--primary-glow)", color: "var(--primary)", border: "1px solid var(--border-glow)", padding: "4px 10px", borderRadius: "6px", textTransform: "uppercase" }}>
-              Multi-Tenant Portfolio Tracking
-            </span>
-          </div>
-        </div>
-
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-          gap: "24px"
-        }}>
-          {metrics.b2bProjects && metrics.b2bProjects.length > 0 ? (
-            metrics.b2bProjects.map(proj => {
-              const activeAllocations = proj.allocations ? proj.allocations.filter(a => a.status === "Active" || a.status === "Proposed") : [];
-              return (
-                <div key={proj.id} className="table-row-hover" style={{
-                  background: "rgba(255, 255, 255, 0.01)",
-                  border: "1px solid var(--border-glass)",
-                  borderRadius: "8px",
-                  padding: "20px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "16px",
-                  transition: "var(--transition-smooth)"
-                }}>
-                  {/* Card Header: Brand, Title, Budget */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                    <CompanyLogo company={proj.company} size={38} />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "800", color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {proj.title}
-                      </h4>
-                      <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "2px", fontSize: "11px", color: "var(--text-dim)" }}>
-                        <span>Sponsor: <strong style={{ color: "var(--text-muted)" }}>{proj.company}</strong></span>
-                        <span>•</span>
-                        <span>Budget: <strong style={{ color: "var(--text-muted)" }}>{proj.budget}</strong></span>
-                        <span>•</span>
-                        <span>Duration: <strong style={{ color: "var(--text-muted)" }}>{proj.duration}</strong></span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", shrink: 0 }}>
+                        {blocker.assignee ? (
+                          <img
+                            src={blocker.assignee.avatarUrl}
+                            alt={blocker.assignee.displayName}
+                            style={{ width: "24px", height: "24px", borderRadius: "50%", border: "1.5px solid var(--border-glass)" }}
+                            title={`Assigned to ${blocker.assignee.displayName}`}
+                          />
+                        ) : (
+                          <span style={{ fontSize: "11px", color: "var(--text-dim)", fontStyle: "italic" }}>Unassigned</span>
+                        )}
+                        <span style={{ fontSize: "11px", fontWeight: "700", padding: "3px 8px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                          {blocker.priority}
+                        </span>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", fontStyle: "italic", fontSize: "13px" }}>
+                    <span>No cross-college blockers active. Excellent execution!</span>
                   </div>
-
-                  <p style={{ margin: 0, fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4" }}>
-                    {proj.description}
-                  </p>
-
-                  {/* College Spaces Tracking Grid */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid var(--border-glass)", paddingTop: "14px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: "800", color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Institutional Deployments ({activeAllocations.length})
-                    </span>
-
-                    {activeAllocations.length > 0 ? (
-                      activeAllocations.map(alloc => {
-                        // Calculate days left relative to May 26, 2026
-                        const today = new Date("2026-05-26");
-                        const due = new Date(alloc.proposedDueDate);
-                        const diffTime = due.getTime() - today.getTime();
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                        let daysText = "";
-                        let daysClassColor = "var(--primary)";
-                        let daysBgColor = "var(--primary-glow)";
-
-                        if (diffDays < 0) {
-                          daysText = `${Math.abs(diffDays)}d overdue`;
-                          daysClassColor = "#ef4444";
-                          daysBgColor = "rgba(239, 68, 68, 0.1)";
-                        } else if (diffDays === 0) {
-                          daysText = "Due Today!";
-                          daysClassColor = "var(--accent)";
-                          daysBgColor = "rgba(251, 146, 60, 0.15)";
-                        } else if (diffDays <= 7) {
-                          daysText = `${diffDays}d left`;
-                          daysClassColor = "var(--accent)";
-                          daysBgColor = "rgba(251, 146, 60, 0.12)";
-                        } else {
-                          daysText = `${diffDays} days left`;
-                          daysClassColor = "var(--primary)";
-                          daysBgColor = "var(--primary-glow)";
-                        }
-
-                        const isProposed = alloc.status === "Proposed";
-
-                        return (
-                          <div key={alloc.targetCampusId} style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "8px",
-                            padding: "10px 12px",
-                            background: "rgba(255, 255, 255, 0.005)",
-                            border: "1px solid var(--border-glass)",
-                            borderRadius: "8px"
-                          }}>
-                            {/* Spoke Header */}
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px" }}>
-                              <span style={{ fontWeight: "700", color: "var(--text-main)" }}>
-                                🏫 {alloc.assignedTo}
-                              </span>
-                              <span style={{
-                                fontSize: "9px",
-                                fontWeight: "900",
-                                background: isProposed ? "rgba(251, 146, 60, 0.08)" : "rgba(45, 212, 191, 0.08)",
-                                border: isProposed ? "1px solid rgba(251, 146, 60, 0.2)" : "1px solid rgba(45, 212, 191, 0.2)",
-                                color: isProposed ? "var(--accent)" : "#2dd4bf",
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                textTransform: "uppercase"
-                              }}>{alloc.status}</span>
-                            </div>
-
-                            {/* Spoke Timeline, Epic, and Progress */}
-                            {!isProposed ? (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--text-dim)" }}>
-                                  <span>Jira Epic: <strong style={{ color: "var(--text-main)", fontFamily: "var(--mono)" }}>{alloc.assignedKey || "Epic Provisioned"}</strong></span>
-                                  <span style={{
-                                    fontWeight: "800",
-                                    color: daysClassColor,
-                                    background: daysBgColor,
-                                    padding: "2px 6px",
-                                    borderRadius: "4px",
-                                    fontSize: "10px"
-                                  }}>{daysText}</span>
-                                </div>
-                                {/* Milestone progress bar */}
-                                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "2px" }}>
-                                  <div style={{ flex: 1, height: "6px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
-                                    <div style={{
-                                      width: `${alloc.progressPercent || 0}%`,
-                                      height: "100%",
-                                      background: "linear-gradient(90deg, var(--primary), var(--secondary))",
-                                      borderRadius: "3px",
-                                      boxShadow: "0 0 8px var(--primary)",
-                                      transition: "width 0.5s cubic-bezier(0.1, 0.8, 0.1, 1)"
-                                    }}></div>
-                                  </div>
-                                  <span style={{ fontSize: "11px", fontWeight: "800", color: "var(--primary)", fontFamily: "var(--mono)", minWidth: "32px", textAlign: "right" }}>
-                                    {alloc.progressPercent || 0}%
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11.5px", color: "var(--text-dim)", padding: "2px 0" }}>
-                                <span>Awaiting Coordinator Decision</span>
-                                <span>Deadline: <strong>{alloc.proposedDueDate}</strong></span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <span style={{ fontSize: "12px", color: "var(--text-dim)", fontStyle: "italic", padding: "4px 0" }}>
-                        No campus spaces assigned yet.
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "120px", color: "var(--text-muted)", fontStyle: "italic", fontSize: "13px" }}>
-              <span>💼 No corporate projects active in the portfolio yet.</span>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+
+          {/* 15 Standard Workstreams Progress Matrix */}
+          <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "18px" }}>
+            <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
+              15 Standard Workstreams Matrix
+            </h3>
+            
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1.5px solid var(--border-glass)" }}>
+                    <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", width: "40%" }}>Workstream / Standard Epic</th>
+                    <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", textAlign: "center" }}>KLE Spoke (Live)</th>
+                    <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", textAlign: "center" }}>COEP Spoke</th>
+                    <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", textAlign: "center" }}>MMCOEP Spoke</th>
+                    <th style={{ padding: "12px 16px", color: "var(--text-muted)", fontWeight: "700", textAlign: "center" }}>RIT Spoke</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.workstreams.map((ws, idx) => (
+                    <tr
+                      key={ws.name}
+                      style={{
+                        borderBottom: "1px solid var(--border-glass)",
+                        background: idx % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
+                        transition: "var(--transition-smooth)"
+                      }}
+                      className="table-row-hover"
+                    >
+                      <td style={{ padding: "14px 16px", fontWeight: "600", color: "var(--text-main)" }}>
+                        <span style={{ marginRight: "10px", color: "var(--primary)" }}>{idx + 1}.</span>
+                        {ws.name}
+                      </td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                        <ProgressBadge pct={ws.KLE} />
+                      </td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                        <ProgressBadge pct={ws.COEP} />
+                      </td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                        <ProgressBadge pct={ws.MMCOEP} />
+                      </td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                        <ProgressBadge pct={ws.RIT} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* B2B Specific KPI Cards */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "20px"
+          }}>
+            <DashboardCard
+              title="B2B Proposals"
+              value={b2bList.length}
+              subtitle="Ingested sponsor scopes"
+              glow={true}
+            />
+            <DashboardCard
+              title="Active Placements"
+              value={activeB2BPlacements}
+              subtitle={`${proposedB2BPlacements} proposed pending`}
+              themeColor="var(--status-progress-text)"
+            />
+            <DashboardCard
+              title="Avg B2B Milestone Progress"
+              value={`${avgB2BProgress}%`}
+              subtitle="Completion across Spokes"
+              progress={avgB2BProgress}
+              themeColor="var(--primary)"
+            />
+            <DashboardCard
+              title="Total Committed Funding"
+              value={`$${totalB2BFunding.toLocaleString()}`}
+              subtitle="External FIP corporate backing"
+              themeColor="#a855f7"
+              glow={totalB2BFunding > 0}
+            />
+          </div>
+
+          {/* 💼 Active Corporate Partnerships Tracker */}
+          <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "20px", display: "inline-flex", alignItems: "center" }}><FaBriefcase /></span>
+                <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "850", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
+                  Corporate Partnerships & Campus Deployments Ledger
+                </h3>
+              </div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <button
+                  onClick={onIngestClick}
+                  className="btn-primary"
+                  style={{ padding: "6px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "linear-gradient(135deg, var(--primary), var(--secondary))", cursor: "pointer" }}
+                >
+                  <FaPlus size={10} />
+                  <span>Ingest New Project</span>
+                </button>
+                <span style={{ fontSize: "11px", fontWeight: "750", background: "var(--primary-glow)", color: "var(--primary)", border: "1px solid var(--border-glow)", padding: "4px 10px", borderRadius: "6px", textTransform: "uppercase" }}>
+                  Multi-Tenant Portfolio Tracking
+                </span>
+              </div>
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+              gap: "24px"
+            }}>
+              {b2bList.map(proj => {
+                const activeAllocations = proj.allocations ? proj.allocations.filter(a => a.status === "Active" || a.status === "Proposed") : [];
+                return (
+                  <div key={proj.id} className="table-row-hover" style={{
+                    background: "rgba(255, 255, 255, 0.01)",
+                    border: "1px solid var(--border-glass)",
+                    borderRadius: "8px",
+                    padding: "20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "16px",
+                    transition: "var(--transition-smooth)"
+                  }}>
+                    {/* Card Header: Brand, Title, Budget */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                      <CompanyLogo company={proj.company} size={38} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "800", color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {proj.title}
+                        </h4>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "2px", fontSize: "11px", color: "var(--text-dim)" }}>
+                          <span>Sponsor: <strong style={{ color: "var(--text-muted)" }}>{proj.company}</strong></span>
+                          <span>•</span>
+                          <span>Budget: <strong style={{ color: "var(--text-muted)" }}>{proj.budget}</strong></span>
+                          <span>•</span>
+                          <span>Duration: <strong style={{ color: "var(--text-muted)" }}>{proj.duration}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p style={{ margin: 0, fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                      {proj.description}
+                    </p>
+
+                    {/* College Spaces Tracking Grid */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid var(--border-glass)", paddingTop: "14px" }}>
+                      <span style={{ fontSize: "11px", fontWeight: "800", color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                        Institutional Deployments ({activeAllocations.length})
+                      </span>
+
+                      {activeAllocations.length > 0 ? (
+                        activeAllocations.map(alloc => {
+                          // Calculate days left relative to May 26, 2026
+                          const today = new Date("2026-05-26");
+                          const due = new Date(alloc.proposedDueDate);
+                          const diffTime = due.getTime() - today.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                          let daysText;
+                          let daysClassColor;
+                          let daysBgColor;
+
+                          if (diffDays < 0) {
+                            daysText = `${Math.abs(diffDays)}d overdue`;
+                            daysClassColor = "#ef4444";
+                            daysBgColor = "rgba(239, 68, 68, 0.1)";
+                          } else if (diffDays === 0) {
+                            daysText = "Due Today!";
+                            daysClassColor = "var(--accent)";
+                            daysBgColor = "rgba(251, 146, 60, 0.15)";
+                          } else if (diffDays <= 7) {
+                            daysText = `${diffDays}d left`;
+                            daysClassColor = "var(--accent)";
+                            daysBgColor = "rgba(251, 146, 60, 0.12)";
+                          } else {
+                            daysText = `${diffDays} days left`;
+                            daysClassColor = "var(--primary)";
+                            daysBgColor = "var(--primary-glow)";
+                          }
+
+                          const isProposed = alloc.status === "Proposed";
+
+                          return (
+                            <div key={alloc.targetCampusId} style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px",
+                              padding: "10px 12px",
+                              background: "rgba(255, 255, 255, 0.005)",
+                              border: "1px solid var(--border-glass)",
+                              borderRadius: "8px"
+                            }}>
+                              {/* Spoke Header */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px" }}>
+                                <span style={{ fontWeight: "700", color: "var(--text-main)" }}>
+                                  <span><FaBuilding style={{ marginRight: "6px", color: "var(--primary)" }} /> {alloc.assignedTo}</span>
+                                </span>
+                                <span style={{
+                                  fontSize: "9px",
+                                  fontWeight: "900",
+                                  background: isProposed ? "rgba(251, 146, 60, 0.08)" : "rgba(45, 212, 191, 0.08)",
+                                  border: isProposed ? "1px solid rgba(251, 146, 60, 0.2)" : "1px solid rgba(45, 212, 191, 0.2)",
+                                  color: isProposed ? "var(--accent)" : "#2dd4bf",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  textTransform: "uppercase"
+                                }}>{alloc.status}</span>
+                              </div>
+
+                              {/* Spoke Timeline, Epic, and Progress */}
+                              {!isProposed ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--text-dim)" }}>
+                                    <span>Jira Epic: <strong style={{ color: "var(--text-main)", fontFamily: "var(--mono)" }}>{alloc.assignedKey || "Epic Provisioned"}</strong></span>
+                                    <span style={{
+                                      fontWeight: "800",
+                                      color: daysClassColor,
+                                      background: daysBgColor,
+                                      padding: "2px 6px",
+                                      borderRadius: "4px",
+                                      fontSize: "10px"
+                                    }}>{daysText}</span>
+                                  </div>
+                                  {/* Milestone progress bar */}
+                                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "2px" }}>
+                                    <div style={{ flex: 1, height: "6px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
+                                      <div style={{
+                                        width: `${alloc.progressPercent || 0}%`,
+                                        height: "100%",
+                                        background: "linear-gradient(90deg, var(--primary), var(--secondary))",
+                                        borderRadius: "3px",
+                                        boxShadow: "0 0 8px var(--primary)",
+                                        transition: "width 0.5s cubic-bezier(0.1, 0.8, 0.1, 1)"
+                                      }}></div>
+                                    </div>
+                                    <span style={{ fontSize: "11px", fontWeight: "800", color: "var(--primary)", fontFamily: "var(--mono)", minWidth: "32px", textAlign: "right" }}>
+                                      {alloc.progressPercent || 0}%
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11.5px", color: "var(--text-dim)", padding: "2px 0" }}>
+                                  <span>Awaiting Coordinator Decision</span>
+                                  <span>Deadline: <strong>{alloc.proposedDueDate}</strong></span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "var(--text-dim)", fontStyle: "italic", padding: "4px 0" }}>
+                          No campus spaces assigned yet.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {b2bList.length === 0 && (
+                <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "120px", color: "var(--text-muted)", fontStyle: "italic", fontSize: "13px" }}>
+                  <span>No B2B sponsorships active in the portfolio yet.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   );
@@ -7201,7 +9180,7 @@ function ProgressBadge({ pct }) {
 // B2B MODERATOR PORTAL COMPONENTS
 // ==========================================
 
-function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, onIngestClick }) {
+function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, onIngestClick, onEditClick, onDeleteClick }) {
   const [activeTab, setActiveTab] = useState("proposals"); // "proposals" or "deadlines"
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditResults, setAuditResults] = useState(null);
@@ -7280,7 +9259,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
             gap: "8px"
           }}
         >
-          <span>🛠️ Ingested proposals</span>
+          <span>Ingested proposals</span>
         </button>
         <button
           onClick={() => setActiveTab("deadlines")}
@@ -7299,7 +9278,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
             gap: "8px"
           }}
         >
-          <span>🚨 Deadlines & Alerts Console</span>
+          <span>Deadlines & Alerts Console</span>
         </button>
       </div>
 
@@ -7308,7 +9287,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
         <div className="glass-panel" style={{ padding: "24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
             <div>
-              <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)" }}>🛠️ Project Intake Board</h3>
+              <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)" }}>Project Intake Board</h3>
               <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "4px" }}>Review budget scope, and instantly automate provisioning to campus Jira spaces.</p>
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
@@ -7411,48 +9390,101 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                           textTransform: "uppercase"
                         }}>
                           {proj.status.includes("BREACHED")
-                            ? "🚨 Breached"
+                            ? "Breached"
                             : proj.status === "Active"
-                            ? "✅ Active"
+                            ? "Active"
                             : proj.status === "Proposed"
-                            ? "⏳ Proposed"
-                            : "⏳ Pending Review"}
+                            ? "Proposed"
+                            : "Pending Review"}
                         </span>
                       </td>
 
                       {/* Action Column */}
                       <td style={{ padding: "16px", textAlign: "center" }}>
-                        {isAssigned ? (
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
-                            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "700", textTransform: "uppercase" }}>{proj.assignedTo}</span>
-                            <span style={{
-                              fontFamily: "var(--mono)",
-                              fontSize: "11px",
-                              fontWeight: "800",
-                              color: proj.assignedKey ? "var(--primary)" : "#818cf8",
-                              background: proj.assignedKey ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.05)",
-                              padding: "2px 6px",
-                              borderRadius: "4px"
-                            }}>
-                              {proj.assignedKey || "Awaiting Acceptance"}
-                            </span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                          {isAssigned ? (
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
+                              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "700", textTransform: "uppercase" }}>{proj.assignedTo}</span>
+                              <span style={{
+                                fontFamily: "var(--mono)",
+                                fontSize: "11px",
+                                fontWeight: "800",
+                                color: proj.assignedKey ? "var(--primary)" : "#818cf8",
+                                background: proj.assignedKey ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.05)",
+                                padding: "2px 6px",
+                                borderRadius: "4px"
+                              }}>
+                                {proj.assignedKey || "Awaiting Acceptance"}
+                              </span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => onAssignClick(proj)}
+                              className="btn-primary"
+                              style={{
+                                padding: "6px 12px",
+                                fontSize: "12px",
+                                borderRadius: "8px",
+                                background: "var(--accent)",
+                                borderColor: "transparent",
+                                boxShadow: "0 4px 12px rgba(239, 68, 68, 0.15)",
+                                cursor: "pointer"
+                              }}
+                            >
+                              Assign Project
+                            </button>
+                          )}
+                          <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                            <button
+                              onClick={() => onEditClick(proj)}
+                              style={{
+                                background: "rgba(99, 102, 241, 0.08)",
+                                border: "1px solid rgba(99, 102, 241, 0.15)",
+                                color: "var(--primary)",
+                                borderRadius: "6px",
+                                padding: "4px 8px",
+                                fontSize: "11px",
+                                fontWeight: "750",
+                                cursor: "pointer",
+                                transition: "var(--transition-smooth)"
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "var(--primary)";
+                                e.currentTarget.style.color = "white";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(99, 102, 241, 0.08)";
+                                e.currentTarget.style.color = "var(--primary)";
+                              }}
+                            >
+                              <span>Edit <FaSyncAlt style={{ marginLeft: "4px" }} /></span>
+                            </button>
+                            <button
+                              onClick={() => onDeleteClick(proj)}
+                              style={{
+                                background: "rgba(239, 68, 68, 0.08)",
+                                border: "1px solid rgba(239, 68, 68, 0.15)",
+                                color: "#ef4444",
+                                borderRadius: "6px",
+                                padding: "4px 8px",
+                                fontSize: "11px",
+                                fontWeight: "750",
+                                cursor: "pointer",
+                                transition: "var(--transition-smooth)"
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "#ef4444";
+                                e.currentTarget.style.color = "white";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                                e.currentTarget.style.color = "#ef4444";
+                              }}
+                            >
+                              <span>Delete <FaTrashAlt style={{ marginLeft: "4px" }} /></span>
+                            </button>
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => onAssignClick(proj)}
-                            className="btn-primary"
-                            style={{
-                              padding: "6px 12px",
-                              fontSize: "12px",
-                              borderRadius: "8px",
-                              background: "var(--accent)",
-                              borderColor: "transparent",
-                              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.15)"
-                            }}
-                          >
-                            Assign Project
-                          </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -7473,7 +9505,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
               <div style={{ maxWidth: "550px" }}>
                 <h3 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ color: "#ef4444" }}>🚨</span>
+                  <span style={{ color: "#ef4444", display: "inline-flex", alignItems: "center" }}><FaExclamationTriangle /></span>
                   <span>Automated Deadline Auditor Scanner</span>
                 </h3>
                 <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "6px", lineHeight: "1.5" }}>
@@ -7531,7 +9563,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                   lineHeight: "1.6"
                 }}>
                   <div style={{ color: "#9ca3af", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "6px", marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>🖥️ AUDITOR CLI TERMINAL</span>
+                    <span>AUDITOR CLI TERMINAL</span>
                     <span>SUCCESS</span>
                   </div>
                   <div>[baseline local time: 2026-05-27] Initiating full FIP portfolio audit...</div>
@@ -7615,7 +9647,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                                   }}>
                                     {/* College space name */}
                                     <div style={{ fontWeight: "700", color: "var(--text-main)", fontSize: "12px" }}>
-                                      🏫 {alloc.assignedTo}
+                                      <span><FaBuilding style={{ marginRight: "6px", color: "var(--primary)" }} /> {alloc.assignedTo}</span>
                                     </div>
 
                                     {/* JIRA Epic Key */}
@@ -7625,7 +9657,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
 
                                     {/* Target deadline */}
                                     <div style={{ fontSize: "11.5px", color: isBreached ? "#f87171" : "var(--text-muted)", fontWeight: "700" }}>
-                                      ⏰ {alloc.proposedDueDate}
+                                      <span><FaClock style={{ marginRight: "4px", verticalAlign: "middle" }} /> {alloc.proposedDueDate}</span>
                                     </div>
 
                                     {/* Risk/Alloc Status */}
@@ -7648,7 +9680,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                                           : (isProposed ? "var(--accent)" : "#2dd4bf"),
                                         textTransform: "uppercase"
                                       }}>
-                                        {isBreached ? "🚨 BREACHED" : (isProposed ? "⏳ PROPOSED" : "⏳ ACTIVE")}
+                                        {isBreached ? "BREACHED" : (isProposed ? "PROPOSED" : "ACTIVE")}
                                       </span>
                                     </div>
 
@@ -7673,7 +9705,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                                           cursor: "pointer"
                                         }}
                                       >
-                                        Alert Spoke ✉️
+                                        Alert Spoke
                                       </button>
                                     </div>
                                   </div>
@@ -7727,6 +9759,657 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
 }
 
 // ==========================================
+// CORPORATE PARTNER SPONSORSHIP PORTAL VIEW
+// ==========================================
+
+function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitProposal, triggerToast, sessionUser, spokes, tasks }) {
+  const [activeTab, setActiveTab] = useState("portfolio"); // "portfolio", "submit", "cohorts"
+  
+  // Form states
+  const [title, setTitle] = useState("");
+  const [budget, setBudget] = useState("");
+  const [duration, setDuration] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("2026-09-15");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "400px", gap: "16px" }}>
+        <div style={{
+          width: "48px",
+          height: "48px",
+          border: "4px solid rgba(45, 212, 191, 0.1)",
+          borderTopColor: "var(--primary)",
+          borderRadius: "50%",
+        }} className="pulse-glow"></div>
+        <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Synchronizing corporate partner sponsorship portal...</p>
+      </div>
+    );
+  }
+
+  // Resolve company name, e.g. "NVIDIA Sponsor" -> "NVIDIA"
+  const companyName = sessionUser?.displayName?.replace(" Sponsor", "") || "NVIDIA";
+
+  // Filter B2B projects submitted by this specific sponsor's company
+  const sponsorProjects = projects.filter(p => 
+    p.company && p.company.toLowerCase().trim() === companyName.toLowerCase().trim()
+  );
+
+  // Sum of budget for committed funding
+  const totalFunding = sponsorProjects.reduce((sum, p) => {
+    const val = parseInt(p.budget.replace(/[^0-9]/g, "")) || 0;
+    return sum + val;
+  }, 0);
+
+  // Campus placements (Spokes where their projects are active/assigned)
+  const campusPlacements = sponsorProjects.filter(p => 
+    p.allocations && p.allocations.length > 0
+  ).length;
+
+  // Fully Completed projects
+  // We can calculate completion using live tasks!
+  const completedProjects = sponsorProjects.filter(p => {
+    const expectedSummary = `[${p.company}] ${p.title}`;
+    const epicKey = p.assignedKey;
+    const projTasks = tasks.filter(t => {
+      const parentKey = t.fields?.parent?.key || t.parent?.key;
+      const parentSummary = t.fields?.parent?.fields?.summary || t.fields?.parent?.summary || t.parent?.fields?.summary || t.parent?.summary;
+      return (epicKey && parentKey === epicKey) || (parentSummary && parentSummary === expectedSummary);
+    });
+    if (projTasks.length === 0) return false;
+    const doneT = projTasks.filter(t => (t.fields?.status?.name || t.fields?.status || "") === "Done").length;
+    return doneT === projTasks.length;
+  }).length;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim() || !description.trim() || !budget.trim() || !duration.trim()) {
+      triggerToast("Please fill in all required fields.", "warning");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSubmitProposal({
+        title,
+        description,
+        budget: budget.startsWith("$") ? budget : `$${budget}`,
+        duration: duration.includes("Month") ? duration : `${duration} Months`,
+        proposedDueDate: dueDate
+      });
+      setTitle("");
+      setBudget("");
+      setDuration("");
+      setDescription("");
+      setActiveTab("portfolio");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+      
+      {/* Title & Header block */}
+      <div className="glass-panel" style={{
+        padding: "24px",
+        background: "linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.02))",
+        border: "1px solid var(--border-glass)",
+        borderRadius: "16px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "16px"
+      }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "900", color: "var(--text-main)", letterSpacing: "-0.5px" }}>
+            Corporate Partner Sponsorship Portal
+          </h2>
+          <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.5" }}>
+            Propose new corporate projects, monitor active campus sponsorships, and track student engineering deliverables.
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => {
+              setActiveTab("submit");
+              if (triggerToast) triggerToast("Switched Tab: Submit a new B2B Proposal");
+            }}
+            className="btn-primary"
+            style={{
+              padding: "8px 16px",
+              fontSize: "12.5px",
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+              borderColor: "transparent",
+              cursor: "pointer",
+              fontWeight: "800",
+              boxShadow: "0 4px 12px rgba(249, 115, 22, 0.2)"
+            }}
+          >
+            Propose B2B Project
+          </button>
+          <span style={{
+            fontSize: "11px",
+            fontWeight: "800",
+            background: "var(--primary-glow)",
+            color: "var(--primary)",
+            padding: "6px 12px",
+            borderRadius: "20px",
+            border: "1px solid rgba(99, 102, 241, 0.2)",
+            textTransform: "uppercase"
+          }}>
+            <span><FaBriefcase style={{ marginRight: '6px' }} /> {companyName} Sponsor active session</span>
+          </span>
+        </div>
+      </div>
+
+      {/* KPI Stats Grid */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: "20px"
+      }}>
+        <DashboardCard
+          title="Total Submissions"
+          value={sponsorProjects.length}
+          subtitle={`Submitted proposals by ${companyName}`}
+          glow={true}
+        />
+        <DashboardCard
+          title="Campus Placements"
+          value={campusPlacements}
+          subtitle="Assigned to Spoke institutions"
+          themeColor="var(--status-progress-text)"
+        />
+        <DashboardCard
+          title="Fully Completed"
+          value={completedProjects}
+          subtitle="Delivered by student cohorts"
+          themeColor="var(--status-done-text)"
+        />
+        <DashboardCard
+          title="Total Sponsored Funding"
+          value={`$${totalFunding.toLocaleString()}`}
+          subtitle="Total committed project funding"
+          themeColor="#a855f7"
+          glow={totalFunding > 0}
+        />
+      </div>
+
+      {/* Navigation Buttons Row */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px", flexWrap: "wrap", gap: "16px" }}>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={() => setActiveTab("portfolio")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              fontSize: "12.5px",
+              fontWeight: "750",
+              cursor: "pointer",
+              background: activeTab === "portfolio" ? "var(--primary-glow)" : "rgba(255,255,255,0.02)",
+              border: `1px solid ${activeTab === "portfolio" ? "var(--primary)" : "var(--border-glass)"}`,
+              color: activeTab === "portfolio" ? "var(--primary)" : "var(--text-muted)",
+              transition: "all 0.3s ease"
+            }}
+          >
+            Active Sponsorships Tracker
+          </button>
+          <button
+            onClick={() => setActiveTab("submit")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              fontSize: "12.5px",
+              fontWeight: "750",
+              cursor: "pointer",
+              background: activeTab === "submit" ? "var(--primary-glow)" : "rgba(255,255,255,0.02)",
+              border: `1px solid ${activeTab === "submit" ? "var(--primary)" : "var(--border-glass)"}`,
+              color: activeTab === "submit" ? "var(--primary)" : "var(--text-muted)",
+              transition: "all 0.3s ease"
+            }}
+          >
+            Submit Corporate Project Proposal
+          </button>
+          <button
+            onClick={() => setActiveTab("cohorts")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              fontSize: "12.5px",
+              fontWeight: "750",
+              cursor: "pointer",
+              background: activeTab === "cohorts" ? "var(--primary-glow)" : "rgba(255,255,255,0.02)",
+              border: `1px solid ${activeTab === "cohorts" ? "var(--primary)" : "var(--border-glass)"}`,
+              color: activeTab === "cohorts" ? "var(--primary)" : "var(--text-muted)",
+              transition: "all 0.3s ease"
+            }}
+          >
+            FIP Cohort Progress
+          </button>
+        </div>
+
+        <button
+          onClick={onRefresh}
+          className="btn-secondary"
+          style={{ padding: "8px 16px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "6px" }}
+        >
+          Synchronize Tracker
+        </button>
+      </div>
+
+      {/* Tab Contents */}
+      {activeTab === "portfolio" && (
+        <div className="glass-panel" style={{ padding: "24px" }}>
+          <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: "800", color: "var(--text-main)" }}>
+            Corporate Sponsorship Portfolio
+          </h3>
+          <p style={{ margin: "0 0 20px 0", fontSize: "13px", color: "var(--text-dim)" }}>
+            Live real-time monitoring of campus deliveries, allocated scopes, and student milestones progress.
+          </p>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "var(--text-main)", textAlign: "left" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border-glass)", color: "var(--text-dim)" }}>
+                  <th style={{ padding: "12px 8px", fontWeight: "750", width: "40%" }}>Project Details</th>
+                  <th style={{ padding: "12px 8px", fontWeight: "750", width: "35%" }}>Campus Allocations, Faculty Mentors & Sprint Deadlines</th>
+                  <th style={{ padding: "12px 8px", fontWeight: "750", textAlign: "right", width: "25%" }}>Live Project Completion Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sponsorProjects.map((proj) => {
+                  const expectedSummary = `[${proj.company}] ${proj.title}`;
+                  const epicKey = proj.assignedKey;
+                  
+                  // Filter student child tasks matching this Epic
+                  const projTasks = tasks.filter(t => {
+                    const parentKey = t.fields?.parent?.key || t.parent?.key;
+                    const parentSummary = t.fields?.parent?.fields?.summary || t.fields?.parent?.summary || t.parent?.fields?.summary || t.parent?.summary;
+                    return (epicKey && parentKey === epicKey) || (parentSummary && parentSummary === expectedSummary);
+                  });
+
+                  const totalT = projTasks.length;
+                  const doneT = projTasks.filter(t => (t.fields?.status?.name || t.fields?.status || "") === "Done").length;
+                  const progressPct = totalT > 0 ? Math.round((doneT / totalT) * 100) : 0;
+
+                  const isAllocated = proj.allocations && proj.allocations.length > 0;
+
+                  return (
+                    <tr key={proj.id} style={{ borderBottom: "1px solid var(--border-glass)" }}>
+                      {/* Project Details */}
+                      <td style={{ padding: "20px 8px" }}>
+                        <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
+                          <CompanyLogo company={proj.company} size={40} />
+                          <div>
+                            <h4 style={{ margin: "0 0 6px 0", fontSize: "14.5px", fontWeight: "800", color: "var(--text-main)" }}>
+                              {proj.title}
+                            </h4>
+                            <div style={{ display: "flex", gap: "10px", fontSize: "11px", color: "var(--text-dim)", flexWrap: "wrap" }}>
+                              <span>Sponsor: <strong>{proj.company}</strong></span>
+                              <span>•</span>
+                              <span>Budget: <strong>{proj.budget}</strong></span>
+                              <span>•</span>
+                              <span>Duration: <strong>{proj.duration}</strong></span>
+                            </div>
+                            <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4", maxWidth: "340px" }}>
+                              {proj.description}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Campus Allocations */}
+                      <td style={{ padding: "20px 8px", verticalAlign: "middle" }}>
+                        {isAllocated ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {proj.allocations.map((alloc) => {
+                              const targetSpoke = spokes.find(s => s.id === alloc.targetCampusId);
+                              return (
+                                <div key={alloc.targetCampusId} style={{
+                                  padding: "10px 14px",
+                                  background: "rgba(255, 255, 255, 0.015)",
+                                  border: "1px solid var(--border-glass)",
+                                  borderRadius: "8px",
+                                  fontSize: "12px"
+                                }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "750" }}>
+                                    <span style={{ color: "var(--primary)", display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> {targetSpoke?.name || "Campus Spoke"}</span>
+                                    <span style={{ fontFamily: "var(--mono)", color: "var(--text-main)" }}>{alloc.assignedKey || "Key Assigned"}</span>
+                                  </div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", fontSize: "11px", color: "var(--text-dim)" }}>
+                                    <span>Milestone: <strong>{alloc.status}</strong></span>
+                                    <span>Due: <strong>{proj.proposedDueDate}</strong></span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-dim)", fontSize: "12.5px" }}>
+                            <span><FaClock /></span>
+                            <em>Proposed. Awaiting Central Moderator assignment to active campus spokes.</em>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Live Progress */}
+                      <td style={{ padding: "20px 8px", textAlign: "right", verticalAlign: "middle" }}>
+                        {isAllocated ? (
+                          <div style={{ display: "inline-flex", flexDirection: "column", gap: "6px", width: "100%", maxWidth: "180px", textAlign: "left" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px" }}>
+                              <span style={{ fontWeight: "750", color: "var(--text-muted)" }}>Milestone Progress</span>
+                              <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{progressPct}%</strong>
+                            </div>
+                            <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
+                              <div style={{ width: `${progressPct}%`, height: "100%", background: "linear-gradient(90deg, var(--primary), var(--secondary))", borderRadius: "3px" }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{
+                            fontSize: "10px",
+                            fontWeight: "900",
+                            background: "rgba(251, 146, 60, 0.08)",
+                            color: "var(--accent)",
+                            border: "1px solid rgba(251, 146, 60, 0.2)",
+                            padding: "4px 10px",
+                            borderRadius: "4px",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px"
+                          }}>
+                            IN REVIEW
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {sponsorProjects.length === 0 && (
+                  <tr>
+                    <td colSpan={3} style={{ padding: "60px 40px", textAlign: "center" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", maxWidth: "400px", margin: "0 auto" }}>
+                        <span style={{ fontSize: "36px", display: "inline-flex", alignItems: "center" }}><FaBriefcase /></span>
+                        <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--text-main)" }}>
+                          No Active Sponsorships
+                        </h4>
+                        <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.5" }}>
+                          No project proposals have been submitted by your company yet. Propose your first industry B2B project to begin campus allocations!
+                        </p>
+                        <button
+                          onClick={() => {
+                            setActiveTab("submit");
+                            if (triggerToast) triggerToast("Opening Project Proposal Form...");
+                          }}
+                          className="btn-primary"
+                          style={{
+                            padding: "10px 20px",
+                            fontSize: "12.5px",
+                            borderRadius: "8px",
+                            background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                            borderColor: "transparent",
+                            cursor: "pointer",
+                            fontWeight: "800",
+                            boxShadow: "0 4px 15px rgba(249, 115, 22, 0.25)"
+                          }}
+                        >
+                          Propose Your First Project
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "submit" && (
+        <div className="glass-panel" style={{ padding: "30px", maxWidth: "680px" }}>
+          <h3 style={{ margin: "0 0 8px 0", fontSize: "18px", fontWeight: "850", color: "var(--text-main)" }}>
+            Submit Corporate Project Proposal
+          </h3>
+          <p style={{ margin: "0 0 24px 0", fontSize: "13px", color: "var(--text-muted)" }}>
+            Propose a new industry B2B engineering project. Central Moderators will review the proposal and assign it to student cohorts at KLE, COEP, MMCOEP, or RIT spokes.
+          </p>
+
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Project Title / Scope Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. GPU Cloud Orchestration Engine"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  background: "var(--bg-input)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-main)",
+                  outline: "none",
+                  fontSize: "13.5px"
+                }}
+                required
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Budget Commitment ($) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. $45,000"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    background: "var(--bg-input)",
+                    border: "1px solid var(--border-glass)",
+                    color: "var(--text-main)",
+                    outline: "none",
+                    fontSize: "13.5px"
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Milestone Duration (Months) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 6 Months"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    background: "var(--bg-input)",
+                    border: "1px solid var(--border-glass)",
+                    color: "var(--text-main)",
+                    outline: "none",
+                    fontSize: "13.5px"
+                  }}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Target Sprint Due Date *
+              </label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  background: "var(--bg-input)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-main)",
+                  outline: "none",
+                  fontSize: "13.5px"
+                }}
+                required
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Detailed Project Description & Deliverables *
+              </label>
+              <textarea
+                placeholder="Describe project objectives, key phases, and student engineering outcomes..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{
+                  width: "100%",
+                  height: "120px",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  background: "var(--bg-input)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-main)",
+                  outline: "none",
+                  fontSize: "13.5px",
+                  resize: "none",
+                  lineHeight: "1.5"
+                }}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-primary"
+              style={{
+                padding: "12px",
+                fontSize: "13px",
+                borderRadius: "8px",
+                background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                border: "none",
+                fontWeight: "800",
+                boxShadow: "0 4px 15px rgba(249, 115, 22, 0.25)",
+                cursor: "pointer",
+                marginTop: "10px"
+              }}
+            >
+              {isSubmitting ? "Submitting Corporate Proposal..." : "Submit Corporate Proposal"}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {activeTab === "cohorts" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "24px" }}>
+          {/* Spoke ranks */}
+          <div className="glass-panel" style={{ padding: "24px" }}>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "800", color: "var(--text-main)" }}>
+              FIP Campus Velocity Leaderboard
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {spokes.map((spoke, idx) => {
+                const medal = idx === 0 ? "1st" : idx === 1 ? "2nd" : idx === 2 ? "3rd" : "Rank";
+                // Sum completions by this spoke
+                const spokeTasks = tasks.filter(t => t.fields?.labels?.includes(CAMPUS_LABELS[spoke.id]));
+                const done = spokeTasks.filter(t => (t.fields?.status?.name || t.fields?.status || "") === "Done").length;
+                const total = spokeTasks.length;
+                const pct = total > 0 ? Math.round((done / total) * 100) : 30 + (3 - idx) * 15; // default fallback if empty
+                
+                return (
+                  <div key={spoke.id} style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                    padding: "10px 14px",
+                    background: "rgba(255,255,255,0.01)",
+                    border: "1px solid var(--border-glass)",
+                    borderRadius: "10px"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "14px" }}>{medal}</span>
+                        <span style={{ fontSize: "12px", fontWeight: "750", color: "var(--text-main)" }}>
+                          {spoke.name}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: "11px", fontFamily: "var(--mono)", color: "var(--text-main)", fontWeight: "700" }}>
+                        {done} / {total} ({pct}%)
+                      </span>
+                    </div>
+                    <div style={{ height: "4px", background: "rgba(255,255,255,0.03)", borderRadius: "2px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
+                      <div style={{
+                        width: `${pct}%`,
+                        height: "100%",
+                        background: idx === 0 
+                          ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
+                          : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
+                        borderRadius: "2px"
+                      }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Budget Commitment Pie Card */}
+          <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div>
+              <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "800", color: "var(--text-main)" }}>
+                FIP Campus Budget Share
+              </h3>
+              <p style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.6" }}>
+                This card represents the total budget committed by **{companyName}** across the campus spokes. Allocations are partitioned to direct-hire and hardware deployment subsidies for active B2B deliverables.
+              </p>
+            </div>
+            
+            <div style={{
+              marginTop: "20px",
+              padding: "16px",
+              background: "rgba(99, 102, 241, 0.05)",
+              border: "1px solid rgba(99, 102, 241, 0.15)",
+              borderRadius: "12px",
+              display: "flex",
+              justifyContent: "space-between"
+            }}>
+              <div>
+                <span style={{ display: "block", fontSize: "10px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase" }}>Hardware Seed Subsidies</span>
+                <span style={{ fontSize: "16px", fontWeight: "900", color: "var(--primary)" }}>$40,000</span>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <span style={{ display: "block", fontSize: "10px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase" }}>Cohort Intern Subsidies</span>
+                <span style={{ fontSize: "16px", fontWeight: "900", color: "var(--accent)" }}>$110,000</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// ==========================================
 // COLLABORATIVE Sync Meetings PORTAL VIEW
 // ==========================================
 
@@ -7736,12 +10419,12 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
     const proposedProjs = moderatorProjects.filter(p => p.assignedTo === spokeName && p.status === "Proposed");
     
     if (activeProjs.length > 0) {
-      return `🔥 Active: ${activeProjs.map(p => p.company).join(", ")}`;
+      return `Active: ${activeProjs.map(p => p.company).join(", ")}`;
     }
     if (proposedProjs.length > 0) {
-      return `⏳ Proposed: ${proposedProjs.map(p => p.company).join(", ")}`;
+      return `Proposed: ${proposedProjs.map(p => p.company).join(", ")}`;
     }
-    return `💤 Awaiting Projects`;
+    return `Awaiting Projects`;
   };
   const [newTitle, setNewTitle] = useState("");
   const [newCampusId, setNewCampusId] = useState("3");
@@ -7774,7 +10457,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
 
     const overlap = meetings.some(m => m.campusId === newCampusId && m.date === newDate && m.time === newTime);
     if (overlap) {
-      triggerToast(`⚠️ Schedule Conflict: There is already a sync scheduled for this campus today at ${newTime}!`, "warning");
+      triggerToast(` Schedule Conflict: There is already a sync scheduled for this campus today at ${newTime}!`, "warning");
     }
 
     setIsScheduling(true);
@@ -7827,6 +10510,22 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
       triggerToast("Failed to dispatch meeting warning reminder.", "error");
     } finally {
       setRemindLoading(null);
+    }
+  };
+
+  const handleDeleteMeeting = async (meetId) => {
+    if (!window.confirm("Are you sure you want to cancel and delete this scheduled sync meeting?")) {
+      return;
+    }
+    try {
+      const res = await axios.delete(`http://localhost:5000/meetings/${meetId}`);
+      if (res.data && res.data.success) {
+        triggerToast("Sync meeting cancelled and deleted successfully.");
+        onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to delete sync meeting.", "error");
     }
   };
 
@@ -7909,7 +10608,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <div>
               <h4 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
-                <span>📅 Interactive Scheduling Calendar</span>
+                <span>Interactive Scheduling Calendar</span>
               </h4>
               <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px", marginBottom: 0 }}>Click any day to select scheduling date, or filter meetings.</p>
             </div>
@@ -8015,7 +10714,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
         <div className="glass-panel" style={{ padding: "24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div>
-              <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)", margin: 0 }}>📅 Scheduled FIP Syncs</h3>
+              <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)", margin: 0 }}>Scheduled FIP Syncs</h3>
               <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "4px", marginBottom: 0 }}>Active sync schedules and prep reminder trigger panels.</p>
             </div>
             <button onClick={onRefresh} className="btn-secondary" style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
@@ -8076,7 +10775,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                         textTransform: "uppercase",
                         letterSpacing: "0.5px"
                       }}>
-                        🏢 {spokeName}
+                        <span><FaBuilding style={{ marginRight: '6px', verticalAlign: 'middle' }} /> {spokeName}</span>
                       </span>
                       <h4 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-main)", marginTop: "8px", marginBottom: "0" }}>
                         {meet.title}
@@ -8096,10 +10795,10 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                             border: "1px solid rgba(239, 68, 68, 0.2)",
                             color: "#ef4444"
                           }} className="pulse-glow" title="Another meeting is scheduled for this campus at the same time!">
-                            ⚠️ Conflict
+                            <span><FaExclamationTriangle style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Conflict</span>
                           </span>
                         )}
-                        <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--primary)" }}>⏰ {meet.time}</div>
+                        <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--primary)" }}><span><FaClock style={{ marginRight: "4px", verticalAlign: "middle" }} /> {meet.time}</span></div>
                       </div>
                       <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{meet.date}</span>
                     </div>
@@ -8132,7 +10831,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                           transition: "var(--transition-smooth)"
                         }}
                       >
-                        🎥 Join Sync Room (Jitsi Video)
+                        <span><FaDesktop style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Join Sync Room (Jitsi Video)</span>
                       </button>
                       <a
                         href={meet.link}
@@ -8140,8 +10839,27 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                         rel="noopener noreferrer"
                         style={{ fontSize: "11.5px", color: "var(--text-muted)", textDecoration: "none", fontWeight: "600" }}
                       >
-                        🔗 Alternative Link
+                        <span><FaLink style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Alternative Link</span>
                       </a>
+
+                      <button
+                        onClick={() => handleDeleteMeeting(meet.id)}
+                        style={{
+                          fontSize: "11.5px",
+                          color: "#ef4444",
+                          background: "rgba(239, 68, 68, 0.08)",
+                          border: "1px solid rgba(239, 68, 68, 0.2)",
+                          fontWeight: "750",
+                          cursor: "pointer",
+                          padding: "5px 10px",
+                          borderRadius: "6px",
+                          marginLeft: "12px",
+                          transition: "var(--transition-smooth)"
+                        }}
+                        title="Cancel and delete scheduled sync meeting persistently"
+                      >
+                        <span><FaTrashAlt style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Cancel Sync</span>
+                      </button>
                     </div>
                     
                     <button
@@ -8158,7 +10876,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                         cursor: "pointer"
                       }}
                     >
-                      {isReminderActive ? "Relaying alerts..." : "📢 Dispatch Prep Reminder"}
+                      {isReminderActive ? "Relaying alerts..." : "Dispatch Prep Reminder"}
                     </button>
                   </div>
                 </div>
@@ -8177,7 +10895,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
       {/* RIGHT COLUMN: Schedule Form */}
       <div className="glass-panel" style={{ padding: "24px" }}>
         <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)", marginBottom: "6px" }}>
-          ➕ Schedule FIP Campus Sync
+          Schedule FIP Campus Sync
         </h3>
         <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginBottom: "20px" }}>
           Establish sync channels for review of sprint deliverables.
@@ -8214,7 +10932,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                 const status = getSpokeProjectStatus(s.name);
                 return (
                   <option key={s.id} value={s.id}>
-                    🏢 {s.name} ({s.key}) — [{status}]
+                    <span><FaBuilding style={{ marginRight: '6px', verticalAlign: 'middle' }} /> {s.name} ({s.key}) — [{status}]</span>
                   </option>
                 );
               })}
@@ -8293,7 +11011,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
               cursor: "pointer"
             }}
           >
-            {isScheduling ? "Creating sync..." : "Schedule Sync Meeting 🚀"}
+            {isScheduling ? "Creating sync..." : "Schedule Sync Meeting"}
           </button>
         </form>
       </div>
@@ -8326,7 +11044,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
           }}>
             <div>
               <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "white" }}>
-                🎥 ApniLeap Live Sync Room: {activeJitsiMeeting.title}
+                <span><FaDesktop style={{ marginRight: '6px', verticalAlign: 'middle' }} /> ApniLeap Live Sync Room:</span> {activeJitsiMeeting.title}
               </h3>
               <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "var(--text-muted)" }}>
                 Secure, borderless Jitsi collaboration room for FIP deliverables sync.
@@ -8346,7 +11064,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                 className="btn-secondary"
                 style={{ padding: "8px 16px", cursor: "pointer", fontSize: "12.5px", fontWeight: "700" }}
               >
-                🔲 Full Screen
+                <span><FaFilter style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Full Screen</span>
               </button>
               <button
                 type="button"
@@ -8362,7 +11080,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                   boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)"
                 }}
               >
-                ❌ Close Sync Room
+                <span><FaTimes style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Close Sync Room</span>
               </button>
             </div>
           </div>
