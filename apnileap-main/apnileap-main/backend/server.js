@@ -15,12 +15,43 @@ const MockTask = require("./models/MockTask");
 const Meeting = require("./models/Meeting");
 const Submission = require("./models/Submission");
 const Team = require("./models/Team");
+const Message = require("./models/Message");
 
 const app = express();
+const http = require("http");
+const { Server } = require("socket.io");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+if (!fs.existsSync(path.join(__dirname, "uploads"))) {
+  fs.mkdirSync(path.join(__dirname, "uploads"));
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, "uploads"));
+  },
+  filename: function (req, file, cb) {
+    // Generate safe filename
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    cb(null, Date.now() + '-' + safeName);
+  }
+});
+const upload = multer({ storage: storage });
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Adjust appropriately for production
+    methods: ["GET", "POST"]
+  }
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Secure JWT verification middleware to restrict API write endpoints
 function authenticateToken(req, res, next) {
@@ -362,7 +393,8 @@ app.get("/spokes/:boardId/members", async (req, res) => {
 
   let members = [];
 
-  // 1. Fetch live JIRA assignable users (only if JIRA is online)
+  // 1. Fetch live JIRA assignable users (Disabled to only show real DB users + 3 mocks)
+  /*
   if (shouldCheckJira()) {
     try {
       const response = await axios.get(
@@ -386,6 +418,7 @@ app.get("/spokes/:boardId/members", async (req, res) => {
       handleJiraNetworkError(err);
     }
   }
+  */
 
   // 2. Load campus-specific persistent MongoDB users
   let dbMembers = [];
@@ -2060,56 +2093,25 @@ let companyProjectsIntake = [
     ]
   },
   {
-    id: "proj-2",
-    company: "Intel",
-    logoUrl: "https://logo.clearbit.com/intel.com?size=80",
-    title: "Automotive VLSI Controller Chip",
-    description: "Design and verify a micro-controller unit (MCU) for dashboard telemetry and advanced sensor fusion in electric vehicles.",
-    budget: "$40,000",
-    duration: "9 Months",
-    status: "Active",
-    assignedTo: "COEP Spoke",
-    targetCampusId: "101",
-    proposedDueDate: "2026-10-15",
-    assignedKey: "AK-21",
-    dateAdded: "2026-05-24",
-    allocations: [
-      {
-        targetCampusId: "101",
-        assignedTo: "COEP Spoke",
-        status: "Active",
-        proposedDueDate: "2026-10-15",
-        assignedKey: "AK-21"
-      },
-      {
-        targetCampusId: "3",
-        assignedTo: "KLE Spoke",
-        status: "Active",
-        proposedDueDate: "2026-09-05",
-        assignedKey: "AK-22"
-      }
-    ]
-  },
-  {
-    id: "proj-3",
-    company: "Google",
-    logoUrl: "https://logo.clearbit.com/google.com?size=80",
-    title: "Cloud-Native Health Tracking API",
-    description: "Develop a secure, high-throughput FHIR-compliant API for sharing electronic medical records seamlessly between clinics and hospitals.",
-    budget: "$15,000",
-    duration: "4 Months",
+    id: "proj-4",
+    company: "NVIDIA",
+    logoUrl: "https://logo.clearbit.com/nvidia.com?size=80",
+    title: "AI Based LLM Modelling",
+    description: "Develop and fine-tune large language models for domain-specific tasks using NVIDIA GPUs.",
+    budget: "$45,000",
+    duration: "8 Months",
     status: "Proposed",
     assignedTo: "MMCOEP Spoke",
     targetCampusId: "102",
-    proposedDueDate: "2026-07-20",
+    proposedDueDate: "2026-11-20",
     assignedKey: null,
-    dateAdded: "2026-05-26",
+    dateAdded: "2026-06-03",
     allocations: [
       {
         targetCampusId: "102",
         assignedTo: "MMCOEP Spoke",
         status: "Proposed",
-        proposedDueDate: "2026-07-20",
+        proposedDueDate: "2026-11-20",
         assignedKey: null
       }
     ]
@@ -2255,10 +2257,10 @@ app.get("/moderator/projects", async (req, res) => {
 // POST: Ingest a new corporate B2B project proposal (Moderator Intake Portal)
 app.post("/moderator/projects", authenticateToken, async (req, res) => {
   try {
-    const { company, title, description, budget, duration, proposedDueDate, problemStatementUrl } = req.body;
+    const { company, title, description, budget, duration, proposedDueDate, problemStatementUrl, requirements, phases } = req.body;
     
-    if (!company || !title || !description || !budget || !duration || !proposedDueDate) {
-      return res.status(400).json({ error: "All project proposal fields are required." });
+    if (!company || !title || !description || !budget || !duration || !proposedDueDate || !requirements || requirements.length === 0 || !phases || phases.length === 0) {
+      return res.status(400).json({ error: "All project proposal fields including Requirements and Phases are required." });
     }
 
     const newProject = new CorporateProject({
@@ -2273,6 +2275,8 @@ app.post("/moderator/projects", authenticateToken, async (req, res) => {
       proposedDueDate,
       assignedKey: null,
       problemStatementUrl: problemStatementUrl || "",
+      requirements: requirements || [],
+      phases: phases || [],
       allocations: []
     });
 
@@ -2289,6 +2293,19 @@ app.post("/moderator/projects", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Failed to ingest project proposal:", error);
     res.status(500).json({ error: "Failed to ingest corporate project proposal" });
+  }
+});
+
+// GET: Load projects for a specific company (Project Manager View)
+app.get("/project-manager/projects/:company", authenticateToken, async (req, res) => {
+  try {
+    const { company } = req.params;
+    const companyProjects = await CorporateProject.find({ company: company }).lean();
+    const normalizedProjects = companyProjects.map(p => ({ ...p, id: p._id.toString() }));
+    res.json(normalizedProjects);
+  } catch (error) {
+    console.error("Project Manager Projects Load Error:", error);
+    res.status(500).json({ error: "Failed to load company projects" });
   }
 });
 
@@ -2395,6 +2412,87 @@ app.post("/moderator/assign", authenticateToken, async (req, res) => {
   }
 });
 
+// POST: Add a new phase to an active project and sync to Kanban
+app.post("/api/projects/:projectId/phases", async (req, res) => {
+  const { projectId } = req.params;
+  const { targetBoardId, name, description, duration } = req.body;
+  
+  try {
+    const project = await CorporateProject.findById(projectId);
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const spoke = SPOKES[targetBoardId];
+    if (!spoke) return res.status(400).json({ error: "Invalid target board ID" });
+
+    const allocation = project.allocations?.find(a => a.targetCampusId === targetBoardId);
+    const epicKey = allocation?.assignedKey || project.assignedKey;
+
+    if (!epicKey) {
+      return res.status(400).json({ error: "Project has not been provisioned to an Epic yet." });
+    }
+
+    const newPhase = { name, description, duration };
+    project.phases.push(newPhase);
+    await project.save();
+
+    const taskSummary = name;
+    const taskDesc = description;
+    
+    // Auto sync to Kanban
+    if (spoke.live && shouldCheckJira()) {
+      const taskBody = {
+        fields: {
+          project: { key: spoke.key },
+          summary: taskSummary,
+          description: {
+            type: "doc",
+            version: 1,
+            content: [{ type: "paragraph", content: [{ type: "text", text: taskDesc }] }]
+          },
+          issuetype: { name: "Task" },
+          parent: { key: epicKey },
+          labels: LIVE_BOARD_IDS.includes(targetBoardId) ? [CAMPUS_LABELS[targetBoardId] || "kle-spoke"] : ["task"]
+        }
+      };
+      await axios.post(`${process.env.JIRA_DOMAIN}/rest/api/3/issue`, taskBody, {
+        headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" }
+      });
+    } else {
+      if (!mockTasksStore[targetBoardId]) mockTasksStore[targetBoardId] = [];
+      const spokeTasks = mockTasksStore[targetBoardId];
+      
+      const newChild = {
+        id: `mock-${targetBoardId}-child-${Date.now()}`,
+        key: `${spoke.key}-EXTRA-${Date.now()}`,
+        fields: {
+          summary: taskSummary,
+          description: taskDesc,
+          status: { name: "Backlog" },
+          priority: { name: "Medium" },
+          issuetype: { name: "Task" },
+          created: new Date().toISOString(),
+          parent: { key: epicKey, issueType: "Epic" }
+        }
+      };
+      spokeTasks.push(newChild);
+      
+      const newDbTask = new MockTask({
+        id: newChild.id,
+        key: newChild.key,
+        boardId: targetBoardId,
+        fields: newChild.fields
+      });
+      await newDbTask.save();
+    }
+    
+    invalidateCache(targetBoardId);
+    res.json({ success: true, phase: newPhase });
+  } catch (error) {
+    console.error("Failed to add phase:", error);
+    res.status(500).json({ error: "Failed to add phase and sync to Kanban" });
+  }
+});
+
 // POST: Spoke coordinator accepts proposed project (Triggers JIRA Provisioning)
 app.post("/spoke/project/:projectId/accept", async (req, res) => {
   const { projectId } = req.params;
@@ -2430,26 +2528,46 @@ app.post("/spoke/project/:projectId/accept", async (req, res) => {
     const summary = `[${project.company}] ${project.title}`;
     const descriptionText = `${project.description}\n\nSponsor: ${project.company}\nBudget: ${project.budget}\nDuration: ${project.duration}`;
 
-    // Auto-calculate deadlines for 3 standard tasks based on the project final dueDate
+    // Determine tasks/phases based on the project definition
+    let standardTasks = [];
+    let taskDescriptions = [];
+    let taskDueDates = [];
+
     const finalDateStr = dueDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const finalDue = new Date(finalDateStr);
     const start = new Date("2026-05-27");
     const diffMs = finalDue.getTime() - start.getTime();
 
-    const t1Ms = start.getTime() + Math.round(diffMs * 0.3);
-    const t2Ms = start.getTime() + Math.round(diffMs * 0.6);
-    const t3Ms = finalDue.getTime();
-
-    const t1DueDate = new Date(t1Ms).toISOString().split("T")[0];
-    const t2DueDate = new Date(t2Ms).toISOString().split("T")[0];
-    const t3DueDate = new Date(t3Ms).toISOString().split("T")[0];
-
-    const standardTasks = [
-      `Phase 1: Lab Infrastructure Setup & Hardware Procurement`,
-      `Phase 2: Faculty Upskilling & Student Cohort Selection`,
-      `Phase 3: Development, Industry Mentorship & Evaluation`
-    ];
-    const taskDueDates = [t1DueDate, t2DueDate, t3DueDate];
+    if (project.phases && project.phases.length > 0) {
+      const totalPhases = project.phases.length;
+      project.phases.forEach((phase, idx) => {
+        standardTasks.push(phase.name || `Phase ${idx + 1}`);
+        taskDescriptions.push(phase.description || `Automated child task created under Epic ${createdEpicKey}.`);
+        // Basic interpolation of due dates across the duration
+        const phaseMs = start.getTime() + Math.round(diffMs * ((idx + 1) / totalPhases));
+        taskDueDates.push(new Date(phaseMs).toISOString().split("T")[0]);
+      });
+    } else {
+      // Fallback
+      standardTasks = [
+        `Phase 1: Lab Infrastructure Setup & Hardware Procurement`,
+        `Phase 2: Faculty Upskilling & Student Cohort Selection`,
+        `Phase 3: Development, Industry Mentorship & Evaluation`
+      ];
+      taskDescriptions = [
+        `Automated child task created under Epic.`,
+        `Automated child task created under Epic.`,
+        `Automated child task created under Epic.`
+      ];
+      const t1Ms = start.getTime() + Math.round(diffMs * 0.3);
+      const t2Ms = start.getTime() + Math.round(diffMs * 0.6);
+      const t3Ms = finalDue.getTime();
+      taskDueDates = [
+        new Date(t1Ms).toISOString().split("T")[0],
+        new Date(t2Ms).toISOString().split("T")[0],
+        new Date(t3Ms).toISOString().split("T")[0]
+      ];
+    }
 
     if (spoke.live && shouldCheckJira()) {
       console.log(`Live Provisioning Project to ${spoke.name} on acceptance...`);
@@ -2491,6 +2609,7 @@ app.post("/spoke/project/:projectId/accept", async (req, res) => {
 
         for (let idx = 0; idx < standardTasks.length; idx++) {
           const taskSummary = standardTasks[idx];
+          const taskDesc = taskDescriptions[idx];
           const taskBody = {
             fields: {
               project: { key: spoke.key },
@@ -2501,7 +2620,7 @@ app.post("/spoke/project/:projectId/accept", async (req, res) => {
                 content: [
                   {
                     type: "paragraph",
-                    content: [{ type: "text", text: `Automated child task created under Epic ${createdEpicKey}.` }]
+                    content: [{ type: "text", text: taskDesc }]
                   }
                 ]
               },
@@ -2565,7 +2684,7 @@ app.post("/spoke/project/:projectId/accept", async (req, res) => {
           key: childKey,
           fields: {
             summary: taskSummary,
-            description: `Automated child task created under Epic ${createdEpicKey} representing company project assigned to ${spoke.name}.`,
+            description: taskDescriptions[idx],
             status: { name: "Backlog" },
             priority: { name: "Medium" },
             issuetype: { name: "Task" },
@@ -3504,6 +3623,18 @@ const CREDENTIALS_STORE = {
     role: "Executive Administrator",
     persona: "executive"
   },
+  "nvidia@corporate.com": {
+    password: "nvidia123",
+    displayName: "NVIDIA Sponsor",
+    role: "Corporate Partner",
+    persona: "sponsor"
+  },
+  "p.manager@nvidia.com": {
+    password: "pm123",
+    displayName: "NVIDIA Project Manager",
+    role: "Project Manager",
+    persona: "project-manager"
+  },
   "coordinator@kle.edu": {
     password: "kle123",
     displayName: "KLE Coordinator",
@@ -3551,7 +3682,81 @@ const CREDENTIALS_STORE = {
     displayName: "NVIDIA Sponsor",
     role: "Corporate Partner",
     persona: "sponsor-nvidia"
-  }
+  },
+    "pm@nvidia.com": {
+    password: "pm123",
+    displayName: "NVIDIA Project Manager",
+    role: "Project Manager",
+    persona: "project-manager",
+    company: "NVIDIA"
+  },
+  "mentor@nvidia.com": {
+    password: "mentor123",
+    displayName: "NVIDIA Project Mentor",
+    role: "Project Mentor",
+    persona: "project-mentor",
+    company: "NVIDIA"
+  },
+  "aditi.sharma@nvidia.com": {
+    password: "mentor123",
+    displayName: "Dr. Aditi Sharma",
+    role: "Project Mentor",
+    persona: "project-mentor",
+    company: "NVIDIA"
+  },
+  "raj.patel@nvidia.com": {
+    password: "mentor123",
+    displayName: "Raj Patel",
+    role: "Project Mentor",
+    persona: "project-mentor",
+    company: "NVIDIA"
+  },
+  "emily.chen@intel.com": {
+    password: "mentor123",
+    displayName: "Emily Chen",
+    role: "Project Mentor",
+    persona: "project-mentor",
+    company: "Intel"
+  },
+  "michael.johnson@microsoft.com": {
+    password: "mentor123",
+    displayName: "Michael Johnson",
+    role: "Project Mentor",
+    persona: "project-mentor",
+    company: "Microsoft"
+  },
+  "coordinator@kle.edu": { password: "admin123", displayName: "Dr. Suresh Patil", role: "Campus Coordinator", persona: "spoke-kle" },
+  // --- KLE SPOKE (3 Faculty, 3 Students) ---
+  "faculty1@kle.edu": { password: "faculty123", displayName: "Dr. Anita Desai", role: "Faculty Member", persona: "spoke-kle" },
+  "faculty2@kle.edu": { password: "faculty123", displayName: "Prof. Ramesh Kulkarni", role: "Faculty Member", persona: "spoke-kle" },
+  "faculty3@kle.edu": { password: "faculty123", displayName: "Dr. Meena Joshi", role: "Faculty Member", persona: "spoke-kle" },
+  "student1@kle.edu": { password: "student123", displayName: "Arjun Nair", role: "Student Developer", persona: "spoke-kle" },
+  "student2@kle.edu": { password: "student123", displayName: "Priya Bhat", role: "Student Developer", persona: "spoke-kle" },
+  "student3@kle.edu": { password: "student123", displayName: "Rohan Hegde", role: "Student Developer", persona: "spoke-kle" },
+  "coordinator@coep.edu": { password: "admin123", displayName: "Dr. Vijay Deshpande", role: "Campus Coordinator", persona: "spoke-coep" },
+  // --- COEP SPOKE (3 Faculty, 3 Students) ---
+  "faculty1@coep.edu": { password: "faculty123", displayName: "Dr. Kavita Sharma", role: "Faculty Member", persona: "spoke-coep" },
+  "faculty2@coep.edu": { password: "faculty123", displayName: "Prof. Nikhil Patwardhan", role: "Faculty Member", persona: "spoke-coep" },
+  "faculty3@coep.edu": { password: "faculty123", displayName: "Dr. Sunita Rao", role: "Faculty Member", persona: "spoke-coep" },
+  "student1@coep.edu": { password: "student123", displayName: "Aditya Kulkarni", role: "Student Developer", persona: "spoke-coep" },
+  "student2@coep.edu": { password: "student123", displayName: "Sneha Joshi", role: "Student Developer", persona: "spoke-coep" },
+  "student3@coep.edu": { password: "student123", displayName: "Karan Mehta", role: "Student Developer", persona: "spoke-coep" },
+  "coordinator@mmcoep.edu": { password: "admin123", displayName: "Dr. Preeti Sawant", role: "Campus Coordinator", persona: "spoke-mmcoep" },
+  // --- MMCOEP SPOKE (3 Faculty, 3 Students) ---
+  "faculty1@mmcoep.edu": { password: "faculty123", displayName: "Dr. Ashish Gaikwad", role: "Faculty Member", persona: "spoke-mmcoep" },
+  "faculty2@mmcoep.edu": { password: "faculty123", displayName: "Prof. Deepa Wagh", role: "Faculty Member", persona: "spoke-mmcoep" },
+  "faculty3@mmcoep.edu": { password: "faculty123", displayName: "Dr. Rajendra Bhosale", role: "Faculty Member", persona: "spoke-mmcoep" },
+  "student1@mmcoep.edu": { password: "student123", displayName: "Tanvi Pawar", role: "Student Developer", persona: "spoke-mmcoep" },
+  "student2@mmcoep.edu": { password: "student123", displayName: "Sahil Chavan", role: "Student Developer", persona: "spoke-mmcoep" },
+  "student3@mmcoep.edu": { password: "student123", displayName: "Nisha Mane", role: "Student Developer", persona: "spoke-mmcoep" },
+  "coordinator@rit.edu": { password: "admin123", displayName: "Dr. Santosh Kadam", role: "Campus Coordinator", persona: "spoke-rit" },
+  // --- RIT SPOKE (3 Faculty, 3 Students) ---
+  "faculty1@rit.edu": { password: "faculty123", displayName: "Dr. Madhuri Shinde", role: "Faculty Member", persona: "spoke-rit" },
+  "faculty2@rit.edu": { password: "faculty123", displayName: "Prof. Ganesh Jadhav", role: "Faculty Member", persona: "spoke-rit" },
+  "faculty3@rit.edu": { password: "faculty123", displayName: "Dr. Rekha Parab", role: "Faculty Member", persona: "spoke-rit" },
+  "student1@rit.edu": { password: "student123", displayName: "Vikram Salunke", role: "Student Developer", persona: "spoke-rit" },
+  "student2@rit.edu": { password: "student123", displayName: "Pooja More", role: "Student Developer", persona: "spoke-rit" },
+  "student3@rit.edu": { password: "student123", displayName: "Amit Deshmukh", role: "Student Developer", persona: "spoke-rit" }
 };
 
 // Seeding function to initialize the default users in MongoDB Atlas
@@ -3564,7 +3769,8 @@ async function seedDefaultUsers() {
       password: CREDENTIALS_STORE[email].password,
       displayName: CREDENTIALS_STORE[email].displayName,
       role: CREDENTIALS_STORE[email].role,
-      persona: CREDENTIALS_STORE[email].persona
+      persona: CREDENTIALS_STORE[email].persona,
+      company: CREDENTIALS_STORE[email].company
     }));
     await User.insertMany(usersToSeed, { ordered: false });
     console.log(`🌱 [SEEDING SUCCESS] Seeded ${usersToSeed.length} default users into MongoDB Atlas!`);
@@ -3660,6 +3866,41 @@ async function seedDefaultMeetings() {
   }
 }
 
+// --- Chat & Socket.io ---
+io.on("connection", (socket) => {
+  socket.on("join_room", (room) => {
+    socket.join(room);
+  });
+
+  socket.on("send_message", async (data) => {
+    try {
+      const msg = new Message({
+        senderEmail: data.senderEmail,
+        senderName: data.senderName,
+        senderRole: data.senderRole,
+        content: data.content,
+        room: data.room,
+      });
+      await msg.save();
+      // Broadcast to everyone in the room (including sender to verify delivery)
+      io.to(data.room).emit("receive_message", msg);
+    } catch (err) {
+      console.error("Error saving message:", err);
+    }
+  });
+});
+
+app.get("/api/chat/:room", authenticateToken, async (req, res) => {
+  try {
+    const room = req.params.room;
+    // Fetch last 100 messages for the room
+    const messages = await Message.find({ room }).sort({ createdAt: 1 }).limit(100);
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch chat history" });
+  }
+});
+
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
@@ -3670,7 +3911,7 @@ mongoose.connect(process.env.MONGODB_URI)
     await seedDefaultMeetings();
     
     // Start listening on port 5000 only after database connection is fully established and seeded!
-    app.listen(5000, () => {
+    server.listen(5000, () => {
       console.log("Server running on port 5000");
       syncAcceptedProjectsWithJira().then(() => {
         // Proactively warm up local caches in the background to make subsequent dashboard loads instant
@@ -3743,7 +3984,8 @@ app.post("/api/login", async (req, res) => {
         email: user.email,
         displayName: user.displayName,
         role: user.role,
-        persona: user.persona
+        persona: user.persona,
+        company: user.company
       }
     });
   } catch (error) {
@@ -3755,7 +3997,7 @@ app.post("/api/login", async (req, res) => {
 // POST /api/register - Register a new Student or Coordinator persistently in MongoDB Atlas
 app.post("/api/register", async (req, res) => {
   try {
-    const { email, password, displayName, role, persona } = req.body;
+    const { email, password, displayName, role, persona, company } = req.body;
     console.log(`[REGISTER ATTEMPT] Received email: "${email}", name: "${displayName}", role: "${role}"`);
     if (!email || !password || !displayName || !role || !persona) {
       return res.status(400).json({ error: "All registration fields are required." });
@@ -3774,7 +4016,8 @@ app.post("/api/register", async (req, res) => {
       password,
       displayName,
       role,
-      persona
+      persona,
+      company: persona === 'project-manager' ? company : undefined
     });
 
     await newUser.save();
@@ -3811,7 +4054,62 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
+// GET /api/mentors - Fetch available project mentors
+app.get("/api/mentors", async (req, res) => {
+  try {
+    const { company } = req.query;
+    const filter = { role: "Project Mentor" };
+    if (company) {
+      // Case-insensitive exact match for company
+      filter.company = new RegExp(`^${company}$`, "i");
+    }
+    const mentors = await User.find(filter).select("-password").lean();
+    res.json(mentors);
+  } catch (error) {
+    console.error("Fetch mentors error:", error);
+    res.status(500).json({ error: "Failed to fetch mentors." });
+  }
+});
+
+
+// GET /api/faculty/:campusId - Fetch available faculty members for a campus
+app.get("/api/faculty/:campusId", async (req, res) => {
+  try {
+    const { campusId } = req.params;
+    const persona = `spoke-${campusId === "3" ? "kle" : campusId === "101" ? "coep" : campusId === "102" ? "mmcoep" : "rit"}`;
+    const faculty = await User.find({ role: "Faculty Member", persona }).select("-password").lean();
+    res.json(faculty);
+  } catch (error) {
+    console.error("Fetch faculty error:", error);
+    res.status(500).json({ error: "Failed to fetch faculty members." });
+  }
+});
+
+// PUT /api/projects/:id/assign-faculty - Coordinator assigns faculty to their campus's allocation
+app.put("/api/projects/:id/assign-faculty", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { targetCampusId, facultyEmail } = req.body;
+    
+    const project = await CorporateProject.findById(id);
+    if (!project) return res.status(404).json({ error: "Project not found" });
+    
+    const allocation = project.allocations.find(a => a.targetCampusId === targetCampusId);
+    if (!allocation) return res.status(404).json({ error: "Campus allocation not found" });
+    
+    allocation.facultyAssigned = facultyEmail;
+    await project.save();
+    
+    invalidateCache();
+    res.json({ success: true, project });
+  } catch (error) {
+    console.error("Assign faculty error:", error);
+    res.status(500).json({ error: "Failed to assign faculty member." });
+  }
+});
+
 // GET /api/teams - Get all Spoke custom Sprints Teams
+
 app.get("/api/teams", async (req, res) => {
   try {
     const { boardId } = req.query;
@@ -3829,16 +4127,19 @@ app.get("/api/teams", async (req, res) => {
 // POST /api/teams - Create a new Spoke Sprints Team persistently in MongoDB Atlas
 app.post("/api/teams", authenticateToken, async (req, res) => {
   try {
-    const { name, boardId, members, mentor } = req.body;
-    if (!name || !boardId || !Array.isArray(members) || members.length === 0) {
-      return res.status(400).json({ error: "Team name, boardId, and a non-empty members array are required." });
+    const { name, boardId, projectId, members, mentor, teamLeader, subFaculty } = req.body;
+    if (!name || !boardId || !Array.isArray(members)) {
+      return res.status(400).json({ error: "Team name, boardId, and a members array are required." });
     }
 
     const newTeam = new Team({
       name,
       boardId,
+      projectId: projectId || null,
       members,
-      mentor: mentor || null
+      mentor: mentor || null,
+      subFaculty: subFaculty || null,
+      teamLeader: teamLeader || null
     });
 
     await newTeam.save();
@@ -3847,6 +4148,26 @@ app.post("/api/teams", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Create team error:", error);
     res.status(500).json({ error: "Failed to create Spoke team." });
+  }
+});
+
+// PUT /api/teams/:id - Update an existing team
+app.put("/api/teams/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { members, teamLeader, name } = req.body;
+    const team = await Team.findById(id);
+    if (!team) return res.status(404).json({ error: "Team not found." });
+
+    if (members) team.members = members;
+    if (teamLeader !== undefined) team.teamLeader = teamLeader;
+    if (name) team.name = name;
+
+    await team.save();
+    res.json({ success: true, team });
+  } catch (error) {
+    console.error("Update team error:", error);
+    res.status(500).json({ error: "Failed to update Spoke team." });
   }
 });
 
@@ -3864,19 +4185,33 @@ app.delete("/api/teams/:id", authenticateToken, async (req, res) => {
 });
 
 // POST /tasks/:taskId/submit - Create a new student deliverable submission in MongoDB
-app.post("/tasks/:taskId/submit", authenticateToken, async (req, res) => {
+app.post("/tasks/:taskId/submit", authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { studentName, fileName, fileUrl, comments } = req.body;
+    const { studentName, comments } = req.body;
+    
+    let fileUrl = "";
+    let fileName = "";
+
+    if (req.file) {
+      fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+      fileName = req.file.originalname;
+    } else {
+      // Fallback for purely text/link submissions if necessary
+      fileUrl = req.body.fileUrl;
+      fileName = req.body.fileName;
+    }
+
     if (!studentName || !fileName || !fileUrl) {
-      return res.status(400).json({ error: "Missing required fields (studentName, fileName, fileUrl)" });
+      return res.status(400).json({ error: "Missing required fields (studentName, file)" });
     }
     const newSubmission = new Submission({
       taskId,
       studentName,
       fileName,
       fileUrl,
-      comments: comments || ""
+      comments: comments || "",
+      status: "Awaiting Faculty Review"
     });
     await newSubmission.save();
     res.json({ success: true, submission: newSubmission });
@@ -3915,8 +4250,8 @@ app.put("/submissions/:id/status", authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { status, feedback } = req.body;
     
-    if (!status || !["Approved", "Re-work Requested"].includes(status)) {
-      return res.status(400).json({ error: "Valid status ('Approved' or 'Re-work Requested') is required." });
+    if (!status || !["Approved", "Re-work Requested", "Awaiting Coordinator Review"].includes(status)) {
+      return res.status(400).json({ error: "Valid status ('Approved', 'Re-work Requested', or 'Awaiting Coordinator Review') is required." });
     }
 
     const submission = await Submission.findById(id);
@@ -3949,10 +4284,15 @@ app.put("/submissions/:id/status", authenticateToken, async (req, res) => {
           await mockTask.save();
           console.log(`[REACTIVE AGENT] Automatically flagged Mock Task ${taskId} as blocked due to re-work request.`);
         }
+        // If status is "Awaiting Coordinator Review", no task state change is needed.
       } else if (shouldCheckJira()) {
         // 2. Handle live JIRA tasks dynamically (board-independent transition logic)
         console.log(`[REACTIVE AGENT] Resolving live JIRA task ${taskId} for automated status transition...`);
-        const targetStatusName = status === "Approved" ? "Done" : "In Progress";
+        let targetStatusName = null;
+        if (status === "Approved") targetStatusName = "Done";
+        else if (status === "Re-work Requested") targetStatusName = "In Progress";
+
+        if (targetStatusName) {
         
         // Query available transitions for this issue in Jira
         const transitionsRes = await axios.get(
@@ -4012,6 +4352,7 @@ app.put("/submissions/:id/status", authenticateToken, async (req, res) => {
         } else {
           console.warn(`[REACTIVE AGENT] No transition workflow path found to '${targetStatusName}' for live issue ${taskId}.`);
         }
+        } // close if (targetStatusName)
       }
     } catch (taskErr) {
       console.warn("[REACTIVE AGENT] Failed to run automated task transitions on submission update:", taskErr.message);
@@ -4023,6 +4364,23 @@ app.put("/submissions/:id/status", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Failed to update submission status:", error);
     res.status(500).json({ error: "Failed to update submission status" });
+  }
+});
+
+// DELETE /submissions/:id - Delete a student submission persistently
+app.delete("/submissions/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const submission = await Submission.findByIdAndDelete(id);
+    if (!submission) {
+      return res.status(404).json({ error: "Submission not found." });
+    }
+    console.log(`[SUBMISSION AUDIT] Deleted submission ${id} for task ${submission.taskId}`);
+    invalidateCache();
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete student submission:", error);
+    res.status(500).json({ error: "Failed to delete student submission" });
   }
 });
 

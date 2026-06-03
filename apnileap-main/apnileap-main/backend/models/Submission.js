@@ -24,8 +24,8 @@ const SubmissionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Awaiting Review", "Approved", "Re-work Requested"],
-    default: "Awaiting Review"
+    enum: ["Awaiting Faculty Review", "Awaiting Coordinator Review", "Approved", "Re-work Requested"],
+    default: "Awaiting Faculty Review"
   },
   feedback: {
     type: String,

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -20,70 +20,125 @@ axios.interceptors.request.use(
   }
 );
 
-// Modern Lucide-style Icon setup using React Icons Fa
+// Modern Lucide Icon setup
 import {
-  FaTasks,
-  FaChartPie,
-  FaBell,
-  FaSearch,
-  FaFilter,
-  FaPlus,
-  FaTimes,
-  FaCheck,
-  FaTrashAlt,
-  FaSyncAlt,
-  FaChevronLeft,
-  FaChevronRight,
-  FaInfoCircle,
-  FaRegLightbulb,
-  FaEnvelope,
-  FaPaperPlane,
-  FaExclamationTriangle,
-  FaSun,
-  FaMoon,
-  FaBriefcase,
-  FaLock,
-  FaUser,
-  FaUsers,
-  FaHome,
-  FaBook,
-  FaCalendarAlt,
-  FaComments,
-  FaGraduationCap,
-  FaCog,
-  FaCrown,
-  FaBug,
-  FaClipboardList,
-  FaInbox,
-  FaHourglassHalf,
-  FaCheckCircle,
-  FaLink,
-  FaCommentAlt,
-  FaFolderOpen,
-  FaMedal,
-  FaBuilding,
-  FaGlobe,
-  FaWrench,
-  FaTools,
-  FaBolt,
-  FaStar,
-  FaDollarSign,
-  FaClock,
-  FaTags,
-  FaExclamationCircle,
-  FaListUl,
-  FaDesktop,
-  FaSchool,
-  FaUniversity,
-  FaPaperclip,
-  FaFlag,
-  FaUserTie,
-  FaProjectDiagram,
-  FaEye,
-  FaCheckSquare
-} from "react-icons/fa";
+  ListTodo,
+  PieChart as LucidePieChart,
+  Bell,
+  Search,
+  Filter,
+  Plus,
+  X,
+  Check,
+  Trash2,
+  RotateCw,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  Lightbulb,
+  Mail,
+  Send,
+  AlertTriangle,
+  Sun,
+  Moon,
+  Briefcase,
+  Lock,
+  User,
+  Users,
+  Home,
+  Book,
+  Calendar,
+  MessageSquare,
+  GraduationCap,
+  Settings,
+  Shield,
+  Bug,
+  ClipboardList,
+  Inbox,
+  Hourglass,
+  CheckCircle,
+  Link as LucideLink,
+  FolderOpen,
+  Medal,
+  Building2,
+  Globe,
+  Wrench,
+  Zap,
+  Star,
+  DollarSign,
+  Clock,
+  Tag,
+  AlertCircle,
+  List,
+  Monitor,
+  School,
+  Paperclip,
+  Flag,
+  ArrowRight,
+  LogOut
+} from "lucide-react";
 
-let toastIdCounter = 0;
+// Alias mapping for FontAwesome to Lucide components
+const FaTasks = ListTodo;
+const FaChartPie = LucidePieChart;
+const FaBell = Bell;
+const FaSearch = Search;
+const FaFilter = Filter;
+const FaPlus = Plus;
+const FaTimes = X;
+const FaCheck = Check;
+const FaTrashAlt = Trash2;
+const FaSyncAlt = RotateCw;
+const FaChevronLeft = ChevronLeft;
+const FaChevronRight = ChevronRight;
+const FaInfoCircle = Info;
+const FaRegLightbulb = Lightbulb;
+const FaEnvelope = Mail;
+const FaPaperPlane = Send;
+const FaExclamationTriangle = AlertTriangle;
+const FaSun = Sun;
+const FaMoon = Moon;
+const FaBriefcase = Briefcase;
+const FaLock = Lock;
+const FaUser = User;
+const FaUsers = Users;
+const FaHome = Home;
+const FaBook = Book;
+const FaCalendarAlt = Calendar;
+const FaComments = MessageSquare;
+const FaGraduationCap = GraduationCap;
+const FaCog = Settings;
+const FaShieldAlt = Shield;
+const FaBug = Bug;
+const FaClipboardList = ClipboardList;
+const FaInbox = Inbox;
+const FaHourglassHalf = Hourglass;
+const FaCheckCircle = CheckCircle;
+const FaLink = LucideLink;
+const FaCommentAlt = MessageSquare;
+const FaFolderOpen = FolderOpen;
+const FaMedal = Medal;
+const FaBuilding = Building2;
+const FaGlobe = Globe;
+const FaWrench = Wrench;
+const FaTools = Wrench;
+const FaBolt = Zap;
+const FaStar = Star;
+const FaDollarSign = DollarSign;
+const FaClock = Clock;
+const FaTags = Tag;
+const FaExclamationCircle = AlertCircle;
+const FaListUl = List;
+const FaDesktop = Monitor;
+const FaSchool = School;
+const FaUniversity = School;
+const FaPaperclip = Paperclip;
+const FaFlag = Flag;
+const FaArrowRight = ArrowRight;
+const FaUserTie = FaUser;
+const FaChartLine = FaChartPie;
+const FaCommentDots = FaComments;
+
 
 import {
   PieChart,
@@ -98,6 +153,10 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { io } from "socket.io-client";
+
+// Shared singleton socket — connect once at module level
+const socket = io("http://localhost:5000", { autoConnect: false });
 
 // Utility date calculator to evaluate task deadline details
 const getDeadlineInfo = (dueDate, statusName) => {
@@ -161,17 +220,15 @@ const CompanyLogo = ({ company, size = 38 }) => {
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: "8px",
-        background: "linear-gradient(135deg, #162402, #0d1601)",
-        border: "1.5px solid #76b900",
+        overflow: "hidden",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         boxShadow: "0 0 12px rgba(118, 185, 0, 0.25)",
-        flexShrink: 0
+        flexShrink: 0,
+        background: "white"
       }} title="NVIDIA Sponsor">
-        <svg viewBox="0 0 24 24" style={{ width: `${size * 0.55}px`, height: `${size * 0.55}px`, fill: "#76b900" }}>
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15.5h-2v-2h2v2zm0-4h-2V7h2v6z" />
-        </svg>
+        <img src="https://logo.clearbit.com/nvidia.com" alt="NVIDIA" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </div>
     );
   }
@@ -182,7 +239,7 @@ const CompanyLogo = ({ company, size = 38 }) => {
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: "8px",
-        background: "linear-gradient(135deg, #011528, #010a14)",
+        background: "#011528",
         border: "1.5px solid #0068b5",
         display: "flex",
         alignItems: "center",
@@ -203,7 +260,7 @@ const CompanyLogo = ({ company, size = 38 }) => {
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: "8px",
-        background: "linear-gradient(135deg, #1e293b, #0f172a)",
+        background: "#1e293b",
         border: "1.5px solid rgba(255, 255, 255, 0.08)",
         display: "flex",
         alignItems: "center",
@@ -226,7 +283,7 @@ const CompanyLogo = ({ company, size = 38 }) => {
       width: `${size}px`,
       height: `${size}px`,
       borderRadius: "8px",
-      background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+      background: "var(--primary)",
       color: "white",
       display: "flex",
       alignItems: "center",
@@ -274,6 +331,23 @@ function App() {
   const [contactSubject, setContactSubject] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
+  
+  // Project Mentor State
+  const [mentorAssignments, setMentorAssignments] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("apnileap-mentor-assignments")) || {};
+    } catch {
+      return {};
+    }
+  });
+  const [isMentorModalOpen, setIsMentorModalOpen] = useState(false);
+  const [mentorModalProject, setMentorModalProject] = useState(null);
+  const [mentorMode, setMentorMode] = useState("global"); // "global" | "per-spoke"
+  const [mentorGlobalEmail, setMentorGlobalEmail] = useState("");
+  const [mentorGlobalName, setMentorGlobalName] = useState("");
+  const [mentorPerSpoke, setMentorPerSpoke] = useState({});
+  const [isAssigningMentor, setIsAssigningMentor] = useState(false);
+
   const [sessionUser, setSessionUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("apnileap-user")) || null;
@@ -293,7 +367,8 @@ function App() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupCampus, setSignupCampus] = useState("3"); // Default to "3" (KLE Spoke)
-  const [signupRole, setSignupRole] = useState("Student Developer"); // "Student Developer" or "Faculty Mentor"
+  const [signupRole, setSignupRole] = useState("Student Developer");
+  const [signupCompany, setSignupCompany] = useState("NVIDIA"); // "Student Developer" or "Faculty Mentor"
   const [signupError, setSignupError] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -301,12 +376,12 @@ function App() {
   const [activeView, setActiveView] = useState("dashboard"); // "dashboard" or "kanban"
   const [activeCoordinatorTab, setActiveCoordinatorTab] = useState("analytics"); // "analytics", "team", or "projects"
 
-  // Faculty Coordinator Add Team Member form states
+  // Faculty Mentor Add Team Member form states
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [isAddingMember, setIsAddingMember] = useState(false);
 
-  // Faculty Coordinator Assign Sprint Task form states
+  // Faculty Mentor Assign Sprint Task form states
   const [selectedEpicForTask, setSelectedEpicForTask] = useState("");
   const [newSprintTaskTitle, setNewSprintTaskTitle] = useState("");
   const [newSprintTaskAssignee, setNewSprintTaskAssignee] = useState("");
@@ -315,13 +390,19 @@ function App() {
   const [newSprintTaskDesc, setNewSprintTaskDesc] = useState("");
   const [isCreatingSprintTask, setIsCreatingSprintTask] = useState(false);
 
-  // Faculty Coordinator Custom Teams Builder states
+  // Faculty Mentor Custom Teams Builder states
   const [spokeTeams, setSpokeTeams] = useState([]);
   const [isTeamsLoading, setIsTeamsLoading] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [selectedTeamMembers, setSelectedTeamMembers] = useState([]);
   const [selectedTeamMentor, setSelectedTeamMentor] = useState("");
+  const [selectedSubFaculty, setSelectedSubFaculty] = useState("");
+  const [newTeamProjectId, setNewTeamProjectId] = useState("");
+  const [selectedTeamLeader, setSelectedTeamLeader] = useState("");
+  const [selectedTeamId, setSelectedTeamId] = useState("");
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [campusFaculty, setCampusFaculty] = useState([]);
 
   const [theme, setTheme] = useState(() => localStorage.getItem("app-theme") || "dark");
 
@@ -336,16 +417,47 @@ function App() {
     return "hub";
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [currentPersona, setCurrentPersona] = useState(() => {
     return localStorage.getItem("apnileap-persona") || "moderator";
   });
   const [currentUser, setCurrentUser] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState("Connecting to Jira...");
+  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
   const [hasError, setHasError] = useState(false);
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
   const [showCohortModal, setShowCohortModal] = useState(false);
+
+  // Global Notifications State
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  
+  const fetchNotifications = useCallback(() => {
+    if (sessionUser?.email) {
+      const stored = JSON.parse(localStorage.getItem("apnileap-mentor-notifications") || "[]");
+      setNotifications(stored.filter(n => n.email === sessionUser.email.toLowerCase().trim()));
+    } else {
+      setNotifications([]);
+    }
+  }, [sessionUser]);
+
+  useEffect(() => {
+    fetchNotifications();
+    window.addEventListener("storage", fetchNotifications);
+    const interval = setInterval(fetchNotifications, 5000);
+    return () => {
+      window.removeEventListener("storage", fetchNotifications);
+      clearInterval(interval);
+    };
+  }, [fetchNotifications]);
+
+  const dismissNotification = (id) => {
+    const allNotifications = JSON.parse(localStorage.getItem("apnileap-mentor-notifications") || "[]");
+    const updated = allNotifications.map(n => n.id === id ? { ...n, read: true } : n);
+    localStorage.setItem("apnileap-mentor-notifications", JSON.stringify(updated));
+    fetchNotifications();
+  };
 
   // B2B Project Ingest Form State
   const [isIngestOpen, setIsIngestOpen] = useState(false);
@@ -354,6 +466,10 @@ function App() {
   const [ingestDescription, setIngestDescription] = useState("");
   const [ingestBudget, setIngestBudget] = useState("");
   const [ingestDuration, setIngestDuration] = useState("");
+
+  const [ingestRequirements, setIngestRequirements] = useState("");
+  const [ingestPhases, setIngestPhases] = useState("");
+
   const [ingestDueDate, setIngestDueDate] = useState("2026-08-25");
   const [isIngesting, setIsIngesting] = useState(false);
 
@@ -367,102 +483,73 @@ function App() {
   const [editDueDate, setEditDueDate] = useState("2026-08-25");
   const [isUpdatingProject, setIsUpdatingProject] = useState(false);
 
-  // ── PROJECT MENTOR SYSTEM ──────────────────────────────────────────────────
-  const [mentorAssignments, setMentorAssignments] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("apnileap-mentor-assignments")) || {}; } catch { return {}; }
-  });
-  const [isMentorModalOpen, setIsMentorModalOpen] = useState(false);
-  const [mentorModalProject, setMentorModalProject] = useState(null);
-  const [mentorMode, setMentorMode] = useState("global"); // "global" | "per-spoke"
-  const [mentorGlobalEmail, setMentorGlobalEmail] = useState("");
-  const [mentorGlobalName, setMentorGlobalName] = useState("");
-  const [mentorPerSpoke, setMentorPerSpoke] = useState({});
-  const [isAssigningMentor, setIsAssigningMentor] = useState(false);
-  const [mentorDashTab, setMentorDashTab] = useState("project"); // "project"|"progress"|"teams"|"deliverables"|"comms"
-  const [mentorEmailRecipient, setMentorEmailRecipient] = useState("");
-  const [mentorEmailBody, setMentorEmailBody] = useState("");
-  const [isSendingMentorEmail, setIsSendingMentorEmail] = useState(false);
-
-  // Derive all registered mentor emails from assignments
-  const getAllMentorEmails = (assignments) => {
-    const emails = [];
-    Object.values(assignments).forEach(a => {
-      if (a.mode === "global" && a.global?.email) emails.push(a.global.email.toLowerCase().trim());
-      if (a.mode === "per-spoke" && a.perSpoke) {
-        Object.values(a.perSpoke).forEach(s => { if (s.email) emails.push(s.email.toLowerCase().trim()); });
-      }
-    });
-    return emails;
-  };
-
-  // Find which project(s) this mentor email is assigned to
-  const getMentorProjectInfo = (email, assignments) => {
-    const cleanEmail = (email || "").toLowerCase().trim();
-    for (const [projectId, a] of Object.entries(assignments)) {
-      if (a.mode === "global" && a.global?.email?.toLowerCase() === cleanEmail) {
-        return { projectId, mode: "global", mentorName: a.global.name, company: a.company, projectTitle: a.projectTitle };
-      }
-      if (a.mode === "per-spoke" && a.perSpoke) {
-        for (const [spokeId, s] of Object.entries(a.perSpoke)) {
-          if (s.email?.toLowerCase() === cleanEmail) {
-            return { projectId, mode: "per-spoke", spokeId, mentorName: s.name, company: a.company, projectTitle: a.projectTitle };
-          }
-        }
-      }
-    }
-    return null;
-  };
-
-  // Chat message history state (pre-populated with premium campus conversations)
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, sender: "Rahul Sharma (KLE Spoke)", message: "Phase 1 lab equipment setup completed! Ready for mentor review.", time: "18:30", campus: "KLE Spoke" },
-    { id: 2, sender: "Sneha Joshi (COEP Spoke)", message: "Awesome Rahul! We just pushed our micro-controller architecture specs on board AK-21.", time: "18:32", campus: "COEP Spoke" },
-    { id: 3, sender: "Nikhil Rane (MMCOEP Spoke)", message: "RIT Spoke guys, did you finalize the pest detection model training? Need the API key.", time: "18:35", campus: "MMCOEP Spoke" },
-    { id: 4, sender: "Tejas Shinde (RIT Spoke)", message: "Yes Nikhil! Accuracy is at 94% on Jetson Nano. Testing in the lab now.", time: "18:38", campus: "RIT Spoke" }
-  ]);
+  // ── Real-time Chat State ──────────────────────────────────────────────────
+  // activeChatRoom: "team:<teamId>" | "spoke:<persona>" | "coord:<facultyEmail>:<coordEmail>"
+  const [activeChatRoom, setActiveChatRoom] = useState(null);
+  const [chatRoomMessages, setChatRoomMessages] = useState({}); // { room: [msgs] }
   const [newChatMessage, setNewChatMessage] = useState("");
+  const [chatConnected, setChatConnected] = useState(false);
+  const chatMessagesEndRef = useCallback((el) => { if (el) el.scrollIntoView({ behavior: "smooth" }); }, []);
+
+  // Connect socket when chat drawer opens
+  useEffect(() => {
+    if (!showChatDrawer) return;
+    if (!socket.connected) {
+      socket.connect();
+    }
+    socket.on("connect", () => setChatConnected(true));
+    socket.on("disconnect", () => setChatConnected(false));
+    socket.on("receive_message", (msg) => {
+      setChatRoomMessages(prev => ({
+        ...prev,
+        [msg.room]: [...(prev[msg.room] || []), msg]
+      }));
+    });
+    return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("receive_message");
+    };
+  }, [showChatDrawer]);
+
+  // Join room + fetch history when activeChatRoom changes
+  useEffect(() => {
+    if (!activeChatRoom || !showChatDrawer) return;
+    socket.emit("join_room", activeChatRoom);
+    // Fetch history
+    const token = localStorage.getItem("apnileap-token");
+    const encodedRoom = encodeURIComponent(activeChatRoom);
+    fetch(`http://localhost:5000/api/chat/${encodedRoom}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(msgs => {
+        if (Array.isArray(msgs)) {
+          setChatRoomMessages(prev => ({ ...prev, [activeChatRoom]: msgs }));
+        }
+      })
+      .catch(() => {});
+  }, [activeChatRoom, showChatDrawer]);
 
   const handleSendChatMessage = () => {
-    if (!newChatMessage.trim()) return;
-
-    const myMsg = {
-      id: Date.now(),
-      sender: "You",
-      message: newChatMessage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      campus: "Moderator Console"
+    if (!newChatMessage.trim() || !activeChatRoom || !sessionUser) return;
+    const msgData = {
+      room: activeChatRoom,
+      senderEmail: sessionUser.email,
+      senderName: sessionUser.displayName || sessionUser.name || sessionUser.email,
+      senderRole: sessionUser.role || "User",
+      content: newChatMessage.trim(),
     };
-
-    setChatMessages(prev => [...prev, myMsg]);
-    const typed = newChatMessage;
+    socket.emit("send_message", msgData);
     setNewChatMessage("");
-
-    // Simulate automated response from campus spoke students in 1.5s
-    setTimeout(() => {
-      let replyText = "Understood! Syncing that task on our board now.";
-      let responder = "Tejas Shinde (RIT Spoke)";
-      
-      const lower = typed.toLowerCase();
-      if (lower.includes("kle") || lower.includes("rahul")) {
-        replyText = "Awesome! We just completed the procurement. Checking the dashboard now.";
-        responder = "Rahul Sharma (KLE Spoke)";
-      } else if (lower.includes("coep") || lower.includes("sneha")) {
-        replyText = "Thanks for the heads up. We are pushing our VLSI controller files onto Jira Pro.";
-        responder = "Sneha Joshi (COEP Spoke)";
-      } else if (lower.includes("mmcoep") || lower.includes("nikhil")) {
-        replyText = "Got it! Syncing our model results onto board AK-59.";
-        responder = "Nikhil Rane (MMCOEP Spoke)";
-      }
-
-      setChatMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        sender: responder,
-        message: replyText,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        campus: responder.includes("KLE") ? "KLE Spoke" : responder.includes("COEP") ? "COEP Spoke" : responder.includes("MMCOEP") ? "MMCOEP Spoke" : "RIT Spoke"
-      }]);
-    }, 1500);
   };
+
+
+  
+  // Project Manager State
+  const [projectManagerProjects, setProjectManagerProjects] = useState([]);
+  const [isProjectManagerLoading, setIsProjectManagerLoading] = useState(false);
+  const [isProjectManagerIngestModalOpen, setIsProjectManagerIngestModalOpen] = useState(false);
 
   const [hubMetrics, setHubMetrics] = useState(null);
   const [isHubLoading, setIsHubLoading] = useState(true);
@@ -489,6 +576,15 @@ function App() {
     return "3"; // default playground or fallback
   }, [activeWorkspace]);
 
+  // Fetch real faculty members from the database for the current campus
+  useEffect(() => {
+    if (currentBoardId) {
+      axios.get(`http://localhost:5000/api/faculty/${currentBoardId}`)
+        .then(res => setCampusFaculty(res.data || []))
+        .catch(err => console.error("Failed to fetch campus faculty", err));
+    }
+  }, [currentBoardId]);
+
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("app-theme", theme);
@@ -500,11 +596,11 @@ function App() {
       if (currentPersona === "executive") {
         setActiveWorkspace("hub");
         setActiveView("dashboard");
-      } else if (currentPersona === "moderator") {
-        setActiveWorkspace("moderator");
-        setActiveView("dashboard");
       } else if (currentPersona === "project-mentor") {
         setActiveWorkspace("mentor-dashboard");
+        setActiveView("dashboard");
+      } else if (currentPersona === "moderator") {
+        setActiveWorkspace("moderator");
         setActiveView("dashboard");
       } else {
         setActiveWorkspace(currentPersona);
@@ -525,6 +621,11 @@ function App() {
   const [filterAssignee, setFilterAssignee] = useState("All");
   const [filterProject, setFilterProject] = useState("All");
 
+  const [isAddingPhase, setIsAddingPhase] = useState(false);
+  const [newPhaseName, setNewPhaseName] = useState("");
+  const [newPhaseDesc, setNewPhaseDesc] = useState("");
+  const [newPhaseDuration, setNewPhaseDuration] = useState("");
+
   // Modal States & Premium Multi-tab details
   const [selectedTask, setSelectedTask] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -533,7 +634,7 @@ function App() {
   const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false);
   const [allSubmissions, setAllSubmissions] = useState([]);
   const [submitFileName, setSubmitFileName] = useState("");
-  const [submitFileUrl, setSubmitFileUrl] = useState("");
+  const [submitFile, setSubmitFile] = useState(null);
   const [submitComments, setSubmitComments] = useState("");
   const [isSubmittingDeliverable, setIsSubmittingDeliverable] = useState(false);
   const [worklogHistory, setWorklogHistory] = useState([]);
@@ -556,7 +657,7 @@ function App() {
   const [emailAnimationState, setEmailAnimationState] = useState(""); // "preparing", "sending", "sent"
 
   // Toast State
-  const [toasts, setToasts] = useState([]);
+  // Removed toasts state
 
   // Create Task Form State
   const [newSummary, setNewSummary] = useState("");
@@ -568,17 +669,36 @@ function App() {
   const [newStatus, setNewStatus] = useState("Backlog");
   const [newDueDate, setNewDueDate] = useState("");
 
-  // Trigger Toast Notification
+  // Toast notifications are disabled
   const triggerToast = (message, type = "success") => {
-    const id = ++toastIdCounter;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    // Intentionally no-op — toast notifications removed
+  };
+
+  const simulateLoading = () => {
+    setIsLoading(true);
     setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+      setIsLoading(false);
     }, 3000);
+  };
+
+  const getAllMentorEmails = (assignments) => {
+    let emails = ["mentor@nvidia.com"];
+    Object.values(assignments || {}).forEach(a => {
+      if (a.mode === "global" && a.global?.email) emails.push(a.global.email.toLowerCase().trim());
+      if (a.mode === "per-spoke" && a.perSpoke) {
+        Object.values(a.perSpoke).forEach(sp => {
+          if (sp?.email) emails.push(sp.email.toLowerCase().trim());
+        });
+      }
+    });
+    return emails;
   };
 
   const mapEmailToPersona = (email) => {
     const cleanEmail = email.toLowerCase().trim();
+    if (getAllMentorEmails(mentorAssignments).includes(cleanEmail)) {
+      return "project-mentor";
+    }
     if (cleanEmail === "admin@apnileap.com" || cleanEmail === "executive@apnileap.com" || cleanEmail === "executive") {
       return "executive";
     }
@@ -599,15 +719,6 @@ function App() {
     }
     if (cleanEmail.includes("rit")) {
       return "spoke-rit";
-    }
-    // Check if email matches any registered project mentor
-    const allMentorEmails = getAllMentorEmails(mentorAssignments);
-    if (allMentorEmails.includes(cleanEmail)) {
-      return "project-mentor";
-    }
-    // Demo pre-seeded mentor for testing
-    if (cleanEmail === "mentor@nvidia.com") {
-      return "project-mentor";
     }
     return null;
   };
@@ -675,17 +786,18 @@ function App() {
 
     setIsRegistering(true);
     try {
-      const selectedPersona = signupCampus === "3" ? "spoke-kle" : signupCampus === "101" ? "spoke-coep" : signupCampus === "102" ? "spoke-mmcoep" : "spoke-rit";
+      const selectedPersona = signupRole === "Project Manager" ? "project-manager" : (signupCampus === "3" ? "spoke-kle" : signupCampus === "101" ? "spoke-coep" : signupCampus === "102" ? "spoke-mmcoep" : "spoke-rit");
       
       const campusPrefix = signupCampus === "3" ? "KLE" : signupCampus === "101" ? "COEP" : signupCampus === "102" ? "MMCOEP" : "RIT";
-      const selectedRole = signupRole === "Faculty Mentor" ? `${campusPrefix} Spoke Coordinator` : "Student Developer";
+      const selectedRole = signupRole === "Project Manager" ? "Project Manager" : (signupRole === "Faculty Mentor" ? `${campusPrefix} Spoke Coordinator` : "Student Developer");
 
       const response = await axios.post("http://localhost:5000/api/register", {
         email: signupEmail,
         password: signupPassword,
         displayName: signupName,
         role: selectedRole,
-        persona: selectedPersona
+        persona: selectedPersona,
+        company: signupRole === "Project Manager" ? signupCompany : undefined
       });
 
       const { user, token } = response.data;
@@ -723,8 +835,12 @@ function App() {
     setLoginEmail(email);
     // Select the correct password for each demo account
     let password = "moderator123";
-    if (email.includes("student")) password = "student123";
-    else if (email.includes("sponsor") || email.includes("nvidia")) password = "nvidia123";
+    if (email.startsWith("pm@") || email === "p.manager@nvidia.com") password = "pm123";
+    else if (email.startsWith("coordinator@")) password = "admin123";
+    else if (email.startsWith("faculty")) password = "faculty123";
+    else if (email.startsWith("student")) password = "student123";
+    else if (email.includes("mentor") || email === "aditi.sharma@nvidia.com" || email === "raj.patel@nvidia.com" || email === "emily.chen@intel.com" || email === "michael.johnson@microsoft.com") password = "mentor123";
+    else if (email.includes("sponsor") || email.includes("corporate") || email.includes("nvidia")) password = "nvidia123";
     else if (email.includes("kle")) password = "kle123";
     else if (email.includes("coep") && !email.includes("mmcoep")) password = "coep123";
     else if (email.includes("mmcoep")) password = "mmcoep123";
@@ -735,12 +851,15 @@ function App() {
     setIsLoggingIn(true);
 
     try {
+      let user, token;
+      
+      // Execute real API login
       const response = await axios.post("http://localhost:5000/api/login", {
         email: email,
         password: password
       });
-
-      const { user, token } = response.data;
+      user = response.data.user;
+      token = response.data.token;
       setIsAuthenticated(true);
       setViewMode("dashboard");
       setSessionUser(user);
@@ -754,7 +873,8 @@ function App() {
         localStorage.setItem("apnileap-token", token);
       }
 
-      triggerToast(`Quick Connected as ${user.displayName}! `);
+
+
     } catch (err) {
       console.error("Quick Connect Failure:", err);
       const errMsg = err.response?.data?.error || "Connection failure. Please check if your backend is running on port 5000.";
@@ -784,8 +904,8 @@ function App() {
 
   const handleIngestProjectSubmit = async (e) => {
     e.preventDefault();
-    if (!ingestTitle.trim() || !ingestDescription.trim() || !ingestBudget.trim() || !ingestDuration.trim()) {
-      triggerToast("Please fill in all the required project proposal fields.", "warning");
+    if (!ingestTitle.trim() || !ingestDescription.trim() || !ingestBudget.trim() || !ingestDuration.trim() || !ingestRequirements.trim() || !ingestPhases.trim()) {
+      triggerToast("Please fill in all the required project proposal fields, including Requirements and Phases.", "warning");
       return;
     }
 
@@ -797,7 +917,18 @@ function App() {
         description: ingestDescription,
         budget: ingestBudget,
         duration: ingestDuration,
-        proposedDueDate: ingestDueDate
+        proposedDueDate: ingestDueDate,
+
+        requirements: ingestRequirements.split('\n').filter(r => r.trim()),
+        phases: ingestPhases.split('\n').filter(p => p.trim()).map(p => {
+            const parts = p.split('|');
+            return {
+                name: parts[0]?.trim() || "Phase",
+                description: parts[1]?.trim() || "",
+                duration: parts[2]?.trim() || "1 week"
+            };
+        })
+
       });
 
       if (response.data && response.data.success) {
@@ -809,6 +940,8 @@ function App() {
         setIngestBudget("");
         setIngestDuration("");
         setIngestDueDate("2026-08-25");
+        setIngestRequirements("");
+        setIngestPhases("");
         // Reload projects and hub metrics immediately to sync changes across portals
         fetchModeratorProjects(true);
         fetchHubMetrics(true);
@@ -896,8 +1029,70 @@ function App() {
       triggerToast("Please enter a name for the new team.", "warning");
       return;
     }
+
+    setIsCreatingTeam(true);
+    try {
+      const selectedMembersData = selectedTeamMembers.map(memberId => {
+        const found = spokeMembers.find(m => m.accountId === memberId);
+        return {
+          accountId: memberId,
+          displayName: found ? found.displayName.replace(/ \((Student Developer|Faculty Mentor|Coordinator)\)/g, "") : "Team Member",
+          emailAddress: found ? (found.emailAddress || found.email || "") : "",
+          avatarUrl: found ? found.avatarUrl : "https://i.pravatar.cc/150"
+        };
+      });
+
+      // Auto-assign the logged-in faculty as the team mentor
+      const mentorData = sessionUser ? {
+        accountId: sessionUser.email,
+        displayName: sessionUser.displayName || sessionUser.name || sessionUser.email,
+        emailAddress: sessionUser.email,
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(sessionUser.displayName || sessionUser.email)}&background=6366f1&color=fff`
+      } : null;
+
+      // Sub Faculty from DB campusFaculty list
+      const foundSubFaculty = campusFaculty.find(f => f.email === selectedSubFaculty);
+      const subFacultyData = foundSubFaculty ? {
+        accountId: foundSubFaculty.email,
+        displayName: foundSubFaculty.displayName,
+        emailAddress: foundSubFaculty.email,
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(foundSubFaculty.displayName)}&background=10b981&color=fff`
+      } : null;
+
+      const res = await axios.post("http://localhost:5000/api/teams", {
+        name: newTeamName.trim(),
+        boardId: currentBoardId,
+        projectId: newTeamProjectId,
+        members: selectedMembersData,
+        mentor: mentorData,
+        subFaculty: subFacultyData,
+        teamLeader: null
+      });
+
+      if (res.data && res.data.success) {
+        triggerToast(` Successfully created collaborative team "${newTeamName}"!`);
+        setNewTeamName("");
+        setSelectedTeamMembers([]);
+        setSelectedTeamMentor("");
+        setSelectedSubFaculty("");
+        fetchSpokeTeams(currentBoardId);
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast(err.response?.data?.error || "Failed to create custom spoke team.", "error");
+    } finally {
+      setIsCreatingTeam(false);
+    }
+  };
+
+  const handleUpdateTeam = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedTeamId) {
+      triggerToast("Please select a team to update.", "warning");
+      return;
+    }
     if (selectedTeamMembers.length === 0) {
-      triggerToast("Please select at least one student developer to form a team.", "warning");
+      triggerToast("Please select at least one student developer for the team.", "warning");
       return;
     }
 
@@ -913,31 +1108,29 @@ function App() {
         };
       });
 
-      const foundMentor = spokeMembers.find(m => m.accountId === selectedTeamMentor);
-      const mentorData = foundMentor ? {
-        accountId: selectedTeamMentor,
-        displayName: foundMentor.displayName.replace(/ \((Faculty Mentor|Coordinator)\)/g, ""),
-        emailAddress: foundMentor.emailAddress || foundMentor.email || "",
-        avatarUrl: foundMentor.avatarUrl
+      const foundLeader = spokeMembers.find(m => m.accountId === selectedTeamLeader);
+      const leaderData = foundLeader ? {
+        accountId: selectedTeamLeader,
+        displayName: foundLeader.displayName.replace(/ \((Student Developer)\)/g, ""),
+        emailAddress: foundLeader.emailAddress || foundLeader.email || "",
+        avatarUrl: foundLeader.avatarUrl
       } : null;
 
-      const res = await axios.post("http://localhost:5000/api/teams", {
-        name: newTeamName.trim(),
-        boardId: currentBoardId,
+      const res = await axios.put(`http://localhost:5000/api/teams/${selectedTeamId}`, {
         members: selectedMembersData,
-        mentor: mentorData
+        teamLeader: leaderData
       });
 
       if (res.data && res.data.success) {
-        triggerToast(` Successfully created collaborative team "${newTeamName}"!`);
-        setNewTeamName("");
+        triggerToast("Successfully formed student team!");
         setSelectedTeamMembers([]);
-        setSelectedTeamMentor("");
+        setSelectedTeamLeader("");
+        setSelectedTeamId("");
         fetchSpokeTeams(currentBoardId);
       }
     } catch (err) {
       console.error(err);
-      triggerToast(err.response?.data?.error || "Failed to create custom spoke team.", "error");
+      triggerToast(err.response?.data?.error || "Failed to update team.", "error");
     } finally {
       setIsCreatingTeam(false);
     }
@@ -1030,7 +1223,7 @@ function App() {
           }
         }));
         setTasks(normalized);
-        setConnectionStatus(currentBoardId === "3" ? "Connected to Jira Cloud" : `Connected to Spoke (${currentBoardId})`);
+        setConnectionStatus("Connected");
         if (!silent) {
           triggerToast("Successfully synchronized with Live Jira API!");
         }
@@ -1040,7 +1233,7 @@ function App() {
       }
     } catch (error) {
       console.error("API Fetch Error:", error);
-      setConnectionStatus("Offline - Connection Failed");
+      setConnectionStatus("Offline");
       setHasError(true);
       if (!silent) {
         triggerToast("Failed to connect to Jira backend. Make sure server is started.", "error");
@@ -1057,10 +1250,10 @@ function App() {
     try {
       const response = await axios.get("http://localhost:5000/hub/metrics");
       setHubMetrics(response.data);
-      setConnectionStatus("Connected to Jira Cloud (HUB)");
+      setConnectionStatus("Connected");
     } catch (error) {
       console.error("Hub Fetch Error:", error);
-      setConnectionStatus("Offline - Connection Failed");
+      setConnectionStatus("Offline");
       setHasError(true);
       if (!silent) {
         triggerToast("Failed to aggregate Hub portfolio analytics. Make sure server is started.", "error");
@@ -1071,16 +1264,40 @@ function App() {
   };
 
   // Fetch incoming B2B projects for Moderator Intake
+  const fetchProjectManagerProjects = async (silent = false) => {
+    if (!silent) setIsProjectManagerLoading(true);
+    setHasError(false);
+    try {
+      const companyDomain = sessionUser?.email ? sessionUser.email.split('@')[1].split('.')[0].toUpperCase() : "NVIDIA";
+      const company = sessionUser?.company || companyDomain || "NVIDIA";
+      const token = localStorage.getItem('authToken') || '';
+      const response = await axios.get(`http://localhost:5000/project-manager/projects/${company}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      setProjectManagerProjects(response.data);
+      setConnectionStatus("Connected");
+    } catch (error) {
+      console.error("Project Manager Projects Fetch Error:", error);
+      setConnectionStatus("Offline");
+      setHasError(true);
+      if (!silent) {
+        triggerToast("Failed to fetch projects.", "error");
+      }
+    } finally {
+      setIsProjectManagerLoading(false);
+    }
+  };
+
   const fetchModeratorProjects = async (silent = false) => {
     if (!silent) setIsModeratorLoading(true);
     setHasError(false);
     try {
       const response = await axios.get("http://localhost:5000/moderator/projects");
       setModeratorProjects(response.data);
-      setConnectionStatus("Connected to Ingestion Portal");
+      setConnectionStatus("Connected");
     } catch (error) {
       console.error("Moderator Projects Fetch Error:", error);
-      setConnectionStatus("Offline - Connection Failed");
+      setConnectionStatus("Offline");
       setHasError(true);
       if (!silent) {
         triggerToast("Failed to fetch moderator projects. Make sure server is started.", "error");
@@ -1286,9 +1503,80 @@ function App() {
     return list;
   }, [tasks]);
 
+  const proposedProjectsForSpoke = useMemo(() => {
+    if (activeWorkspace === "hub" || activeWorkspace === "moderator" || activeWorkspace === "meetings" || activeWorkspace === "playground") return [];
+    const campusId = currentBoardId;
+    const spoke = SPOKES[campusId];
+    if (!spoke) return [];
+    return moderatorProjects.filter(p => {
+      if (p.allocations && p.allocations.length > 0) {
+        return p.allocations.some(a => a.targetCampusId === campusId && a.status === "Proposed");
+      }
+      return p.status === "Proposed" && p.targetCampusId === campusId;
+    });
+  }, [moderatorProjects, activeWorkspace, currentBoardId]);
+
+  const acceptedProjectsForSpoke = useMemo(() => {
+    if (activeWorkspace === "hub" || activeWorkspace === "moderator" || activeWorkspace === "meetings" || activeWorkspace === "playground") return [];
+    const campusId = currentBoardId;
+    return moderatorProjects.filter(p => {
+      if (p.allocations && p.allocations.length > 0) {
+        return p.allocations.some(a => a.targetCampusId === campusId && a.status === "Active");
+      }
+      return p.status === "Active" && p.targetCampusId === campusId;
+    });
+  }, [moderatorProjects, activeWorkspace, currentBoardId]);
+
   // Handle Search and Filter logic
   const filteredTasks = useMemo(() => {
+    // Determine valid Epic Keys for active projects on this spoke
+    const validEpicKeys = acceptedProjectsForSpoke.map(proj => 
+      proj.allocations ? proj.allocations.find(a => a.targetCampusId === currentBoardId)?.assignedKey : proj.assignedKey
+    ).filter(Boolean);
+
+    // Determine student's assigned teams and allocated projects if applicable
+    let myTeamIds = [];
+    let myProjectIds = [];
+    if (sessionUser?.role === "Student Developer" && Array.isArray(spokeTeams)) {
+      const myTeams = spokeTeams.filter(team => 
+        team && Array.isArray(team.members) && team.members.some(m => 
+          m && (
+            m.accountId === sessionUser?.accountId || 
+            (m.emailAddress && sessionUser?.email && m.emailAddress.toLowerCase().trim() === sessionUser.email.toLowerCase().trim())
+          )
+        )
+      );
+      myTeamIds = myTeams.map(team => team && team._id ? team._id.toString() : "");
+      myProjectIds = myTeams.map(team => team && team.projectId ? team.projectId.toString() : "");
+    }
+
     return tasks.filter((task) => {
+      // 1. Exclude Epics from Kanban/Scope view
+      if (task.fields.issueType === "Epic") {
+        return false;
+      }
+
+      // 1.5 ONLY keep tasks that belong to an assigned active corporate project for this Spoke
+      const parentEpicKey = task.fields?.parent?.key || task.parent?.key;
+      if (!parentEpicKey || !validEpicKeys.includes(parentEpicKey)) {
+        return false;
+      }
+
+      // 2. If student developer, ONLY show tasks assigned to them, their team, OR belonging to their allocated B2B Project
+      if (sessionUser?.role === "Student Developer") {
+        const assigneeEmail = task.fields?.assignee?.email || task.fields?.assignee?.emailAddress || "";
+        const assigneeAccountId = task.fields?.assignee?.accountId ? task.fields.assignee.accountId.toString() : "";
+        const currentUserEmail = sessionUser?.email || "";
+        
+        const isDirectlyAssigned = assigneeEmail && assigneeEmail.toLowerCase().trim() === currentUserEmail.toLowerCase().trim();
+        const isTeamAssigned = assigneeAccountId && myTeamIds.includes(assigneeAccountId);
+        const belongsToTeamProject = task.fields.parent?.id && myProjectIds.includes(task.fields.parent.id.toString());
+        
+        if (!isDirectlyAssigned && !isTeamAssigned && !belongsToTeamProject) {
+          return false;
+        }
+      }
+
       const summaryMatch = task.fields.summary
         ?.toLowerCase()
         .includes(searchQuery.toLowerCase());
@@ -1315,7 +1603,7 @@ function App() {
 
       return textMatch && priorityMatch && assigneeMatch && projectMatch;
     });
-  }, [tasks, searchQuery, filterPriority, filterAssignee, filterProject]);
+  }, [tasks, searchQuery, filterPriority, filterAssignee, filterProject, sessionUser, spokeTeams, acceptedProjectsForSpoke, currentBoardId]);
 
   // Aggregate Metrics
   const metrics = useMemo(() => {
@@ -1408,30 +1696,6 @@ function App() {
     return todayMeetingsForSpoke.filter(m => timeCounts[m.time] > 1);
   }, [todayMeetingsForSpoke]);
 
-  const proposedProjectsForSpoke = useMemo(() => {
-    if (activeWorkspace === "hub" || activeWorkspace === "moderator" || activeWorkspace === "meetings" || activeWorkspace === "playground") return [];
-    const campusId = currentBoardId;
-    const spoke = SPOKES[campusId];
-    if (!spoke) return [];
-    return moderatorProjects.filter(p => {
-      if (p.allocations && p.allocations.length > 0) {
-        return p.allocations.some(a => a.targetCampusId === campusId && a.status === "Proposed");
-      }
-      return p.status === "Proposed" && p.targetCampusId === campusId;
-    });
-  }, [moderatorProjects, activeWorkspace, currentBoardId]);
-
-  const acceptedProjectsForSpoke = useMemo(() => {
-    if (activeWorkspace === "hub" || activeWorkspace === "moderator" || activeWorkspace === "meetings" || activeWorkspace === "playground") return [];
-    const campusId = currentBoardId;
-    return moderatorProjects.filter(p => {
-      if (p.allocations && p.allocations.length > 0) {
-        return p.allocations.some(a => a.targetCampusId === campusId && a.status === "Active");
-      }
-      return p.status === "Active" && p.targetCampusId === campusId;
-    });
-  }, [moderatorProjects, activeWorkspace, currentBoardId]);
-
   // Dynamically resolve child checklist issues for both Epic and Standard parent tasks
   const currentTaskChildren = useMemo(() => {
     if (!selectedTask) return [];
@@ -1475,8 +1739,8 @@ function App() {
 
   // Drag and Drop DragEnd Action
   const onDragEnd = (result) => {
-    if (isCentralAdmin) {
-      triggerToast("Access Denied: Central Administrators have read-only progress tracking permission on spoke boards.", "error");
+    if (sessionUser?.role !== "Student Developer") {
+      triggerToast(`Access Denied: As a ${sessionUser?.role}, you have read-only permission. Only Student Developers can update Kanban task statuses.`, "error");
       return;
     }
     const { destination, source, draggableId } = result;
@@ -1715,31 +1979,29 @@ function App() {
   // Handle uploading a student deliverable submission
   const handleSubmitDeliverable = async (e) => {
     e.preventDefault();
-    if (!submitFileName.trim() || !submitFileUrl.trim()) {
-      triggerToast("Please enter both the artifact file name and access link.", "warning");
-      return;
-    }
-
-    try {
-      new URL(submitFileUrl);
-    } catch {
-      triggerToast("Please enter a valid absolute artifact access link (e.g., https://github.com/...)", "warning");
+    if (!submitFile) {
+      triggerToast("Please select a file to upload.", "warning");
       return;
     }
 
     setIsSubmittingDeliverable(true);
     try {
-      const res = await axios.post(`http://localhost:5000/tasks/${selectedTask.id}/submit`, {
-        studentName: sessionUser?.displayName || sessionUser?.email || currentUser?.displayName || currentUser?.email || "Student Developer",
-        fileName: submitFileName,
-        fileUrl: submitFileUrl,
-        comments: submitComments
+      const formData = new FormData();
+      formData.append("studentName", sessionUser?.displayName || sessionUser?.email || currentUser?.displayName || currentUser?.email || "Student Developer");
+      if (submitFileName.trim()) {
+        formData.append("fileName", submitFileName);
+      }
+      formData.append("comments", submitComments);
+      formData.append("file", submitFile);
+
+      const res = await axios.post(`http://localhost:5000/tasks/${selectedTask.id}/submit`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
 
       if (res.data && res.data.success) {
         triggerToast("Deliverable artifact uploaded successfully!");
         setSubmitFileName("");
-        setSubmitFileUrl("");
+        setSubmitFile(null);
         setSubmitComments("");
         fetchSubmissions(selectedTask.id);
       }
@@ -1768,6 +2030,22 @@ function App() {
     } catch (err) {
       console.error("Failed to update submission status:", err);
       triggerToast("Failed to update submission review status.", "error");
+    }
+  };
+
+  // Handle deleting a student submission persistently
+  const handleDeleteSubmission = async (subId) => {
+    try {
+      const res = await axios.delete(`http://localhost:5000/submissions/${subId}`);
+      if (res.data && res.data.success) {
+        triggerToast("Submission history deleted successfully!");
+        fetchAllSubmissions(); // Refresh global queue
+        fetchJiraTasks(true); // Refresh tasks
+        fetchHubMetrics(true); // Refresh hub metrics
+      }
+    } catch (err) {
+      console.error("Failed to delete submission:", err);
+      triggerToast("Failed to delete student submission.", "error");
     }
   };
 
@@ -2300,7 +2578,7 @@ function App() {
                     transition: "var(--transition-smooth)"
                   }}
                 >
-                  Faculty Coordinator
+                  Faculty Mentor
                 </button>
                 <button
                   onClick={() => {
@@ -2376,35 +2654,29 @@ function App() {
           >
             <FaDesktop /> NVIDIA Corporate Sponsorship Portal
           </button>
-          {/* Project Mentor Entry */}
-          <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "12px", marginTop: "4px" }}>
-            <p style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textAlign: "center", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Project Mentor Portal</p>
-            <button
-              onClick={() => {
-                handleQuickConnect("mentor@nvidia.com");
-                setPortalModal(null);
-              }}
-              style={{
-                background: "linear-gradient(135deg, #0f172a, #1e3a5f)",
-                color: "white",
-                border: "1.5px solid #3b82f6",
-                padding: "12px",
-                borderRadius: "8px",
-                fontWeight: "750",
-                fontSize: "14px",
-                cursor: "pointer",
-                transition: "var(--transition-smooth)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                width: "100%",
-                boxShadow: "0 0 12px rgba(59, 130, 246, 0.2)"
-              }}
-            >
-              <FaUserTie /> Project Mentor Dashboard (Demo)
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              handleQuickConnect("mentor@nvidia.com");
+              setPortalModal(null);
+            }}
+            style={{
+              background: "#3b529a",
+              color: "white",
+              border: "none",
+              padding: "12px",
+              borderRadius: "8px",
+              fontWeight: "750",
+              fontSize: "14px",
+              cursor: "pointer",
+              transition: "var(--transition-smooth)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}
+          >
+            <FaUserTie /> Project Mentor Portal (Demo)
+          </button>
         </div>
       );
     } else if (portalModal === "startups") {
@@ -2432,7 +2704,7 @@ function App() {
               gap: "8px"
             }}
           >
-            <FaCrown /> Executive Administration Console
+            <FaShieldAlt /> Executive Administration Console
           </button>
         </div>
       );
@@ -2502,231 +2774,609 @@ function App() {
           alignItems: "center",
           width: "100%",
           background: theme === "dark" ? "#0b0f19" : "#ffffff",
-          padding: "60px 20px",
           transition: "var(--transition-smooth)"
         }}>
-          {/* Page Heading */}
-          <h2 style={{
-            fontFamily: "var(--font-sans)",
-            fontWeight: "850",
-            fontSize: "36px",
-            color: theme === "dark" ? "#60a5fa" : "#1e3a8a",
-            marginBottom: "40px",
-            letterSpacing: "-0.5px"
-          }}>
-            ApniLeap Ecosystem Partners
-          </h2>
-          
-          {/* Main Triple-Column Card */}
+          {/* SECTION 1: OVERVIEW */}
           <div style={{
-            background: theme === "dark" ? "#1e293b" : "#ffffff",
-            border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.04)",
-            borderRadius: "32px",
-            boxShadow: theme === "dark" ? "0 10px 30px rgba(0,0,0,0.3)" : "0 15px 45px rgba(0,0,0,0.05)",
             width: "100%",
-            maxWidth: "1150px",
-            padding: "50px 40px",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: "40px",
-            transition: "var(--transition-smooth)"
+            padding: "60px 20px",
+            background: theme === "dark" ? "#0f172a" : "#ffffff",
+            display: "flex",
+            justifyContent: "center"
           }}>
-            {/* Column 1: Academia */}
             <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center"
+              width: "100%",
+              maxWidth: "1150px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "40px",
+              alignItems: "center"
             }}>
-              <div style={{ marginBottom: "20px" }}>
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
-                </svg>
+              <div>
+                <h2 style={{
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: "850",
+                  fontSize: "30px",
+                  color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                  marginBottom: "24px",
+                  letterSpacing: "-0.5px"
+                }}>
+                  Overview
+                </h2>
+                <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {[
+                    "Netra Accelerator Foundation is a Non-Profit organization founded in year 2020 in the city of Hubballi in Karnataka State.",
+                    "Objective of Netra has been to transform engineering campuses into Product Innovation Centers (EPIC) through industry partnerships.",
+                    "To drive this aim, Netra has created a thoughtful, proven execution model under “A Product Nation Innovation Leap” which has been branded as APNILeap.",
+                    "APNILeap helps build an ecosystem of academia, startups, and industries on campus using the APNILeap Playbook.",
+                    "Under APNILeap, there is another foundational program called VidyaLeap that helps establish initial engagements with engineering colleges and drive product/project activities on campus.",
+                    "APNILeap has been innovating this model continuously for several years and has now become an implementable and scalable model, gaining acceptance from academia and support from many industries."
+                  ].map((pt, idx) => (
+                    <li key={idx} style={{
+                      position: "relative",
+                      paddingLeft: "24px",
+                      fontSize: "14.5px",
+                      lineHeight: "1.6",
+                      color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                      fontWeight: "500"
+                    }}>
+                      <span style={{
+                        position: "absolute",
+                        left: "4px",
+                        top: "9px",
+                        width: "6px",
+                        height: "6px",
+                        borderRadius: "50%",
+                        background: "#ef4444"
+                      }} />
+                      {pt}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Academia</h3>
-              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Student & Faculty Development</p>
               
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
-                <button 
-                  onClick={() => setPortalModal("academia")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Ecosystem & Product Incubation
-                </button>
-                <button 
-                  onClick={() => setPortalModal("academia")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Placement & Entrepreneurship
-                </button>
-              </div>
-            </div>
-            
-            {/* Column 2: Industries */}
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center"
-            }}>
-              <div style={{ marginBottom: "20px" }}>
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-              </div>
-              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Industries</h3>
-              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Enterprise Collaborations</p>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
-                <button 
-                  onClick={() => setPortalModal("industries")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Product Design & Development
-                </button>
-                <button 
-                  onClick={() => setPortalModal("industries")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Joint Research & IP Creation
-                </button>
-              </div>
-            </div>
-            
-            {/* Column 3: Startups */}
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center"
-            }}>
-              <div style={{ marginBottom: "20px" }}>
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4.5 16.5c-1.5 1.25-2.5 3.5-2.5 3.5s2.25-1 3.5-2.5M12 2C6 2 2 6 2 12c0 2.5 1 4.5 2.5 6h11c1.5-1.5 2.5-3.5 2.5-6 0-6-4-10-10-10z"/>
-                  <path d="M9 15l6-6M11.5 6.5A1.5 1.5 0 1 0 10 5a1.5 1.5 0 0 0 1.5 1.5z"/>
-                </svg>
-              </div>
-              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Startups</h3>
-              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Venture & Startup Ecosystem</p>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
-                <button 
-                  onClick={() => setPortalModal("startups")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Acceleration & Mentorship
-                </button>
-                <button 
-                  onClick={() => setPortalModal("startups")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Capital & Venture Funding
-                </button>
+              {/* Flowchart Diagram */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "20px",
+                background: theme === "dark" ? "#1e293b" : "#f8fafc",
+                borderRadius: "24px",
+                border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                boxShadow: theme === "dark" ? "none" : "0 8px 24px rgba(0,0,0,0.02)"
+              }}>
+                <div style={{
+                  width: "100%",
+                  maxWidth: "280px",
+                  padding: "16px 20px",
+                  background: theme === "dark" ? "#0f172a" : "#ffffff",
+                  border: "2px solid #3b529a",
+                  borderRadius: "14px",
+                  textAlign: "center",
+                  fontWeight: "800",
+                  fontSize: "14px",
+                  color: "#3b529a",
+                  boxShadow: "0 4px 10px rgba(59, 82, 154, 0.08)"
+                }}>
+                  Netra Accelerator Foundation
+                </div>
+                <div style={{ margin: "8px 0", color: "#3b529a", fontSize: "20px", fontWeight: "900" }}>↓</div>
+                
+                <div style={{
+                  width: "100%",
+                  maxWidth: "280px",
+                  padding: "16px 20px",
+                  background: theme === "dark" ? "#0f172a" : "#ffffff",
+                  border: "2px solid #3b529a",
+                  borderRadius: "14px",
+                  textAlign: "center",
+                  fontWeight: "800",
+                  fontSize: "14px",
+                  color: "#3b529a",
+                  boxShadow: "0 4px 10px rgba(59, 82, 154, 0.08)"
+                }}>
+                  APNILeap
+                </div>
+                <div style={{ margin: "8px 0", color: "#3b529a", fontSize: "20px", fontWeight: "900" }}>↓</div>
+                
+                <div style={{
+                  width: "100%",
+                  maxWidth: "280px",
+                  padding: "16px 20px",
+                  background: theme === "dark" ? "#0f172a" : "#ffffff",
+                  border: "2px solid #3b529a",
+                  borderRadius: "14px",
+                  textAlign: "center",
+                  fontWeight: "800",
+                  fontSize: "14px",
+                  color: "#3b529a",
+                  boxShadow: "0 4px 10px rgba(59, 82, 154, 0.08)"
+                }}>
+                  VidyaLeap
+                </div>
               </div>
             </div>
           </div>
-          
-          {/* Bottom Call to Action */}
-          <button 
-            onClick={() => setLandingTab("contact")}
-            style={{
-              marginTop: "40px",
-              background: "#0048ba",
-              color: "#ffffff",
-              border: "none",
-              padding: "14px 28px",
-              borderRadius: "8px",
-              fontWeight: "750",
-              fontSize: "15px",
-              cursor: "pointer",
-              boxShadow: "0 4px 15px rgba(0, 72, 186, 0.2)",
-              transition: "var(--transition-smooth)"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 72, 186, 0.35)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 72, 186, 0.2)";
-            }}
-          >
-            Inquire for Partnership
-          </button>
+
+          {/* SECTION 2: BENEFICIARIES / STAKEHOLDERS */}
+          <div style={{
+            width: "100%",
+            padding: "60px 20px",
+            background: theme === "dark" ? "#111827" : "#f8fafc",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
+            <h2 style={{
+              fontFamily: "var(--font-sans)",
+              fontWeight: "850",
+              fontSize: "30px",
+              color: theme === "dark" ? "#60a5fa" : "#0048ba",
+              marginBottom: "32px",
+              letterSpacing: "-0.5px"
+            }}>
+              Beneficiaries / Stakeholders
+            </h2>
+            
+            {/* Main Triple-Column Card */}
+            <div style={{
+              background: theme === "dark" ? "#1e293b" : "#ffffff",
+              border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.04)",
+              borderRadius: "32px",
+              boxShadow: theme === "dark" ? "0 10px 30px rgba(0,0,0,0.3)" : "0 15px 45px rgba(0,0,0,0.04)",
+              width: "100%",
+              maxWidth: "1150px",
+              padding: "50px 40px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "40px",
+              transition: "var(--transition-smooth)",
+              marginBottom: "40px"
+            }}>
+              {/* Column 1: Academia */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center"
+              }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Academia</h3>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Students + Faculties</p>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                  <button 
+                    onClick={() => setPortalModal("academia")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Product Based Ecosystem
+                  </button>
+                  <button 
+                    onClick={() => setPortalModal("academia")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Quality Placements/ Startups Creation
+                  </button>
+                </div>
+              </div>
+              
+              {/* Column 2: Industries */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center"
+              }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Industries</h3>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Product Base</p>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                  <button 
+                    onClick={() => setPortalModal("industries")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Product Development
+                  </button>
+                  <button 
+                    onClick={() => setPortalModal("industries")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Research Collaboration
+                  </button>
+                </div>
+              </div>
+              
+              {/* Column 3: Startups */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center"
+              }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4.5 16.5c-1.5 1.25-2.5 3.5-2.5 3.5s2.25-1 3.5-2.5M12 2C6 2 2 6 2 12c0 2.5 1 4.5 2.5 6h11c1.5-1.5 2.5-3.5 2.5-6 0-6-4-10-10-10z"/>
+                    <path d="M9 15l6-6M11.5 6.5A1.5 1.5 0 1 0 10 5a1.5 1.5 0 0 0 1.5 1.5z"/>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Startups</h3>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Business</p>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                  <button 
+                    onClick={() => setPortalModal("startups")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Business Support
+                  </button>
+                  <button 
+                    onClick={() => setPortalModal("startups")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Funding Support
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Bottom Call to Action */}
+            <button 
+              onClick={() => setLandingTab("contact")}
+              style={{
+                background: "#0048ba",
+                color: "#ffffff",
+                border: "none",
+                padding: "14px 28px",
+                borderRadius: "8px",
+                fontWeight: "750",
+                fontSize: "15px",
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(0, 72, 186, 0.2)",
+                transition: "var(--transition-smooth)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 72, 186, 0.35)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 72, 186, 0.2)";
+              }}
+            >
+              To Know More, Contact us
+            </button>
+          </div>
+
+          {/* SECTION 3: CHALLENGES IN INDIA IAC ECOSYSTEM MODEL */}
+          <div style={{
+            width: "100%",
+            padding: "60px 20px",
+            background: theme === "dark" ? "#0f172a" : "#ffffff",
+            display: "flex",
+            justifyContent: "center"
+          }}>
+            <div style={{
+              width: "100%",
+              maxWidth: "1150px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "50px",
+              alignItems: "center"
+            }}>
+              {/* Left Column: Venn Diagram */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <h2 style={{
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: "850",
+                  fontSize: "26px",
+                  color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                  marginBottom: "24px",
+                  letterSpacing: "-0.5px",
+                  textAlign: "center",
+                  alignSelf: "stretch"
+                }}>
+                  Challenges in India IAC Ecosystem Model
+                </h2>
+                
+                <svg width="340" height="320" viewBox="0 0 340 320" style={{ maxWidth: "100%", height: "auto" }}>
+                  <circle cx="170" cy="120" r="80" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" />
+                  <circle cx="120" cy="200" r="75" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" />
+                  <circle cx="220" cy="200" r="75" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" />
+                  
+                  <text x="170" y="70" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="10.5">Academic Institution</text>
+                  <text x="90" y="195" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Learning</text>
+                  <text x="90" y="208" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                  <text x="90" y="221" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="8.5">(Students)</text>
+                  
+                  <text x="250" y="195" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Research</text>
+                  <text x="250" y="208" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                  <text x="250" y="221" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="8.5">(Faculty)</text>
+                  
+                  <text x="170" y="155" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Industry and</text>
+                  <text x="170" y="167" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Startup Ecosystem</text>
+                  
+                  <text x="170" y="300" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="13">IAC Ecosystem Model</text>
+                </svg>
+                
+                <div style={{
+                  fontSize: "12px",
+                  color: theme === "dark" ? "#64748b" : "#475569",
+                  fontWeight: "600",
+                  marginTop: "16px",
+                  textAlign: "center",
+                  lineHeight: "1.4",
+                  maxWidth: "400px"
+                }}>
+                  Note: In India there are very few role models for IAC – with some exceptions like leading Medical Colleges, IITM, IITB, KLE Tech
+                </div>
+              </div>
+              
+              {/* Right Column: Challenges List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "800", color: theme === "dark" ? "#60a5fa" : "#3b529a", marginBottom: "4px" }}>
+                  Challenges and Impact
+                </h3>
+                
+                {[
+                  "Systemic Issues: Lack of alignment, lack of knowledge transfer and <strong>Poor collaboration</strong>",
+                  "Creating a <strong>Valley of Death</strong> of failed joint-research projects that hinder the nation’s goal to become a product-driven economy.",
+                  "Impacting innovation output: India ranks <strong>86th globally</strong> in Industry-Academia collaboration."
+                ].map((item, idx) => (
+                  <div key={idx} style={{
+                    padding: "20px",
+                    background: theme === "dark" ? "#1e293b" : "#f8fafc",
+                    border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                    borderLeft: "4px solid #ef4444",
+                    borderRadius: "0 12px 12px 0",
+                    boxShadow: theme === "dark" ? "none" : "0 4px 12px rgba(0,0,0,0.01)",
+                    fontSize: "14px",
+                    lineHeight: "1.6",
+                    color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                    fontWeight: "500"
+                  }} dangerouslySetInnerHTML={{ __html: item }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: THE VALLEY OF DEATH */}
+          <div style={{
+            width: "100%",
+            padding: "60px 20px",
+            background: theme === "dark" ? "#111827" : "#f8fafc",
+            display: "flex",
+            justifyContent: "center"
+          }}>
+            <div style={{
+              width: "100%",
+              maxWidth: "1150px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "40px",
+              alignItems: "center"
+            }}>
+              {/* Left Column: Points */}
+              <div>
+                <h2 style={{
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: "850",
+                  fontSize: "30px",
+                  color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                  marginBottom: "24px",
+                  letterSpacing: "-0.5px"
+                }}>
+                  The Valley of Death
+                </h2>
+                <div style={{
+                  padding: "24px",
+                  background: theme === "dark" ? "#1e293b" : "#ffffff",
+                  border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                  borderRadius: "16px",
+                  boxShadow: theme === "dark" ? "none" : "0 10px 30px rgba(0,0,0,0.02)"
+                }}>
+                  <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {[
+                      "The missing link isn't talent or ideas",
+                      "It's the culture and ability to collaborate within the ecosystem",
+                      "Without it, academic innovations stall before reaching industry or consumers"
+                    ].map((pt, idx) => (
+                      <li key={idx} style={{
+                        position: "relative",
+                        paddingLeft: "24px",
+                        fontSize: "15px",
+                        lineHeight: "1.6",
+                        color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                        fontWeight: "600"
+                      }}>
+                        <span style={{
+                          position: "absolute",
+                          left: "4px",
+                          top: "9px",
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          background: "#ef4444"
+                        }} />
+                        {pt}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              
+              {/* Right Column: Valley of Death SVG Diagram */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "24px",
+                background: theme === "dark" ? "#1e293b" : "#ffffff",
+                border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                borderRadius: "24px",
+                boxShadow: theme === "dark" ? "none" : "0 8px 30px rgba(0,0,0,0.02)"
+              }}>
+                <svg width="550" height="280" viewBox="0 0 550 280" style={{ maxWidth: "100%", height: "auto" }}>
+                  <path d="M 50 210 C 100 100, 150 90, 220 200 L 220 210 Z" fill={theme === "dark" ? "rgba(99, 102, 241, 0.15)" : "rgba(219, 234, 254, 0.6)"} />
+                  <path d="M 330 210 C 370 200, 420 100, 500 130 L 500 210 Z" fill={theme === "dark" ? "rgba(239, 68, 68, 0.1)" : "rgba(254, 226, 226, 0.6)"} />
+
+                  <line x1="40" y1="210" x2="520" y2="210" stroke={theme === "dark" ? "#475569" : "#cbd5e1"} strokeWidth="2" />
+
+                  <text x="135" y="145" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="10.5">Academic Research</text>
+
+                  <text x="445" y="145" textAnchor="middle" fill="#dc2626" fontWeight="800" fontSize="10.5">Industry Application</text>
+
+                  <text x="275" y="195" textAnchor="middle" fill="#ef4444" fontWeight="850" fontSize="12">Valley of Death</text>
+
+                  <text x="70" y="80" fill="gray" fontSize="8" fontWeight="600">Public Funding /</text>
+                  <text x="70" y="90" fill="gray" fontSize="8" fontWeight="600">Private Investment</text>
+                  <line x1="120" y1="95" x2="120" y2="120" stroke="gray" strokeWidth="1" strokeDasharray="3" />
+
+                  <text x="390" y="80" fill="gray" fontSize="8" fontWeight="600">Private</text>
+                  <text x="390" y="90" fill="gray" fontSize="8" fontWeight="600">Investment</text>
+                  <line x1="410" y1="95" x2="430" y2="115" stroke="gray" strokeWidth="1" strokeDasharray="3" />
+
+                  <path d="M 50 210 C 100 100, 150 90, 220 200 C 275 220, 275 220, 330 210 C 370 200, 420 100, 500 130" fill="none" stroke="#2563eb" strokeWidth="3" />
+                  <path d="M 310 212 C 340 205, 380 140, 500 130" fill="none" stroke="#ef4444" strokeWidth="3" />
+
+                  <circle cx="60" cy="210" r="4" fill="#ef4444" />
+                  <line x1="60" y1="210" x2="60" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="60" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="600">Discovery</text>
+
+                  <circle cx="120" cy="210" r="4" fill="#ef4444" />
+                  <line x1="120" y1="210" x2="120" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="120" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Fundamental</text>
+                  <text x="120" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Research</text>
+
+                  <circle cx="180" cy="210" r="4" fill="#ef4444" />
+                  <line x1="180" y1="210" x2="180" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="180" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Concept &</text>
+                  <text x="180" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Applied</text>
+                  <text x="180" y="275" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Research</text>
+
+                  <circle cx="240" cy="210" r="4" fill="#ef4444" />
+                  <line x1="240" y1="210" x2="240" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="240" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Technology</text>
+                  <text x="240" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Transfer</text>
+
+                  <circle cx="300" cy="210" r="4" fill="#ef4444" />
+                  <line x1="300" y1="210" x2="300" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="300" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Development</text>
+
+                  <circle cx="360" cy="210" r="4" fill="#ef4444" />
+                  <line x1="360" y1="210" x2="360" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="360" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Product</text>
+                  <text x="360" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Launch</text>
+
+                  <circle cx="430" cy="210" r="4" fill="#ef4444" />
+                  <line x1="430" y1="210" x2="430" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="430" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Success</text>
+                  <text x="430" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">as a new</text>
+                  <text x="430" y="275" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Product</text>
+
+                  <circle cx="490" cy="210" r="4" fill="#ef4444" />
+                  <line x1="490" y1="210" x2="490" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="490" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Success as</text>
+                  <text x="490" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Business</text>
+                </svg>
+                
+                <div style={{
+                  fontSize: "10px",
+                  color: "gray",
+                  marginTop: "12px",
+                  textAlign: "center",
+                  lineHeight: "1.4"
+                }}>
+                  Valley of death reprinted and adapted from Chirazi, Wanieck, Fayemi, Zollfrank, & Jacobs, 2019, under CC By 4.0 license
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       );
     } else if (landingTab === "about") {
@@ -2735,6 +3385,7 @@ function App() {
           name: "Vivek Pawar",
           region: "India",
           initials: "VP",
+          img: "/images/vivek_pawar.png",
           bulletPoints: [
             "Vivek's previous role was the CEO of the Deshpande Foundation and continues to serve as an Advisor on the Academic council of BVB KLE Tech University",
             "Prior, Vivek was the Founder and Executive Chairman of Sankalp Semiconductors which he incubated at BVBKLE Tech. Acquired by HCL in 2019."
@@ -2744,6 +3395,7 @@ function App() {
           name: "Prof. Dr. Ashok Shettar",
           region: "India",
           initials: "AS",
+          img: "/images/ashok_shettar.png",
           bulletPoints: [
             "Professor Shettar is Pro-Chancellor of KLE Tech University and previously served as the Principal of BVB College of Engineering",
             "Nationally recognized thought leader in engineering education and industry collaboration, he has led KLE Tech for past 20 years."
@@ -2753,6 +3405,7 @@ function App() {
           name: "Mahesh Jadhav",
           region: "USA",
           initials: "MJ",
+          img: "/images/mahesh_jadhav.png",
           bulletPoints: [
             "Mahesh was one of the Founding Investors and Board Members of Sankalp Semiconductors and serves as a Board Member of BVB KLE Tech Incubation Center",
             "Mahesh is a Private Equity Investor (Mubadala Capital). Prior, he worked in R&D, Finance & Strategic Leadership roles (Tata, Siemens, PwC, Accenture, Cognizant)."
@@ -2796,35 +3449,52 @@ function App() {
               }}>
                 {/* Left Profile Panel */}
                 <div style={{
-                  flex: "1 1 200px",
-                  background: "linear-gradient(135deg, #ffeef0, #ffd3d6)",
+                  flex: "1 1 320px",
+                  background: theme === "dark" ? "#1e293b" : "#ffeef0",
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: "row",
                   alignItems: "center",
-                  justifyContent: "center",
-                  padding: "30px 20px",
-                  textAlign: "center"
+                  padding: "0 24px",
+                  gap: "20px",
+                  transition: "var(--transition-smooth)",
+                  position: "relative"
                 }}>
-                  {/* Styled Avatar Placeholder */}
+                  {/* Photo Container */}
                   <div style={{
-                    width: "100px",
-                    height: "100px",
-                    borderRadius: "50%",
-                    background: "#ffffff",
-                    border: "3px solid #3b529a",
+                    width: "240px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontWeight: "900",
-                    fontSize: "32px",
-                    color: "#3b529a",
-                    marginBottom: "16px",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+                    flexShrink: 0,
+                    alignSelf: "stretch"
                   }}>
-                    {founder.initials}
+                    <img 
+                      src={founder.img} 
+                      alt={founder.name} 
+                      style={{ 
+                        width: "100%", 
+                        height: "auto", 
+                        maxHeight: "260px",
+                        objectFit: "contain",
+                        display: "block",
+                        filter: theme === "dark" ? "drop-shadow(0 4px 8px rgba(0,0,0,0.5))" : "drop-shadow(0 4px 8px rgba(0,0,0,0.1))"
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        e.currentTarget.parentElement.innerHTML = `<div style="width:120px; height:120px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:36px; font-weight:900; color:${theme === "dark" ? "#60a5fa" : "#3b529a"}; background:${theme === "dark" ? "#0f172a" : "#ffffff"};">${founder.initials}</div>`;
+                      }}
+                    />
                   </div>
-                  <h4 style={{ fontSize: "18px", fontWeight: "850", color: "#3b529a", margin: "0" }}>{founder.name}</h4>
-                  <span style={{ fontSize: "12px", fontWeight: "750", color: "#3b529a", textTransform: "uppercase", opacity: 0.8 }}>-{founder.region}</span>
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    textAlign: "left",
+                    padding: "24px 0"
+                  }}>
+                    <h4 style={{ fontSize: "20px", fontWeight: "800", color: theme === "dark" ? "#60a5fa" : "#0048ba", margin: "0", lineHeight: "1.2" }}>{founder.name}</h4>
+                    <span style={{ fontSize: "14px", fontWeight: "750", color: theme === "dark" ? "#cbd5e1" : "#475569", marginTop: "6px" }}>-{founder.region}</span>
+                  </div>
                 </div>
                 
                 {/* Right Content Panel */}
@@ -2873,162 +3543,259 @@ function App() {
           alignItems: "center",
           width: "100%",
           background: theme === "dark" ? "#0b0f19" : "#ffffff",
-          padding: "60px 20px",
           transition: "var(--transition-smooth)"
         }}>
-          <h2 style={{
-            fontFamily: "var(--font-sans)",
-            fontWeight: "850",
-            fontSize: "36px",
-            color: theme === "dark" ? "#60a5fa" : "#1e3a8a",
-            textAlign: "center",
-            margin: "0 0 10px 0",
-            letterSpacing: "-0.5px"
-          }}>
-            ApniLeap Operating Model and Governance
-          </h2>
-          <p style={{
-            fontSize: "16px",
-            color: theme === "dark" ? "#94a3b8" : "#475569",
-            fontWeight: "600",
-            textAlign: "center",
-            marginBottom: "50px",
-            maxWidth: "800px"
-          }}>
-            Build shared goals, strategy and research collaboration through a Hub-and-Spoke operating model
-          </p>
-          
+          {/* SECTION 1: IAC COLLABORATION CHALLENGES (DETAIL) */}
           <div style={{
-            display: "flex",
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: "50px",
             width: "100%",
-            maxWidth: "1150px",
-            alignItems: "center",
-            justifyContent: "center"
+            padding: "60px 20px",
+            background: theme === "dark" ? "#0f172a" : "#ffffff",
+            display: "flex",
+            justifyContent: "center",
+            borderBottom: theme === "dark" ? "1px solid #1e293b" : "1px solid #e2e8f0"
           }}>
-            {/* Venn Diagram Column */}
             <div style={{
-              flex: "1 1 450px",
-              maxWidth: "500px",
+              width: "100%",
+              maxWidth: "1150px",
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center"
+              alignItems: "center"
             }}>
-              {/* Venn Diagram SVG Vector */}
-              <svg width="450" height="420" viewBox="0 0 450 420" style={{ maxWidth: "100%", height: "auto" }}>
-                <defs>
-                  <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                    <feDropShadow dx="0" dy="8" stdDeviation="6" floodOpacity="0.08" />
-                  </filter>
-                </defs>
-                
-                {/* Academic Institution Circle */}
-                <circle cx="180" cy="180" r="110" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" filter="url(#shadow)" />
-                {/* Learning Ecosystem Circle */}
-                <circle cx="170" cy="270" r="100" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" filter="url(#shadow)" />
-                {/* Research Ecosystem Circle */}
-                <circle cx="280" cy="250" r="100" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" filter="url(#shadow)" />
-                
-                {/* Overlaps and details */}
-                <text x="180" y="110" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="12.5">Academic Institution</text>
-                <text x="120" y="270" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="12">Learning</text>
-                <text x="120" y="286" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="12">Ecosystem</text>
-                <text x="120" y="302" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="11">(Students)</text>
-                
-                <text x="330" y="250" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="12">Research</text>
-                <text x="330" y="266" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="12">Ecosystem</text>
-                <text x="330" y="282" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="11">(Faculty)</text>
-                
-                <text x="250" y="190" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="11.5">Industry and</text>
-                <text x="250" y="206" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="11.5">Startup Ecosystem</text>
-                
-                {/* Center ApniLeap white circle */}
-                <circle cx="225" cy="225" r="46" fill="#ffffff" stroke="#10b981" strokeWidth="3" filter="url(#shadow)" />
-                <text x="225" y="222" textAnchor="middle" fill="#ef4444" fontWeight="900" fontSize="11">Apni<tspan fill="#3b529a">Leap</tspan></text>
-                <text x="225" y="238" textAnchor="middle" fill="#10b981" fontWeight="950" fontSize="16">↗</text>
-                
-                {/* Title and notes at the bottom */}
-                <text x="225" y="390" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="15">IAC Ecosystem Model</text>
-              </svg>
-              <div style={{
-                fontSize: "12px",
-                color: theme === "dark" ? "#64748b" : "#475569",
-                fontWeight: "600",
-                marginTop: "10px",
-                textAlign: "center",
-                lineHeight: "1.4",
-                maxWidth: "360px"
+              <h2 style={{
+                fontFamily: "var(--font-sans)",
+                fontWeight: "850",
+                fontSize: "30px",
+                color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                marginBottom: "12px",
+                letterSpacing: "-0.5px",
+                textAlign: "center"
               }}>
-                Note: Off-campus Central Hub (not shown) managed by Netra Accelerator Foundation
+                IAC Collaboration Challenges (detail)
+              </h2>
+              <p style={{
+                fontSize: "14.5px",
+                color: theme === "dark" ? "#cbd5e1" : "#475569",
+                fontWeight: "600",
+                textAlign: "center",
+                marginBottom: "40px",
+                maxWidth: "850px",
+                lineHeight: "1.6"
+              }}>
+                Lot of piece-meal solutions and ideas exist today but there is a major gap and lack of comprehensive framework to address these multi-dimensional collaboration challenges
+              </p>
+              
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                gap: "50px",
+                width: "100%",
+                alignItems: "start"
+              }}>
+                {/* Left side: Venn Diagram */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <svg width="340" height="320" viewBox="0 0 340 320" style={{ maxWidth: "100%", height: "auto" }}>
+                    <circle cx="170" cy="120" r="80" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" />
+                    <circle cx="120" cy="200" r="75" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" />
+                    <circle cx="220" cy="200" r="75" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" />
+                    
+                    <text x="170" y="70" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="10.5">Academic Institution</text>
+                    <text x="90" y="195" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Learning</text>
+                    <text x="90" y="208" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                    <text x="90" y="221" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="8.5">(Students)</text>
+                    
+                    <text x="250" y="195" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Research</text>
+                    <text x="250" y="208" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                    <text x="250" y="221" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="8.5">(Faculty)</text>
+                    
+                    <text x="170" y="155" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Industry and</text>
+                    <text x="170" y="167" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Startup Ecosystem</text>
+                    
+                    <text x="170" y="300" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="13">IAC Ecosystem Model</text>
+                  </svg>
+                </div>
+                
+                {/* Right side: 5 groups of challenges */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                  {[
+                    [
+                      "Lack of IAC Strategy and Roadmap",
+                      "Lack for Formal Org or Owners responsible for driving joint research thru IAC",
+                      "Lack of Success Models and experience in IAC"
+                    ],
+                    [
+                      "Unrealistic expectations from Academia and Students",
+                      "Institutions pulled in multiple directions by varying demands by multiple Industry players",
+                      "Lack of crawl-walk-run segmentation in Project complexity for joint research projects"
+                    ],
+                    [
+                      "Lack of support and enablement for Faculty to manage additional projects load",
+                      "Lack of opportunities for faculty to deepen understanding of Industry and startups",
+                      "Lack of incentive, career prospects, funding to balance publishing v/s applied research"
+                    ],
+                    [
+                      "Lack of excitement and mindset among Students re product innovation roles",
+                      "Curriculum not practical oriented or overly focused on IT",
+                      "Lack of Student internships or employment opportunities in Innovation versus IT"
+                    ],
+                    [
+                      "Lack of clear Collaboration processes, systems or tools",
+                      "Lack of Collaboration experience and best practices",
+                      "Lack of Leading and Logging indicators to measure IAC progress"
+                    ]
+                  ].map((group, gIdx) => (
+                    <div key={gIdx} style={{
+                      padding: "20px",
+                      background: theme === "dark" ? "#1e293b" : "#f8fafc",
+                      border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                      borderLeft: "4px solid #ef4444",
+                      borderRadius: "0 12px 12px 0",
+                      boxShadow: theme === "dark" ? "none" : "0 4px 12px rgba(0,0,0,0.01)"
+                    }}>
+                      <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {group.map((pt, ptIdx) => (
+                          <li key={ptIdx} style={{
+                            position: "relative",
+                            paddingLeft: "20px",
+                            fontSize: "13.5px",
+                            lineHeight: "1.5",
+                            color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                            fontWeight: "600"
+                          }}>
+                            <span style={{
+                              position: "absolute",
+                              left: "2px",
+                              top: "7px",
+                              width: "5px",
+                              height: "5px",
+                              borderRadius: "50%",
+                              background: "#ef4444"
+                            }} />
+                            {pt}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            
-            {/* Detail Cards Column */}
+          </div>
+
+          {/* SECTION 2: OUR THEORY OF CHANGE - STAKEHOLDER VIEW */}
+          <div style={{
+            width: "100%",
+            padding: "60px 20px",
+            background: theme === "dark" ? "#111827" : "#f8fafc",
+            display: "flex",
+            justifyContent: "center"
+          }}>
             <div style={{
-              flex: "1 1 450px",
+              width: "100%",
+              maxWidth: "1150px",
               display: "flex",
               flexDirection: "column",
-              gap: "24px"
+              alignItems: "center"
             }}>
-              {[
-                {
-                  points: [
-                    "Support applied research and development by",
-                    "Fostering an innovation mindset in students",
-                    "While enabling scalable collaboration between academia & industry"
-                  ]
-                },
-                {
-                  points: [
-                    "Align institutional strategy & goals with industry and startups",
-                    "Academic institutions, faculty, students, startups and industry partners have defined roles",
-                    "ApniLeap Campus Center governance by a Board comprising representatives from the Institution, Industry, Academia and ApniLeap"
-                  ]
-                },
-                {
-                  points: [
-                    "Drive change from within – ApniLeap Centers on campuses",
-                    "Managed by PoPs: Professor of Practice and Students",
-                    "Supported by the ApniLeap Central-Hub providing IP, frameworks, and engagement models for effective collaboration"
-                  ]
-                }
-              ].map((card, idx) => (
-                <div key={idx} style={{
-                  background: theme === "dark" ? "#1e293b" : "#f8fafc",
-                  borderLeft: "5px solid #3b529a",
-                  borderRadius: "0 12px 12px 0",
-                  padding: "24px",
-                  boxShadow: theme === "dark" ? "0 4px 15px rgba(0,0,0,0.15)" : "0 4px 12px rgba(0,0,0,0.02)",
-                  transition: "var(--transition-smooth)"
-                }}>
-                  <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {card.points.map((pt, ptIdx) => (
-                      <li key={ptIdx} style={{
-                        position: "relative",
-                        paddingLeft: "20px",
-                        fontSize: "14px",
-                        lineHeight: "1.6",
-                        color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
-                        fontWeight: "600"
-                      }}>
-                        <span style={{
-                          position: "absolute",
-                          left: "2px",
-                          top: "7px",
-                          width: "5px",
-                          height: "5px",
-                          borderRadius: "50%",
-                          background: "#ef4444"
-                        }} />
-                        {pt}
-                      </li>
-                    ))}
-                  </ul>
+              <h2 style={{
+                fontFamily: "var(--font-sans)",
+                fontWeight: "850",
+                fontSize: "30px",
+                color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                marginBottom: "12px",
+                letterSpacing: "-0.5px",
+                textAlign: "center"
+              }}>
+                Our Theory of Change – Stakeholder View
+              </h2>
+              <p style={{
+                fontSize: "14.5px",
+                color: theme === "dark" ? "#cbd5e1" : "#475569",
+                fontWeight: "600",
+                textAlign: "center",
+                marginBottom: "40px",
+                maxWidth: "850px",
+                lineHeight: "1.6"
+              }}>
+                Operate within the institutional framework, align shared goals and enable ecosystems to collaborate better
+              </p>
+              
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                gap: "50px",
+                width: "100%",
+                alignItems: "start"
+              }}>
+                {/* Left side: Venn Diagram with ApniLeap Center */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <svg width="340" height="320" viewBox="0 0 340 320" style={{ maxWidth: "100%", height: "auto" }}>
+                    <circle cx="170" cy="120" r="80" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" />
+                    <circle cx="120" cy="200" r="75" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" />
+                    <circle cx="220" cy="200" r="75" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" />
+                    
+                    <text x="170" y="70" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="10.5">Academic Institution</text>
+                    <text x="90" y="195" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Learning</text>
+                    <text x="90" y="208" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                    <text x="90" y="221" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="8.5">(Students)</text>
+                    
+                    <text x="250" y="195" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Research</text>
+                    <text x="250" y="208" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                    <text x="250" y="221" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="8.5">(Faculty)</text>
+                    
+                    <text x="170" y="145" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Industry and</text>
+                    <text x="170" y="157" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Startup Ecosystem</text>
+                    
+                    {/* Center ApniLeap white circle */}
+                    <circle cx="170" cy="180" r="42" fill="#ffffff" stroke="#10b981" strokeWidth="3" />
+                    <text x="170" y="177" textAnchor="middle" fill="#ef4444" fontWeight="900" fontSize="9">Apni<tspan fill="#3b529a">Leap</tspan></text>
+                    <text x="170" y="191" textAnchor="middle" fill="#3b529a" fontWeight="950" fontSize="7.5">Campus</text>
+                    <text x="170" y="200" textAnchor="middle" fill="#3b529a" fontWeight="950" fontSize="7.5">Center*</text>
+                    
+                    <text x="170" y="300" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="13">IAC Ecosystem Model</text>
+                  </svg>
                 </div>
-              ))}
+                
+                {/* Right side: Theory of Change Details */}
+                <div style={{
+                  background: theme === "dark" ? "#1e293b" : "#ffffff",
+                  border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                  borderRadius: "16px",
+                  padding: "24px",
+                  boxShadow: theme === "dark" ? "none" : "0 8px 24px rgba(0,0,0,0.02)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "14px"
+                }}>
+                  {[
+                    { title: "Strategy", desc: "Well defined Strategy, Positioning, Roadmap, Metrics for IAC" },
+                    { title: "Structure", desc: "ApniLeap Center (run by PoPs, Students) responsible for IAC success" },
+                    { title: "Success Models", desc: "BVB KLE Tech, IITM, IITB, Medical Colleges, Business Schools" },
+                    { title: "Expectations", desc: "Clear expectation management through joint roadmap, SOWs" },
+                    { title: "Engagement", desc: "Industry/Startup involvement in curriculum, Exec PhD, research projects" },
+                    { title: "Complexity", desc: "Gradually increase complexity and project duration, 3/6/18 month projects" },
+                    { title: "Support", desc: "Leadership and change workshops, research proposal, project mgmt. support" },
+                    { title: "Engagement (Faculty)", desc: "Faculty Industry internships and post-doc opportunities" },
+                    { title: "Motivation", desc: "Financial incentives, career prospects, funding for joint research projects" },
+                    { title: "Programs & Courses", desc: "VidyaLeap, Engg. exploration etc. to develop innovation mindset" },
+                    { title: "Curriculum", desc: "Upgrade curriculum with Startup/Industry inputs and make it market ready" },
+                    { title: "Opportunities", desc: "Internship and Final Placement as well as Entrepreneurial opportunities" },
+                    { title: "Process, systems, tools", desc: "Develop research project mgmt. processes, SOW templates etc." },
+                    { title: "Best Practices", desc: "Develop best practices playbook based on BVB KLE Tech and other exp." },
+                    { title: "Leading and Logging Indicators", desc: "Select appropriate from ApniLeap Repository" }
+                  ].map((item, idx) => (
+                    <div key={idx} style={{
+                      display: "flex",
+                      alignItems: "start",
+                      fontSize: "13.5px",
+                      lineHeight: "1.4",
+                      color: theme === "dark" ? "#cbd5e1" : "#1e3a8a"
+                    }}>
+                      <strong style={{ width: "160px", flexShrink: 0, color: "#ef4444" }}>{item.title}</strong>
+                      <span style={{ fontWeight: "500" }}>: {item.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3357,7 +4124,7 @@ function App() {
                 gap: "6px",
                 padding: "6px 14px",
                 borderRadius: "99px",
-                background: theme === t.name ? "linear-gradient(135deg, var(--primary), var(--secondary))" : "transparent",
+                background: theme === t.name ? "var(--primary)" : "transparent",
                 color: theme === t.name ? "var(--text-primary-btn)" : "var(--text-muted)",
                 border: "none",
                 cursor: "pointer",
@@ -3385,9 +4152,7 @@ function App() {
           <div style={{
             flex: "1 1 60%",
             maxWidth: "60%",
-            background: theme === "dark" 
-              ? "linear-gradient(135deg, #090d16 0%, #1e293b 100%)" 
-              : "linear-gradient(135deg, #3b529a 0%, #6366f1 100%)",
+            background: theme === "dark" ? "#090d16" : "#3b529a",
             position: "relative",
             overflow: "hidden",
             display: "flex",
@@ -3472,248 +4237,43 @@ function App() {
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBolt style={{ color: "#ff8c00" }} /> Quick Demo Connect</span>
                 </span>
                 
-                {/* Admin & Mentors Grid */}
+                {/* All User Types Grid */}
                 <div style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(2, 1fr)",
                   gap: "6px",
                   marginBottom: "12px"
                 }}>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("admin@apnileap.com")}
-                    style={{
-                      padding: "8px",
-                      borderRadius: "6px",
-                      background: "rgba(255, 255, 255, 0.12)",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      color: "white",
-                      fontWeight: "700",
-                      fontSize: "11px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                    title="Connect as Executive Administrator"
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaCrown style={{ color: "#ffb700" }} /> Executive Admin</span>
+                  <button type="button" onClick={() => handleQuickConnect("admin@apnileap.com")} style={{ padding: "8px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.12)", border: "1px solid rgba(255, 255, 255, 0.2)", color: "white", fontWeight: "700", fontSize: "11px", cursor: "pointer", transition: "var(--transition-smooth)" }} title="Connect as Executive Administrator">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaShieldAlt style={{ color: "#34d399" }} /> Executive Admin</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("moderator@apnileap.com")}
-                    style={{
-                      padding: "8px",
-                      borderRadius: "6px",
-                      background: "rgba(255, 255, 255, 0.12)",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      color: "white",
-                      fontWeight: "700",
-                      fontSize: "11px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                    title="Connect as Central Moderator"
-                  >
+                  <button type="button" onClick={() => handleQuickConnect("moderator@apnileap.com")} style={{ padding: "8px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.12)", border: "1px solid rgba(255, 255, 255, 0.2)", color: "white", fontWeight: "700", fontSize: "11px", cursor: "pointer", transition: "var(--transition-smooth)" }} title="Connect as Central Moderator">
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaTools style={{ color: "#a855f7" }} /> Central Moderator</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("coordinator@kle.edu")}
-                    style={{
-                      padding: "7px 8px",
-                      borderRadius: "6px",
-                      background: "rgba(255, 255, 255, 0.07)",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "10.5px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> KLE Mentor</span>
+                  <button type="button" onClick={() => handleQuickConnect("p.manager@nvidia.com")} style={{ padding: "8px", borderRadius: "6px", background: "rgba(118, 185, 0, 0.2)", border: "1px solid rgba(118, 185, 0, 0.4)", color: "white", fontWeight: "700", fontSize: "11px", cursor: "pointer", transition: "var(--transition-smooth)" }} title="Connect as NVIDIA Project Manager">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><CompanyLogo company="NVIDIA" size={16} /> Project Manager</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("coordinator@coep.edu")}
-                    style={{
-                      padding: "7px 8px",
-                      borderRadius: "6px",
-                      background: "rgba(255, 255, 255, 0.07)",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "10.5px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> COEP Mentor</span>
+                  <button type="button" onClick={() => handleQuickConnect("nvidia@corporate.com")} style={{ padding: "8px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.3)", color: "white", fontWeight: "600", fontSize: "10.5px", cursor: "pointer", transition: "var(--transition-smooth)" }} title="Connect as Corporate Sponsor">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><CompanyLogo company="NVIDIA" size={16} /> Corporate Partner</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("coordinator@mmcoep.edu")}
-                    style={{
-                      padding: "7px 8px",
-                      borderRadius: "6px",
-                      background: "rgba(255, 255, 255, 0.07)",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "10.5px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> MMCOEP Mentor</span>
+                  <button type="button" onClick={() => handleQuickConnect("aditi.sharma@nvidia.com")} style={{ padding: "8px", borderRadius: "6px", background: "rgba(118, 185, 0, 0.2)", border: "1px solid rgba(118, 185, 0, 0.4)", color: "white", fontWeight: "700", fontSize: "11px", cursor: "pointer", transition: "var(--transition-smooth)" }} title="Connect as NVIDIA Project Mentor">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><CompanyLogo company="NVIDIA" size={16} /> Project Mentor</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("coordinator@rit.edu")}
-                    style={{
-                      padding: "7px 8px",
-                      borderRadius: "6px",
-                      background: "rgba(255, 255, 255, 0.07)",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "10.5px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> RIT Mentor</span>
-                  </button>
-                </div>
-
-                {/* Corporate Partners Header */}
-                <span style={{
-                  display: "block",
-                  fontSize: "9px",
-                  fontWeight: "900",
-                  color: "rgba(255, 255, 255, 0.6)",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  marginBottom: "8px",
-                  borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-                  paddingTop: "10px"
-                }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBriefcase style={{ color: "#6366f1" }} /> Corporate Partners</span>
-                </span>
-
-                {/* Corporate Partners Grid */}
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr",
-                  gap: "6px",
-                  marginBottom: "12px"
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("sponsor@nvidia.com")}
-                    style={{
-                      padding: "8px",
-                      borderRadius: "6px",
-                      background: "rgba(118, 185, 0, 0.2)",
-                      border: "1px solid rgba(118, 185, 0, 0.4)",
-                      color: "white",
-                      fontWeight: "750",
-                      fontSize: "11px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                    title="Connect as NVIDIA Corporate Partner"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(118, 185, 0, 0.35)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "rgba(118, 185, 0, 0.2)";
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaDesktop /> NVIDIA Sponsor Quick Connect</span>
-                  </button>
-                </div>
-
-                {/* Students Grid Header */}
-                <span style={{
-                  display: "block",
-                  fontSize: "9px",
-                  fontWeight: "900",
-                  color: "rgba(255, 255, 255, 0.6)",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  marginBottom: "8px",
-                  borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-                  paddingTop: "10px"
-                }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaGraduationCap style={{ color: "#3b529a" }} /> Student Developers</span>
-                </span>
-
-                {/* Students Grid */}
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: "6px"
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("student@kle.edu")}
-                    style={{
-                      padding: "7px 4px",
-                      borderRadius: "6px",
-                      background: "rgba(99, 102, 241, 0.15)",
-                      border: "1px solid rgba(99, 102, 241, 0.3)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "10px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                    title="Connect as KLE Student Developer"
-                  >
-                    KLE Student
+                  <button type="button" onClick={() => handleQuickConnect("coordinator@kle.edu")} style={{ padding: "8px", borderRadius: "6px", background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.3)", color: "white", fontWeight: "600", fontSize: "10.5px", cursor: "pointer", transition: "var(--transition-smooth)" }} title="Connect as KLE Campus Coordinator">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUserTie style={{ color: "#818cf8" }} /> Campus Coordinator</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("student@coep.edu")}
-                    style={{
-                      padding: "7px 4px",
-                      borderRadius: "6px",
-                      background: "rgba(99, 102, 241, 0.15)",
-                      border: "1px solid rgba(99, 102, 241, 0.3)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "10px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                    title="Connect as COEP Student Developer"
-                  >
-                    COEP Student
+                  <button type="button" onClick={() => handleQuickConnect("faculty1@kle.edu")} style={{ padding: "8px", borderRadius: "6px", background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.3)", color: "white", fontWeight: "600", fontSize: "10.5px", cursor: "pointer", transition: "var(--transition-smooth)" }} title="Connect as KLE Faculty Member">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBook style={{ color: "#818cf8" }} /> Faculty Member</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickConnect("student@rit.edu")}
-                    style={{
-                      padding: "7px 4px",
-                      borderRadius: "6px",
-                      background: "rgba(99, 102, 241, 0.15)",
-                      border: "1px solid rgba(99, 102, 241, 0.3)",
-                      color: "white",
-                      fontWeight: "600",
-                      fontSize: "10px",
-                      cursor: "pointer",
-                      transition: "var(--transition-smooth)"
-                    }}
-                    title="Connect as RIT Student Developer"
-                  >
-                    RIT Student
+                  <button type="button" onClick={() => handleQuickConnect("student1@kle.edu")} style={{ padding: "8px", borderRadius: "6px", background: "rgba(59, 130, 246, 0.15)", border: "1px solid rgba(59, 130, 246, 0.3)", color: "white", fontWeight: "600", fontSize: "10.5px", cursor: "pointer", transition: "var(--transition-smooth)" }} title="Connect as KLE Student Developer">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaGraduationCap style={{ color: "#60a5fa" }} /> Student Developer</span>
                   </button>
                 </div>
               </div>
@@ -3875,6 +4435,7 @@ function App() {
                         }} />
                         <input
                           type={showPassword ? "text" : "password"}
+                          autoComplete="new-password"
                           placeholder="••••••••"
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
@@ -4118,6 +4679,7 @@ function App() {
                         }} />
                         <input
                           type={showPassword ? "text" : "password"}
+                          autoComplete="new-password"
                           placeholder="••••••••"
                           value={signupPassword}
                           onChange={(e) => setSignupPassword(e.target.value)}
@@ -4304,7 +4866,7 @@ function App() {
                         </>
                       ) : (
                         <>
-                          <span>Register {signupRole === "Faculty Mentor" ? "Faculty" : "Student"} Account</span>
+                          <span>Register {signupRole === "Project Manager" ? "Project Manager" : signupRole === "Faculty Mentor" ? "Faculty" : "Student"} Account</span>
                           <span>{signupRole === "Faculty Mentor" ? <FaUsers style={{ marginRight: "4px" }} /> : <FaGraduationCap style={{ marginRight: "4px" }} />}</span>
                         </>
                       )}
@@ -4340,7 +4902,7 @@ function App() {
         <div style={{
           display: "flex",
           flexDirection: "column",
-          minHeight: "100vh",
+          height: "100vh",
           width: "100vw",
           background: theme === "dark" ? "#0b0f19" : "#ffffff",
           fontFamily: "var(--font-sans)",
@@ -4356,16 +4918,7 @@ function App() {
           {renderPortalModals()}
           
           {/* Toast notifications container */}
-          <div className="toast-container">
-            {toasts.map((toast) => (
-              <div key={toast.id} className="toast" style={{
-                borderLeftColor: toast.type === "warning" ? "var(--accent)" : "var(--primary)"
-              }}>
-                {toast.type === "warning" ? <FaExclamationCircle style={{ color: "var(--accent)" }} /> : <FaCheckCircle style={{ color: "var(--primary)" }} />}
-                <span>{toast.message}</span>
-              </div>
-            ))}
-          </div>
+
         </div>
       );
     }
@@ -4484,6 +5037,32 @@ function App() {
                 title="Executive Portfolio Hub"
               >
                 <FaHome size={20} />
+              </div>
+            
+            ) : currentPersona === "project-manager" ? (
+              <div
+                onClick={() => {
+                  setActiveWorkspace("project-manager");
+                  setActiveView("dashboard");
+                  setSidebarOpen(true);
+                  triggerToast("Switched Workspace: Company Projects");
+                }}
+                className={`sidebar-rail-icon ${activeWorkspace === "project-manager" ? "active" : ""}`}
+                title="Company Projects"
+              >
+                <FaBuilding size={20} />
+              </div>
+
+            ) : currentPersona === "project-mentor" ? (
+              <div
+                onClick={() => {
+                  setActiveWorkspace("mentor-dashboard");
+                  triggerToast("Switched Workspace: Project Mentor Dashboard");
+                }}
+                className={`sidebar-rail-icon ${activeWorkspace === "mentor-dashboard" ? "active" : ""}`}
+                title="Project Mentor Dashboard"
+              >
+                <FaUserTie size={20} />
               </div>
             ) : currentPersona === "moderator" ? (
               <>
@@ -4621,7 +5200,7 @@ function App() {
             }}
           >
             <span style={{ color: "#ef4444" }}>Apni</span>
-            <span style={{ color: "var(--sidebar-text-main)", display: "inline-flex", alignItems: "center" }}>
+            <span style={{ color: "#3b529a", display: "inline-flex", alignItems: "center" }}>
               Leap
               <span style={{ color: "#10b981", marginLeft: "4px", fontSize: "18px", fontWeight: "900" }}>↗</span>
             </span>
@@ -4650,7 +5229,7 @@ function App() {
                   letterSpacing: "0.8px",
                   marginBottom: "8px"
                 }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUser /> Select Active Role</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUser /> Active Role</span>
                 </label>
                 <select
                   value={currentPersona}
@@ -4674,11 +5253,11 @@ function App() {
                     fontFamily: "var(--font-sans)"
                   }}
                 >
-                  <option value="moderator" style={{ background: "var(--bg-sidebar)" }}>Central Portfolio Moderator</option>
-                  <option value="spoke-kle" style={{ background: "var(--bg-sidebar)" }}>KLE Campus Space Coordinator</option>
-                  <option value="spoke-coep" style={{ background: "var(--bg-sidebar)" }}>COEP Campus Space Coordinator</option>
-                  <option value="spoke-mmcoep" style={{ background: "var(--bg-sidebar)" }}>MMCOEP Campus Space Coordinator</option>
-                  <option value="spoke-rit" style={{ background: "var(--bg-sidebar)" }}>RIT Campus Space Coordinator</option>
+                  <option value="moderator" style={{ background: "var(--bg-sidebar)" }}>Moderator</option>
+                  <option value="spoke-kle" style={{ background: "var(--bg-sidebar)" }}>KLE Coordinator</option>
+                  <option value="spoke-coep" style={{ background: "var(--bg-sidebar)" }}>COEP Coordinator</option>
+                  <option value="spoke-mmcoep" style={{ background: "var(--bg-sidebar)" }}>MMCOEP Coordinator</option>
+                  <option value="spoke-rit" style={{ background: "var(--bg-sidebar)" }}>RIT Coordinator</option>
                 </select>
               </div>
             )}
@@ -4687,12 +5266,12 @@ function App() {
             {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "meetings" && sessionUser?.role !== "Corporate Partner" && (
               <>
                 <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--sidebar-text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "8px", marginBottom: "4px" }}>
-                  Workspace View
+                  Views
                 </div>
                 <SidebarNavItem
                   active={activeView === "dashboard"}
                   icon={<FaChartPie size={16} />}
-                  label="Analytics Console"
+                  label="Overview"
                   collapsed={false}
                   onClick={() => setActiveView("dashboard")}
                   variant="accent"
@@ -4709,18 +5288,41 @@ function App() {
               </>
             )}
 
-            {/* Section 3: APNILEAP SUITE */}
+            {/* Section 3: Campuses & Roles */}
             <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--sidebar-text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "4px", marginBottom: "4px" }}>
-              ApniLeap Suite
+              Campuses & Roles
             </div>
             
             {isCentralAdmin && (
               <SidebarNavItem
                 active={activeWorkspace === "hub"}
                 icon={<FaGlobe style={{ fontSize: "16px" }} />}
-                label="Executive Portfolio Hub"
+                label="Main Dashboard"
                 collapsed={false}
                 onClick={() => setActiveWorkspace("hub")}
+              />
+            )}
+
+            
+            {currentPersona === "project-manager" && (
+              <SidebarNavItem
+                active={activeWorkspace === "project-manager"}
+                icon={<FaBuilding size={16} />}
+                label="Company Projects"
+                onClick={() => {
+                  setActiveWorkspace("project-manager");
+                  setActiveView("dashboard");
+                }}
+              />
+            )}
+
+            {currentPersona === "project-mentor" && (
+              <SidebarNavItem
+                active={activeWorkspace === "mentor-dashboard"}
+                icon={<FaUserTie size={16} />}
+                label="Mentor Dashboard"
+                collapsed={false}
+                onClick={() => setActiveWorkspace("mentor-dashboard")}
               />
             )}
 
@@ -4736,7 +5338,7 @@ function App() {
                 <SidebarNavItem
                   active={activeWorkspace === "meetings"}
                   icon={<FaCalendarAlt style={{ fontSize: "16px" }} />}
-                  label="Collaboration & Sync Meetings"
+                  label="Meetings"
                   collapsed={false}
                   onClick={() => setActiveWorkspace("meetings")}
                 />
@@ -4748,7 +5350,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-kle"}
                 icon={<FaBuilding />}
-                label="KLE Campus Space"
+                label="KLE Campus"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-kle");
@@ -4760,7 +5362,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-coep"}
                 icon={<FaBuilding />}
-                label="COEP Campus Space"
+                label="COEP Campus"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-coep");
@@ -4772,7 +5374,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-mmcoep"}
                 icon={<FaBuilding />}
-                label="MMCOEP Campus Space"
+                label="MMCOEP Campus"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-mmcoep");
@@ -4784,37 +5386,13 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-rit"}
                 icon={<FaBuilding />}
-                label="RIT Campus Space"
+                label="RIT Campus"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-rit");
                   setActiveView("dashboard");
                 }}
               />
-            )}
-
-            {/* Project Mentor sidebar items */}
-            {currentPersona === "project-mentor" && (
-              <>
-                <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--sidebar-text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "8px", marginBottom: "4px" }}>Mentor Portal</div>
-                {[
-                  { id: "project", icon: <FaClipboardList size={15} />, label: "My Project" },
-                  { id: "progress", icon: <FaChartPie size={15} />, label: "Spoke Progress" },
-                  { id: "teams", icon: <FaUsers size={15} />, label: "Team Overview" },
-                  { id: "deliverables", icon: <FaFolderOpen size={15} />, label: "Deliverables" },
-                  { id: "comms", icon: <FaEnvelope size={15} />, label: "Communications" }
-                ].map(item => (
-                  <SidebarNavItem
-                    key={item.id}
-                    active={mentorDashTab === item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    collapsed={false}
-                    onClick={() => setMentorDashTab(item.id)}
-                    variant="accent"
-                  />
-                ))}
-              </>
             )}
             
             <hr style={{ border: "none", borderTop: "1px solid var(--sidebar-border)", margin: "12px 16px 12px 0" }} />
@@ -4834,7 +5412,7 @@ function App() {
               <p style={{ color: "var(--sidebar-text-muted)", fontSize: "10px", lineHeight: "1.3" }}>
                 {hasError 
                   ? "Jira API server offline. Check logs."
-                  : "Live tracking active. Background auto-polling enabled."}
+                  : "Live tracking active. Auto-refreshing."}
               </p>
             </div>
           </nav>
@@ -4863,26 +5441,7 @@ function App() {
                 </span>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              title="Log Out"
-              style={{
-                background: "var(--sidebar-btn-bg)",
-                border: "1px solid var(--sidebar-btn-border)",
-                color: "var(--sidebar-btn-color)",
-                cursor: "pointer",
-                padding: "6px",
-                borderRadius: "6px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "var(--sidebar-hover-bg)"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "var(--sidebar-btn-bg)"}
-            >
-              <FaTimes size={12} />
-            </button>
+            {/* Logout button moved to header */}
           </div>
         </div>
       </aside>
@@ -4902,6 +5461,7 @@ function App() {
             <h1 style={{ fontSize: "28px", fontWeight: "800", letterSpacing: "-0.5px", margin: "0" }}>
               {activeWorkspace === "hub"
                 ? "ApniLeap Executive Portfolio Hub"
+                : activeWorkspace === "project-manager" ? `${sessionUser?.company || "Company"} Project Portal`
                 : activeWorkspace === "moderator"
                 ? "Central Moderation Portal"
                 : activeWorkspace === "meetings"
@@ -4913,6 +5473,7 @@ function App() {
             <p style={{ color: "var(--text-muted)", fontSize: "14px", marginTop: "4px" }}>
               {activeWorkspace === "hub"
                 ? "Consolidated FIP outcomes progress, cross-college blocker escalations, and standard workstream status tracker."
+                : activeWorkspace === "project-manager" ? "Create and manage your company's projects, requirements, and phases."
                 : activeWorkspace === "moderator"
                 ? "Intake projects from industry partners and automatically provision them directly to campus spaces."
                 : activeWorkspace === "meetings"
@@ -4985,7 +5546,7 @@ function App() {
               </button>
             )}
 
-            <div style={{ position: "relative", cursor: "pointer" }}>
+            <div style={{ position: "relative", cursor: "pointer" }} onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}>
               <div style={{
                 background: "#ffffff",
                 border: "1px solid rgba(0, 0, 0, 0.06)",
@@ -4999,44 +5560,99 @@ function App() {
               }}>
                 <FaBell size={15} />
               </div>
-              {activeWorkspace === "hub" ? (
-                hubMetrics?.blockers?.length > 0 && (
-                  <span style={{
-                    position: "absolute",
-                    top: "-4px",
-                    right: "-4px",
-                    width: "18px",
-                    height: "18px",
-                    borderRadius: "50%",
-                    background: "var(--accent)",
-                    color: "white",
-                    fontSize: "10px",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}>{hubMetrics.blockers.length}</span>
-                )
-              ) : (
-                metrics.overdue > 0 && (
-                  <span style={{
-                    position: "absolute",
-                    top: "-4px",
-                    right: "-4px",
-                    width: "18px",
-                    height: "18px",
-                    borderRadius: "50%",
-                    background: "var(--accent)",
-                    color: "white",
-                    fontSize: "10px",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}>{metrics.overdue}</span>
-                )
+              
+              {/* Notification Badges - only show if there are unread notifications */}
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: "-4px",
+                  right: "-4px",
+                  width: "18px",
+                  height: "18px",
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  color: "white",
+                  fontSize: "10px",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>{notifications.filter(n => !n.read).length}</span>
+              )}
+
+              {/* DROPDOWN */}
+              {isNotificationsOpen && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: "12px",
+                  width: "320px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-glass)",
+                  borderRadius: "12px",
+                  boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
+                  zIndex: 50,
+                  overflow: "hidden"
+                }} onClick={e => e.stopPropagation()}>
+                  <div style={{ padding: "16px", borderBottom: "1px solid var(--border-glass)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h4 style={{ margin: 0, fontSize: "14px", color: "var(--text-main)", fontWeight: "700" }}>Notifications</h4>
+                    {notifications.length > 0 && (
+                      <span style={{ fontSize: "12px", color: "var(--primary)", cursor: "pointer", fontWeight: "600" }} onClick={() => {
+                        notifications.forEach(n => dismissNotification(n.id));
+                      }}>Mark all as read</span>
+                    )}
+                  </div>
+                  <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                    {notifications.length === 0 ? (
+                      <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
+                        No notifications yet.
+                      </div>
+                    ) : (
+                      notifications.slice().reverse().map(n => (
+                        <div key={n.id} style={{ padding: "16px", borderBottom: "1px solid var(--border-glass)", background: n.read ? "transparent" : "rgba(59, 130, 246, 0.05)" }}>
+                          <div style={{ fontSize: "13px", color: "var(--text-main)", fontWeight: n.read ? "500" : "600", marginBottom: "6px" }}>{n.message}</div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{new Date(n.timestamp).toLocaleString()}</div>
+                            {!n.read && (
+                              <button onClick={() => dismissNotification(n.id)} style={{ background: "none", border: "none", color: "var(--primary)", fontSize: "11px", cursor: "pointer", fontWeight: "600", padding: 0 }}>Dismiss</button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               )}
             </div>
+            {/* SIGN OUT BUTTON */}
+            <button
+              onClick={() => setIsLogoutModalOpen(true)}
+              style={{
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-glass)",
+                color: "var(--text-main)",
+                cursor: "pointer",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "13px",
+                fontWeight: "600",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-glass)";
+                e.currentTarget.style.borderColor = "var(--border-accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--bg-card)";
+                e.currentTarget.style.borderColor = "var(--border-glass)";
+              }}
+            >
+              Sign Out <LogOut size={14} />
+            </button>
           </div>
         </header>
 
@@ -5198,41 +5814,6 @@ function App() {
               <span>Retry Sync</span>
             </button>
           </div>
-        ) : activeWorkspace === "mentor-dashboard" ? (
-          <ProjectMentorDashboardView
-            sessionUser={sessionUser}
-            mentorAssignments={mentorAssignments}
-            projects={moderatorProjects}
-            loading={isModeratorLoading}
-            onRefresh={() => fetchModeratorProjects(false)}
-            activeTab={mentorDashTab}
-            onTabChange={setMentorDashTab}
-            triggerToast={triggerToast}
-            theme={theme}
-            mentorEmailRecipient={mentorEmailRecipient}
-            setMentorEmailRecipient={setMentorEmailRecipient}
-            mentorEmailBody={mentorEmailBody}
-            setMentorEmailBody={setMentorEmailBody}
-            isSendingMentorEmail={isSendingMentorEmail}
-            onSendMentorEmail={async (e) => {
-              e.preventDefault();
-              if (!mentorEmailRecipient.trim() || !mentorEmailBody.trim()) {
-                triggerToast("Please fill in recipient and message.", "warning");
-                return;
-              }
-              setIsSendingMentorEmail(true);
-              setTimeout(() => {
-                triggerToast(`Message dispatched to ${mentorEmailRecipient}!`);
-                setMentorEmailRecipient("");
-                setMentorEmailBody("");
-                setIsSendingMentorEmail(false);
-              }, 1200);
-            }}
-            getMentorProjectInfo={getMentorProjectInfo}
-            allSubmissions={allSubmissions}
-            spokeTeams={spokeTeams}
-            spokes={Object.entries(SPOKES).map(([id, spoke]) => ({ id, ...spoke }))}
-          />
         ) : activeWorkspace === "hub" ? (
           <HubDashboardView
             metrics={hubMetrics}
@@ -5262,6 +5843,25 @@ function App() {
             }}
             onDeleteClick={(proj) => handleDeleteProject(proj.id)}
           />
+        
+        ) : activeWorkspace === "project-manager" ? (
+          <ProjectManagerDashboardView
+            projects={projectManagerProjects}
+            loading={isProjectManagerLoading}
+            onRefresh={fetchProjectManagerProjects}
+            onIngestClick={() => setIsProjectManagerIngestModalOpen(true)}
+            sessionUser={sessionUser}
+          />
+
+        ) : activeWorkspace === "mentor-dashboard" ? (
+          <ProjectMentorDashboardView
+            sessionUser={sessionUser}
+            mentorAssignments={mentorAssignments}
+            moderatorProjects={moderatorProjects}
+            spokes={Object.entries(SPOKES).map(([id, spoke]) => ({ id, ...spoke }))}
+            triggerToast={triggerToast}
+            tasks={tasks}
+          />
         ) : sessionUser?.role === "Corporate Partner" ? (
           <CorporateSponsorDashboardView
             projects={moderatorProjects}
@@ -5290,16 +5890,9 @@ function App() {
             onOpenMentorModal={(proj) => {
               setMentorModalProject(proj);
               setMentorMode("global");
-              setMentorGlobalEmail("");
               setMentorGlobalName("");
+              setMentorGlobalEmail("");
               setMentorPerSpoke({});
-              // Pre-fill if already assigned
-              const existing = mentorAssignments[proj.id];
-              if (existing) {
-                setMentorMode(existing.mode);
-                if (existing.global) { setMentorGlobalEmail(existing.global.email); setMentorGlobalName(existing.global.name); }
-                if (existing.perSpoke) setMentorPerSpoke(existing.perSpoke);
-              }
               setIsMentorModalOpen(true);
             }}
           />
@@ -5314,12 +5907,109 @@ function App() {
           />
         ) : (
           <>
+            {/* ========================================= */}
+            {/* ROLE IDENTITY BANNER — Spoke Dashboards   */}
+            {/* ========================================= */}
+            {(() => {
+              const role = sessionUser?.role;
+              const name = sessionUser?.displayName || sessionUser?.name || sessionUser?.email || "User";
+              const email = sessionUser?.email || "";
+              const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=64`;
+
+              const roleConfig = {
+                "Student Developer": {
+                  icon: <FaGraduationCap size={22} />,
+                  label: "Student Developer",
+                  subtitle: "Track your assigned tasks, submit deliverables, and collaborate with your team.",
+                  gradient: "linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(99,102,241,0.08) 100%)",
+                  border: "rgba(59,130,246,0.25)",
+                  iconColor: "#60a5fa",
+                  badge: "bg-blue",
+                },
+                "Faculty Member": {
+                  icon: <FaBook size={20} />,
+                  label: "Faculty Member",
+                  subtitle: "Oversee student teams, review sprint progress, and manage academic deliverables.",
+                  gradient: "linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.08) 100%)",
+                  border: "rgba(99,102,241,0.25)",
+                  iconColor: "#818cf8",
+                  badge: "bg-indigo",
+                },
+                "Campus Coordinator": {
+                  icon: <FaUserTie size={20} />,
+                  label: "Campus Coordinator",
+                  subtitle: "Manage spoke operations, assign faculty to projects, and report to the central hub.",
+                  gradient: "linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.08) 100%)",
+                  border: "rgba(16,185,129,0.25)",
+                  iconColor: "#34d399",
+                  badge: "bg-green",
+                },
+              };
+
+              const cfg = roleConfig[role];
+              if (!cfg) return null;
+
+              const spokeInfo = SPOKES[currentBoardId];
+
+              return (
+                <div style={{
+                  padding: "18px 22px",
+                  background: cfg.gradient,
+                  border: `1.5px solid ${cfg.border}`,
+                  borderRadius: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "18px",
+                  marginBottom: "4px",
+                  flexWrap: "wrap"
+                }}>
+                  {/* Avatar */}
+                  <img
+                    src={avatarUrl}
+                    alt={name}
+                    style={{ width: "52px", height: "52px", borderRadius: "50%", border: `2px solid ${cfg.border}`, flexShrink: 0 }}
+                  />
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: "200px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                      <span style={{ color: cfg.iconColor }}>{cfg.icon}</span>
+                      <span style={{ fontSize: "11px", fontWeight: "800", color: cfg.iconColor, textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <h3 style={{ margin: "0 0 3px 0", fontSize: "17px", fontWeight: "800", color: "var(--text-main)" }}>
+                      Welcome, {name.split(" ")[0]}!
+                    </h3>
+                    <p style={{ margin: 0, fontSize: "12.5px", color: "var(--text-muted)", lineHeight: 1.4 }}>
+                      {cfg.subtitle}
+                    </p>
+                  </div>
+
+                  {/* Spoke badge */}
+                  {spokeInfo && (
+                    <div style={{
+                      padding: "10px 18px",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "10px",
+                      textAlign: "center",
+                      flexShrink: 0
+                    }}>
+                      <div style={{ fontSize: "10px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Spoke Campus</div>
+                      <div style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginTop: "3px" }}>{spokeInfo.name}</div>
+                      <div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "2px" }}>{email}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             {/* Proposed B2B Project Decision Banner (Multi-tenant Coordinator Review Privilege) */}
             {sessionUser?.role !== "Student Developer" && proposedProjectsForSpoke.map((proj) => (
               <div key={proj.id} className="glass-panel pulse-glow" style={{
                 background: theme === "dark"
-                  ? "linear-gradient(135deg, rgba(45, 212, 191, 0.1), rgba(249, 115, 22, 0.1))"
-                  : "linear-gradient(135deg, rgba(13, 148, 136, 0.05), rgba(249, 115, 22, 0.05))",
+                  ? "rgba(45, 212, 191, 0.08)"
+                  : "rgba(13, 148, 136, 0.04)",
                 border: "1.5px dashed var(--border-glow)",
                 padding: "22px 26px",
                 borderRadius: "16px",
@@ -5418,8 +6108,8 @@ function App() {
                         padding: "8px 18px",
                         fontSize: "13px",
                         borderRadius: "8px",
-                        background: "linear-gradient(135deg, var(--primary), var(--secondary))",
-                        boxShadow: "0 4px 12px rgba(45, 212, 191, 0.2)",
+                        background: "#ef4444",
+                        boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)",
                         cursor: "pointer"
                       }}
                     >
@@ -5430,75 +6120,75 @@ function App() {
               </div>
             ))}
 
-            {todayMeetingsForSpoke.length > 0 && (
-              <div className="glass-panel" style={{
-                background: todayConflictsForSpoke.length > 0
-                  ? (theme === "dark"
-                    ? "linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(251, 146, 60, 0.12))"
-                    : "linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(251, 146, 60, 0.05))")
-                  : (theme === "dark"
-                    ? "linear-gradient(135deg, rgba(13, 148, 136, 0.15), rgba(8, 145, 178, 0.15))"
-                    : "linear-gradient(135deg, rgba(13, 148, 136, 0.06), rgba(8, 145, 178, 0.06))"),
-                border: todayConflictsForSpoke.length > 0
-                  ? "1.5px solid rgba(239, 68, 68, 0.35)"
-                  : "1.5px solid var(--border-glass)",
-                boxShadow: todayConflictsForSpoke.length > 0
-                  ? "var(--shadow-premium), 0 0 25px rgba(239, 68, 68, 0.12)"
-                  : "var(--shadow-premium), 0 0 25px rgba(13, 148, 136, 0.08)",
-                padding: "20px 24px",
-                borderRadius: "16px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
-                marginBottom: "25px",
-                animation: todayConflictsForSpoke.length > 0 ? "pulse-glow 3s infinite alternate" : "pulse-glow 5s infinite alternate"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "24px" }}><FaCalendarAlt /></span>
-                    <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "850", color: "var(--text-main)" }}>
-                      Today's FIP Sprint Syncs Scheduled ({todayMeetingsForSpoke.length})
-                    </h4>
-                  </div>
-                  {todayConflictsForSpoke.length > 0 && (
-                    <span style={{
-                      fontSize: "11px",
-                      fontWeight: "800",
-                      background: "rgba(239, 68, 68, 0.12)",
-                      border: "1px solid rgba(239, 68, 68, 0.3)",
-                      color: theme === "dark" ? "#fca5a5" : "#b91c1c",
-                      padding: "3px 10px",
-                      borderRadius: "6px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px"
-                    }} className="pulse-glow">
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--accent)" }}><FaExclamationTriangle /> OVERLAP CONFLICT</span>
-                    </span>
-                  )}
+            <div className="glass-panel" style={{
+              background: todayConflictsForSpoke.length > 0
+                ? (theme === "dark"
+                  ? "rgba(239, 68, 68, 0.1)"
+                  : "rgba(239, 68, 68, 0.04)")
+                : (theme === "dark"
+                  ? "rgba(13, 148, 136, 0.1)"
+                  : "rgba(13, 148, 136, 0.04)"),
+              border: todayConflictsForSpoke.length > 0
+                ? "1.5px solid rgba(239, 68, 68, 0.35)"
+                : "1.5px solid var(--border-glass)",
+              boxShadow: todayConflictsForSpoke.length > 0
+                ? "var(--shadow-premium), 0 0 25px rgba(239, 68, 68, 0.12)"
+                : "var(--shadow-premium), 0 0 25px rgba(13, 148, 136, 0.08)",
+              padding: "20px 24px",
+              borderRadius: "16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              marginBottom: "25px",
+              animation: todayConflictsForSpoke.length > 0 ? "pulse-glow 3s infinite alternate" : "pulse-glow 5s infinite alternate"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <span style={{ fontSize: "24px" }}><FaCalendarAlt /></span>
+                  <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "850", color: "var(--text-main)" }}>
+                    Today's FIP Sprint Syncs Scheduled ({todayMeetingsForSpoke.length})
+                  </h4>
                 </div>
-
                 {todayConflictsForSpoke.length > 0 && (
-                  <div style={{
+                  <span style={{
+                    fontSize: "11px",
+                    fontWeight: "800",
+                    background: "rgba(239, 68, 68, 0.12)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: theme === "dark" ? "#fca5a5" : "#b91c1c",
+                    padding: "3px 10px",
+                    borderRadius: "6px",
                     display: "flex",
                     alignItems: "center",
-                    gap: "10px",
-                    padding: "10px 14px",
-                    background: theme === "dark" ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.05)",
-                    border: "1px solid rgba(239, 68, 68, 0.25)",
-                    borderRadius: "8px",
-                    color: theme === "dark" ? "#fca5a5" : "#b91c1c",
-                    fontSize: "12.5px",
-                    fontWeight: "600",
-                    lineHeight: "1.4"
-                  }}>
-                    <span><FaExclamationTriangle /></span>
-                    <span>
-                      <strong>Schedule Conflict:</strong> Multiple meetings are scheduled at the same time today. Please coordinate to resolve the conflict.
-                    </span>
-                  </div>
+                    gap: "4px"
+                  }} className="pulse-glow">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--accent)" }}><FaExclamationTriangle /> OVERLAP CONFLICT</span>
+                  </span>
                 )}
+              </div>
 
+              {todayConflictsForSpoke.length > 0 && (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "10px 14px",
+                  background: theme === "dark" ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.05)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  borderRadius: "8px",
+                  color: theme === "dark" ? "#fca5a5" : "#b91c1c",
+                  fontSize: "12.5px",
+                  fontWeight: "600",
+                  lineHeight: "1.4"
+                }}>
+                  <span><FaExclamationTriangle /></span>
+                  <span>
+                    <strong>Schedule Conflict:</strong> Multiple meetings are scheduled at the same time today. Please coordinate to resolve the conflict.
+                  </span>
+                </div>
+              )}
+
+              {todayMeetingsForSpoke.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   {todayMeetingsForSpoke.map((meet) => {
                     const hasConflict = todayConflictsForSpoke.some(c => c.id === meet.id);
@@ -5547,35 +6237,72 @@ function App() {
                               </span>
                             )}
                             <strong style={{ fontSize: "14.5px", color: "var(--text-main)" }}>{meet.title}</strong>
+                            <span style={{ fontSize: "10px", fontWeight: "700", background: "var(--bg-subtle)", padding: "2px 6px", borderRadius: "4px", color: "var(--text-dim)", marginLeft: "8px", border: "1px solid var(--border-glass)" }}>
+                              <FaClipboardList style={{ marginRight: "4px" }}/> Task: {meet.taskId || "AK-148"}
+                            </span>
                           </div>
                           <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.4" }}>
                             Agenda: <em>{meet.agenda}</em>
                           </p>
                         </div>
-                        <a
-                          href={meet.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-primary"
-                          style={{
-                            padding: "8px 16px",
-                            fontSize: "12px",
-                            borderRadius: "8px",
-                            background: "#ef4444",
-                            color: "var(--text-primary-btn)",
-                            textDecoration: "none",
-                            fontWeight: "750",
-                            boxShadow: "0 4px 12px rgba(239, 68, 68, 0.25)"
-                          }}
-                        >
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>Join Meeting <FaPaperPlane /></span>
-                        </a>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <a
+                            href={meet.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-primary"
+                            style={{
+                              padding: "8px 16px",
+                              fontSize: "12px",
+                              borderRadius: "8px",
+                              background: "#ef4444",
+                              color: "white",
+                              textDecoration: "none",
+                              fontWeight: "750",
+                              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.25)"
+                            }}
+                          >
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>Join Meeting <FaPaperPlane /></span>
+                          </a>
+                          <button
+                            onClick={() => setMeetings(prev => prev.filter(m => m.id !== meet.id))}
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: "12px",
+                              borderRadius: "8px",
+                              background: "rgba(45, 212, 191, 0.1)",
+                              color: "#2dd4bf",
+                              border: "1px solid rgba(45, 212, 191, 0.2)",
+                              fontWeight: "750",
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              transition: "var(--transition-smooth)"
+                            }}
+                          >
+                            <FaCheckCircle /> Mark Attended
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div style={{
+                  padding: "30px",
+                  textAlign: "center",
+                  color: "var(--text-dim)",
+                  fontSize: "13px",
+                  fontStyle: "italic",
+                  border: "1px dashed var(--border-glass)",
+                  borderRadius: "8px",
+                  background: "rgba(255,255,255,0.01)"
+                }}>
+                  No meetings scheduled for today. You're all caught up! 🎉
+                </div>
+              )}
+            </div>
 
             {/* 1. DASHBOARD VIEW */}
             {activeView === "dashboard" && (
@@ -5586,41 +6313,6 @@ function App() {
                   // 💻 STUDENT DEVELOPER DASHBOARD VIEW
                   // ==========================================
                   <>
-                    {/* Student Persona Header */}
-                    <div className="glass-panel" style={{
-                      padding: "20px 24px",
-                      background: "linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.02))",
-                      border: "1px solid var(--border-glass)",
-                      borderRadius: "16px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: "16px"
-                    }}>
-                      <div>
-                        <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "850", color: "var(--text-main)" }}>
-                          Welcome Back, {sessionUser?.displayName}!
-                        </h2>
-                        <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-muted)" }}>
-                          Student Developer at <strong style={{ color: "var(--primary)" }}>{SPOKES[currentBoardId]?.name || "Our Campus Spoke"}</strong>. Track your active sprint tasks, review mentor feedback, and submit your deliverables.
-                        </p>
-                      </div>
-                      <span style={{
-                        fontSize: "11px",
-                        fontWeight: "800",
-                        background: "var(--primary-glow)",
-                        color: "var(--primary)",
-                        padding: "4px 12px",
-                        borderRadius: "20px",
-                        border: "1px solid rgba(99, 102, 241, 0.2)",
-                        textTransform: "uppercase"
-                      }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBolt style={{ color: "var(--accent)" }} /> Student Developer Active Session</span>
-                      </span>
-                    </div>
-
-                    {/* Student Accountable Metrics Card Row */}
                     {(() => {
                       const mySpokeTasks = tasks.filter(t => {
                         const spokeLabel = CAMPUS_LABELS[currentBoardId];
@@ -5637,6 +6329,10 @@ function App() {
                         )
                       ) : [];
                       const myTeamIds = myTeams.map(team => team && team._id ? team._id.toString() : "");
+
+                      // Determine the active project based on the student's team
+                      const activeTeamWithProject = myTeams.find(t => t.projectId);
+                      const activeProject = activeTeamWithProject ? acceptedProjectsForSpoke.find(p => p.id === activeTeamWithProject.projectId) : null;
 
                       const myAssignedTasks = mySpokeTasks.filter(t => {
                         const assigneeEmail = t.fields?.assignee?.email || t.fields?.assignee?.emailAddress || "";
@@ -5661,11 +6357,13 @@ function App() {
                       const studentApprovedCount = mySubmissionsList.filter(sub => sub.status === "Approved").length;
 
                       return (
-                        <div style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                          gap: "20px"
-                        }}>
+                        <>
+
+                          <div style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                            gap: "20px"
+                          }}>
                           <DashboardCard
                             title="My Active Tasks"
                             value={studentActiveTasks.length}
@@ -5694,6 +6392,7 @@ function App() {
                             glow={studentApprovedCount > 0}
                           />
                         </div>
+                        </>
                       );
                     })()}
 
@@ -5707,6 +6406,119 @@ function App() {
                       
                       {/* Left: Active Tasks & Submissions Feedback */}
                       <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+                        
+                        {/* Active B2B Spoke Project - Moved to Top */}
+                        {acceptedProjectsForSpoke.length > 0 && (
+                          <div className="glass-panel" style={{ padding: "20px 24px" }}>
+                            <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                              Active B2B Sponsor Project
+                            </h3>
+                            {acceptedProjectsForSpoke.slice(0, 1).map((proj) => {
+                              const epicKey = proj.allocations ? proj.allocations.find(a => a.targetCampusId === currentBoardId)?.assignedKey : proj.assignedKey;
+                              return (
+                                <div key={proj.id} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                    <CompanyLogo company={proj.company} size={36} />
+                                    <div>
+                                      <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "var(--text-main)" }}>{proj.title}</h4>
+                                      <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Sponsor: <strong>{proj.company}</strong></span>
+                                    </div>
+                                  </div>
+                                  <div style={{
+                                    padding: "10px 14px",
+                                    background: "rgba(255, 255, 255, 0.01)",
+                                    border: "1px solid var(--border-glass)",
+                                    borderRadius: "8px",
+                                    fontSize: "11.5px",
+                                    display: "flex",
+                                    justifyContent: "space-between"
+                                  }}>
+                                    <span style={{ color: "var(--text-dim)" }}>Jira key: <strong style={{ color: "var(--text-main)", fontFamily: "var(--mono)" }}>{epicKey || "PNLP-3"}</strong></span>
+                                    <span style={{ color: "var(--text-dim)" }}>Deadline: <strong style={{ color: "var(--text-main)" }}>{proj.proposedDueDate}</strong></span>
+                                  </div>
+
+                                  {/* Phases List */}
+                                  {proj.phases && proj.phases.length > 0 && (
+                                    <div style={{ marginTop: "10px" }}>
+                                      <h5 style={{ margin: "0 0 8px 0", fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase" }}>Project Phases (Kanban Tasks)</h5>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                        {proj.phases.map((phase, pIdx) => (
+                                          <div key={pIdx} style={{ background: "rgba(0,0,0,0.2)", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                              <span style={{ fontSize: "12.5px", fontWeight: "800", color: "var(--text-main)" }}>{phase.name}</span>
+                                              <span style={{ fontSize: "11px", color: "var(--accent)" }}>{phase.duration}</span>
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: "11px", color: "var(--text-dim)", lineHeight: "1.4" }}>{phase.description}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Add Phase UI for Coordinators/Faculty */}
+                                  {(sessionUser?.role === "Coordinator" || sessionUser?.role === "Faculty") && (
+                                    <div style={{ marginTop: "10px" }}>
+                                      {!isAddingPhase ? (
+                                        <button
+                                          onClick={() => setIsAddingPhase(true)}
+                                          className="btn-secondary"
+                                          style={{ padding: "6px 12px", fontSize: "11px", display: "inline-flex", gap: "6px", alignItems: "center" }}
+                                        >
+                                          + Add Phase to Kanban
+                                        </button>
+                                      ) : (
+                                        <div style={{ background: "rgba(0,0,0,0.15)", padding: "12px", borderRadius: "8px", border: "1px solid var(--border-glass)", display: "flex", flexDirection: "column", gap: "8px" }}>
+                                          <input type="text" placeholder="Phase Name" value={newPhaseName} onChange={(e) => setNewPhaseName(e.target.value)} style={{ padding: "8px", fontSize: "12px", borderRadius: "6px", border: "1px solid var(--border-subtle)", background: "var(--bg-input)", color: "var(--text-main)", outline: "none" }} />
+                                          <textarea placeholder="Description" value={newPhaseDesc} onChange={(e) => setNewPhaseDesc(e.target.value)} style={{ padding: "8px", fontSize: "12px", borderRadius: "6px", border: "1px solid var(--border-subtle)", background: "var(--bg-input)", color: "var(--text-main)", outline: "none", resize: "none", height: "60px" }} />
+                                          <input type="text" placeholder="Duration (e.g. 2 Weeks)" value={newPhaseDuration} onChange={(e) => setNewPhaseDuration(e.target.value)} style={{ padding: "8px", fontSize: "12px", borderRadius: "6px", border: "1px solid var(--border-subtle)", background: "var(--bg-input)", color: "var(--text-main)", outline: "none" }} />
+                                          
+                                          <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                                            <button
+                                              onClick={async () => {
+                                                if (!newPhaseName.trim()) return;
+                                                try {
+                                                  const res = await axios.post(`http://localhost:5000/api/projects/${proj.id}/phases`, {
+                                                    targetBoardId: currentBoardId,
+                                                    name: newPhaseName,
+                                                    description: newPhaseDesc,
+                                                    duration: newPhaseDuration
+                                                  });
+                                                  if (res.data.success) {
+                                                    triggerToast("Phase added and Kanban task created successfully!");
+                                                    setIsAddingPhase(false);
+                                                    setNewPhaseName("");
+                                                    setNewPhaseDesc("");
+                                                    setNewPhaseDuration("");
+                                                    fetchModeratorProjects(false);
+                                                    fetchJiraTasks(false);
+                                                  }
+                                                } catch (e) {
+                                                  triggerToast("Failed to add phase.", "error");
+                                                }
+                                              }}
+                                              className="btn-primary"
+                                              style={{ padding: "6px 12px", fontSize: "11.5px", flex: 1 }}
+                                            >
+                                              Save & Sync
+                                            </button>
+                                            <button
+                                              onClick={() => { setIsAddingPhase(false); setNewPhaseName(""); setNewPhaseDesc(""); setNewPhaseDuration(""); }}
+                                              className="btn-secondary"
+                                              style={{ padding: "6px 12px", fontSize: "11.5px", flex: 1 }}
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                         
                         {/* 1. Active Tasks Assigned to Me */}
                         {(() => {
@@ -5777,6 +6589,17 @@ function App() {
                                             overflow: "hidden",
                                             textOverflow: "ellipsis"
                                           }}>{t.fields.summary}</span>
+                                          {t.fields?.priority?.name && (
+                                            <span style={{
+                                              fontSize: "10px",
+                                              fontWeight: "800",
+                                              background: "var(--bg-subtle)",
+                                              color: "var(--text-muted)",
+                                              padding: "2px 6px",
+                                              borderRadius: "6px",
+                                              border: "1px solid var(--border-glass)"
+                                            }}>{t.fields.priority.name}</span>
+                                          )}
                                           {isTeamTask && (
                                             <span style={{
                                               fontSize: "10px",
@@ -5803,16 +6626,17 @@ function App() {
                                                 setSelectedTask(t);
                                                 setModalTab("deliverables");
                                               }}
+                                              disabled={tStatus !== "In Progress"}
                                               style={{
                                                 padding: "6px 12px",
-                                                background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                                                background: tStatus !== "In Progress" ? "rgba(255,255,255,0.05)" : "#ef4444",
                                                 border: "none",
                                                 borderRadius: "6px",
-                                                color: "white",
+                                                color: tStatus !== "In Progress" ? "var(--text-dim)" : "white",
                                                 fontSize: "11px",
                                                 fontWeight: "800",
-                                                cursor: "pointer",
-                                                boxShadow: "0 4px 10px rgba(99, 102, 241, 0.25)"
+                                                cursor: tStatus !== "In Progress" ? "not-allowed" : "pointer",
+                                                boxShadow: tStatus !== "In Progress" ? "none" : "0 4px 10px rgba(239, 68, 68, 0.2)"
                                               }}
                                             >
                                               <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>Submit Work <FaPaperPlane /></span>
@@ -5824,6 +6648,24 @@ function App() {
                                       </div>
                                     );
                                   })}
+                                  {mySubmissionsList.length > 10 && (
+                                    <button
+                                      onClick={() => setShowAllHistory(!showAllHistory)}
+                                      style={{
+                                        background: "transparent",
+                                        border: "1px dashed var(--border-glass)",
+                                        color: "var(--text-muted)",
+                                        padding: "8px",
+                                        borderRadius: "8px",
+                                        cursor: "pointer",
+                                        fontWeight: "700",
+                                        fontSize: "12px",
+                                        marginTop: "8px"
+                                      }}
+                                    >
+                                      {showAllHistory ? "Show Less" : `View All History (${mySubmissionsList.length})`}
+                                    </button>
+                                  )}
                                 </div>
                               ) : (
                                 <EmptyStateMessage text="No sprint tasks currently assigned to your account." showIcon={true} />
@@ -5848,7 +6690,7 @@ function App() {
                               </h3>
                               {mySubmissionsList.length > 0 ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                                  {mySubmissionsList.map(sub => {
+                                  {(showAllHistory ? mySubmissionsList : mySubmissionsList.slice(0, 10)).map(sub => {
                                     const badgeBg = sub.status === "Approved" ? "rgba(45, 212, 191, 0.08)" : sub.status === "Re-work Requested" ? "rgba(239, 68, 68, 0.08)" : "rgba(251, 146, 60, 0.08)";
                                     const badgeColor = sub.status === "Approved" ? "#2dd4bf" : sub.status === "Re-work Requested" ? "#ef4444" : "var(--accent)";
                                     const badgeBorder = sub.status === "Approved" ? "1px solid rgba(45, 212, 191, 0.2)" : sub.status === "Re-work Requested" ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)";
@@ -5919,6 +6761,24 @@ function App() {
                                       </div>
                                     );
                                   })}
+                                  {mySubmissionsList.length > 10 && (
+                                    <button
+                                      onClick={() => setShowAllHistory(!showAllHistory)}
+                                      style={{
+                                        background: "transparent",
+                                        border: "1px dashed var(--border-glass)",
+                                        color: "var(--text-muted)",
+                                        padding: "8px",
+                                        borderRadius: "8px",
+                                        cursor: "pointer",
+                                        fontWeight: "700",
+                                        fontSize: "12px",
+                                        marginTop: "8px"
+                                      }}
+                                    >
+                                      {showAllHistory ? "Show Less" : `View All History (${mySubmissionsList.length})`}
+                                    </button>
+                                  )}
                                 </div>
                               ) : (
                                 <EmptyStateMessage text="You haven't submitted any deliverables for review yet." showIcon={true} />
@@ -5932,50 +6792,62 @@ function App() {
                       {/* Right: Spoke Leaderboard & B2B Projects */}
                       <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
                         
-                        {/* Dynamic Leaderboard for Student Pride */}
-                        <div className="glass-panel" style={{ padding: "24px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                            <h3 style={{ fontSize: "14px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", margin: 0 }}>Spoke Leaderboard</h3>
-                            <span style={{ fontSize: "10px", color: "var(--primary)", fontWeight: "800", background: "var(--primary-glow)", padding: "2px 8px", borderRadius: "20px" }}>Live Rank</span>
+                        <div className="glass-panel" style={{ 
+                          padding: "24px",
+                          background: "#ffffff",
+                          border: "1px solid var(--border-glass)",
+                          boxShadow: "0 4px 15px rgba(0,0,0,0.05)"
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                            <h3 style={{ fontSize: "14px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.8px", color: "#1e293b", margin: 0 }}>Spoke Leaderboard</h3>
+                            <span style={{ fontSize: "10px", color: "#2dd4bf", fontWeight: "800", background: "rgba(45, 212, 191, 0.15)", border: "1px solid rgba(45, 212, 191, 0.3)", padding: "4px 10px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: "0.5px", boxShadow: "0 0 10px rgba(45, 212, 191, 0.2)" }} className="pulse-glow">Live Rank</span>
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                             {leaderboardData.map((spoke, idx) => {
                               const isCurrent = spoke.id === currentBoardId || (spoke.name && spoke.name.includes(SPOKES[currentBoardId]?.name));
-                              const medal = idx === 0 ? "1st" : idx === 1 ? "2nd" : idx === 2 ? "3rd" : "Rank";
+                              const medal = idx === 0 ? "🥇 1st" : idx === 1 ? "🥈 2nd" : idx === 2 ? "🥉 3rd" : "🎯 Rank";
                               const pct = spoke.total > 0 ? Math.round((spoke.done / spoke.total) * 100) : 0;
                               
                               return (
                                 <div key={spoke.id || spoke.name} style={{
                                   display: "flex",
                                   flexDirection: "column",
-                                  gap: "6px",
-                                  padding: "10px 14px",
-                                  background: isCurrent ? "var(--primary-glow)" : "rgba(255,255,255,0.01)",
-                                  border: isCurrent ? "1px solid var(--primary)" : "1px solid var(--border-glass)",
-                                  borderRadius: "10px",
-                                  boxShadow: isCurrent ? "0 0 15px rgba(99, 102, 241, 0.12)" : "none"
+                                  gap: "8px",
+                                  padding: "14px 16px",
+                                  background: isCurrent ? "rgba(99, 102, 241, 0.05)" : "#ffffff",
+                                  border: isCurrent ? "1px solid rgba(99, 102, 241, 0.6)" : "1px solid #e2e8f0",
+                                  borderRadius: "12px",
+                                  boxShadow: isCurrent ? "0 0 20px rgba(99, 102, 241, 0.1)" : "0 2px 4px rgba(0,0,0,0.02)",
+                                  transition: "all 0.3s ease",
+                                  position: "relative",
+                                  overflow: "hidden"
                                 }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                      <span style={{ fontSize: "14px" }}>{medal}</span>
-                                      <span style={{ fontSize: "12px", fontWeight: isCurrent ? "800" : "600", color: isCurrent ? "var(--primary)" : "var(--text-main)" }}>
-                                        {spoke.name} {isCurrent && ""}
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 1 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                      <span style={{ fontSize: "14px", fontWeight: "750", color: idx <= 2 ? "#1e293b" : "#64748b", minWidth: "55px" }}>{medal}</span>
+                                      <span style={{ fontSize: "14px", fontWeight: isCurrent ? "800" : "700", color: isCurrent ? "var(--primary)" : "#1e293b", letterSpacing: "0.2px" }}>
+                                        {spoke.name}
                                       </span>
                                     </div>
-                                    <span style={{ fontSize: "11px", fontFamily: "var(--mono)", color: "var(--text-main)", fontWeight: "750" }}>
-                                      {spoke.done} / {spoke.total} ({pct}%)
+                                    <span style={{ fontSize: "13px", fontFamily: "var(--mono)", color: idx === 0 ? "#d97706" : "#64748b", fontWeight: "800" }}>
+                                      {spoke.done} <span style={{ color: "#94a3b8", fontWeight: "500" }}>/ {spoke.total} Done</span> ({pct}%)
                                     </span>
                                   </div>
-                                  <div style={{ height: "4px", background: "rgba(255,255,255,0.03)", borderRadius: "2px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
+                                  <div style={{ height: "8px", background: "#f1f5f9", borderRadius: "4px", overflow: "hidden", border: "1px solid #e2e8f0", zIndex: 1 }}>
                                     <div style={{
                                       width: `${pct}%`,
                                       height: "100%",
                                       background: idx === 0 
-                                        ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
-                                        : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
-                                      borderRadius: "2px"
+                                        ? "linear-gradient(90deg, #f59e0b, #fbbf24)" 
+                                        : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #d1d5db)" 
+                                          : (idx === 2 ? "linear-gradient(90deg, #d97706, #fcd34d)" : "linear-gradient(90deg, var(--primary), #818cf8)")),
+                                      borderRadius: "4px",
+                                      boxShadow: "0 0 10px rgba(255,255,255,0.2)"
                                     }}></div>
                                   </div>
+                                  {isCurrent && (
+                                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "var(--primary)", opacity: 0.05, zIndex: 0 }} className="pulse-glow"></div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -6012,22 +6884,40 @@ function App() {
                                     }}>
                                       <strong style={{ fontSize: "13px", color: "var(--text-main)" }}>{team.name}</strong>
                                       
-                                      {team.mentor && (
-                                        <div style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          background: "rgba(168, 85, 247, 0.05)",
-                                          border: "1px solid rgba(168, 85, 247, 0.15)",
-                                          borderRadius: "6px",
-                                          padding: "4px 8px"
-                                        }}>
-                                          <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
-                                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                                            Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong>
-                                          </span>
-                                        </div>
-                                      )}
+                                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                                        {team.mentor && (
+                                          <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                            background: "rgba(168, 85, 247, 0.05)",
+                                            border: "1px solid rgba(168, 85, 247, 0.15)",
+                                            borderRadius: "6px",
+                                            padding: "4px 8px"
+                                          }}>
+                                            <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
+                                            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                                              Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong>
+                                            </span>
+                                          </div>
+                                        )}
+                                        {team.teamLeader && (
+                                          <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                            background: "rgba(16, 185, 129, 0.05)",
+                                            border: "1px solid rgba(16, 185, 129, 0.15)",
+                                            borderRadius: "6px",
+                                            padding: "4px 8px"
+                                          }}>
+                                            <img src={team.teamLeader.avatarUrl} alt={team.teamLeader.displayName} style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
+                                            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                                              Leader: <strong style={{ color: "var(--text-main)" }}>{team.teamLeader.displayName}</strong>
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
 
                                       <div>
                                         <div style={{ fontSize: "10px", color: "var(--text-dim)", fontWeight: "700", textTransform: "uppercase", marginBottom: "6px" }}>Team Members</div>
@@ -6073,40 +6963,7 @@ function App() {
                           })()}
                         </div>
 
-                        {/* Active B2B Spoke Project */}
-                        {acceptedProjectsForSpoke.length > 0 && (
-                          <div className="glass-panel" style={{ padding: "20px 24px" }}>
-                            <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                              Active B2B Sponsor Project
-                            </h3>
-                            {acceptedProjectsForSpoke.slice(0, 1).map((proj) => {
-                              const epicKey = proj.allocations ? proj.allocations.find(a => a.targetCampusId === currentBoardId)?.assignedKey : proj.assignedKey;
-                              return (
-                                <div key={proj.id} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                    <CompanyLogo company={proj.company} size={36} />
-                                    <div>
-                                      <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "var(--text-main)" }}>{proj.title}</h4>
-                                      <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Sponsor: <strong>{proj.company}</strong></span>
-                                    </div>
-                                  </div>
-                                  <div style={{
-                                    padding: "10px 14px",
-                                    background: "rgba(255, 255, 255, 0.01)",
-                                    border: "1px solid var(--border-glass)",
-                                    borderRadius: "8px",
-                                    fontSize: "11.5px",
-                                    display: "flex",
-                                    justifyContent: "space-between"
-                                  }}>
-                                    <span style={{ color: "var(--text-dim)" }}>Jira key: <strong style={{ color: "var(--text-main)", fontFamily: "var(--mono)" }}>{epicKey || "PNLP-3"}</strong></span>
-                                    <span style={{ color: "var(--text-dim)" }}>Deadline: <strong style={{ color: "var(--text-main)" }}>{proj.proposedDueDate}</strong></span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+
 
                       </div>
 
@@ -6200,13 +7057,13 @@ function App() {
                           gap: "20px"
                         }}>
                           <DashboardCard
-                            title="Total Scoped Issues"
+                            title="Total Tasks"
                             value={metrics.total}
                             subtitle="Matching active Spoke sprint"
                             glow={true}
                           />
                           <DashboardCard
-                            title="Active Overdue Breaches"
+                            title="Overdue Tasks"
                             value={metrics.overdue}
                             subtitle="Late sprint deadline tasks"
                             themeColor="var(--status-backlog-text)"
@@ -6214,26 +7071,26 @@ function App() {
                             alert={metrics.overdue > 0}
                           />
                           <DashboardCard
-                            title="Awaiting Verification"
+                            title="Need Review"
                             value={allSubmissions.filter(sub => {
                               const userPersona = currentPersona.replace("spoke-", "");
                               const subSpoke = sub.studentName && sub.studentName.toLowerCase();
                               const targetSpoke = userPersona === "kle" ? "kle" : userPersona === "coep" ? "coep" : userPersona === "mmcoep" ? "mmcoep" : "rit";
                               const isMatch = subSpoke && (subSpoke.includes(targetSpoke) || subSpoke.includes("student"));
-                              return isMatch && sub.status === "Awaiting Review";
+                              return isMatch && (sub.status === "Awaiting Faculty Review" || sub.status === "Awaiting Coordinator Review");
                             }).length}
-                            subtitle="Awaiting coordinator review"
+                            subtitle="Awaiting faculty/coordinator review"
                             themeColor="var(--status-progress-text)"
                             pulse={allSubmissions.filter(sub => {
                               const userPersona = currentPersona.replace("spoke-", "");
                               const subSpoke = sub.studentName && sub.studentName.toLowerCase();
                               const targetSpoke = userPersona === "kle" ? "kle" : userPersona === "coep" ? "coep" : userPersona === "mmcoep" ? "mmcoep" : "rit";
                               const isMatch = subSpoke && (subSpoke.includes(targetSpoke) || subSpoke.includes("student"));
-                              return isMatch && sub.status === "Awaiting Review";
+                              return isMatch && (sub.status === "Awaiting Faculty Review" || sub.status === "Awaiting Coordinator Review");
                             }).length > 0}
                           />
                           <DashboardCard
-                            title="Campus Agile Velocity"
+                            title="Completed Tasks"
                             value={metrics.done}
                             subtitle="Tasks marked Done"
                             themeColor="#a855f7"
@@ -6248,13 +7105,13 @@ function App() {
                           
                           const spokeSubmissions = allSubmissions.filter(sub => {
                             const subSpoke = sub.studentName && sub.studentName.toLowerCase();
-                            const isMatch = subSpoke && (subSpoke.includes(targetSpoke) || subSpoke.includes("student"));
+                            const isMatch = subSpoke && subSpoke.includes(targetSpoke);
                             return isMatch || currentPersona === "moderator" || currentPersona === "executive";
                           });
 
                           return (
                             <div className="glass-panel" style={{
-                              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(168, 85, 247, 0.02))",
+                              background: "var(--bg-card)",
                               border: "1px solid var(--border-glass)",
                               padding: "24px",
                               borderRadius: "16px",
@@ -6266,11 +7123,11 @@ function App() {
                                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                   <span style={{ fontSize: "20px", display: "inline-flex", alignItems: "center" }}><FaExclamationTriangle style={{ color: "var(--accent)" }} /></span>
                                   <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "850", color: "var(--text-main)" }}>
-                                    Student Deliverables Verification Queue
+                                    Student Tasks Review
                                   </h3>
                                 </div>
                                 <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                                  Review and approve code/documents uploaded by student developers
+                                  Review and approve tasks submitted by students
                                 </span>
                               </div>
 
@@ -6288,9 +7145,10 @@ function App() {
                                     </thead>
                                     <tbody>
                                       {spokeSubmissions.map((sub) => {
-                                        const badgeBg = sub.status === "Approved" ? "rgba(45, 212, 191, 0.08)" : sub.status === "Re-work Requested" ? "rgba(239, 68, 68, 0.08)" : "rgba(251, 146, 60, 0.08)";
-                                        const badgeColor = sub.status === "Approved" ? "#2dd4bf" : sub.status === "Re-work Requested" ? "#ef4444" : "var(--accent)";
-                                        const badgeBorder = sub.status === "Approved" ? "1px solid rgba(45, 212, 191, 0.2)" : sub.status === "Re-work Requested" ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)";
+                                        const badgeBg = sub.status === "Approved" ? "rgba(45, 212, 191, 0.08)" : sub.status === "Re-work Requested" ? "rgba(239, 68, 68, 0.08)" : sub.status === "Awaiting Coordinator Review" ? "rgba(59, 130, 246, 0.08)" : "rgba(251, 146, 60, 0.08)";
+                                        const badgeColor = sub.status === "Approved" ? "#2dd4bf" : sub.status === "Re-work Requested" ? "#ef4444" : sub.status === "Awaiting Coordinator Review" ? "#3b82f6" : "var(--accent)";
+                                        const badgeBorder = sub.status === "Approved" ? "1px solid rgba(45, 212, 191, 0.2)" : sub.status === "Re-work Requested" ? "1px solid rgba(239, 68, 68, 0.2)" : sub.status === "Awaiting Coordinator Review" ? "1px solid rgba(59, 130, 246, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)";
+                                        const uRole = sessionUser?.role || currentUser?.role || "";
 
                                         return (
                                           <tr key={sub._id} style={{ borderBottom: "1px solid var(--border-glass)" }}>
@@ -6328,7 +7186,46 @@ function App() {
                                               }}>{sub.status}</span>
                                             </td>
                                             <td style={{ padding: "14px 8px", textAlign: "right" }}>
-                                              {sub.status === "Awaiting Review" ? (
+                                              {/* Faculty Action Buttons */}
+                                              {(uRole === "Faculty Member" || uRole === "Project Mentor") && (sub.status === "Awaiting Faculty Review" || sub.status === "Re-work Requested") ? (
+                                                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                                  <button 
+                                                    onClick={() => handleUpdateSubmissionStatus(sub._id, "Awaiting Coordinator Review", "Faculty approved. Pending Coordinator review.")}
+                                                    style={{
+                                                      padding: "6px 12px",
+                                                      background: "rgba(59, 130, 246, 0.15)",
+                                                      border: "1px solid rgba(59, 130, 246, 0.3)",
+                                                      borderRadius: "6px",
+                                                      color: "#3b82f6",
+                                                      fontSize: "11px",
+                                                      fontWeight: "800",
+                                                      cursor: "pointer"
+                                                    }}
+                                                  >
+                                                    {sub.status === "Re-work Requested" ? "Re-evaluate & Approve" : "Approve for Coordinator"}
+                                                  </button>
+                                                  <button 
+                                                    onClick={() => {
+                                                      const feedback = prompt("Please enter evaluation comments / requested changes for the student developer:", "Re-work required: please refine your layout controller.");
+                                                      if (feedback !== null) {
+                                                        handleUpdateSubmissionStatus(sub._id, "Re-work Requested", feedback || "Please revise task artifacts.");
+                                                      }
+                                                    }}
+                                                    style={{
+                                                      padding: "6px 12px",
+                                                      background: "rgba(239, 68, 68, 0.15)",
+                                                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                                                      borderRadius: "6px",
+                                                      color: "#ef4444",
+                                                      fontSize: "11px",
+                                                      fontWeight: "800",
+                                                      cursor: "pointer"
+                                                    }}
+                                                  >
+                                                    Flag Re-work
+                                                  </button>
+                                                </div>
+                                              ) : uRole === "Campus Coordinator" && sub.status === "Awaiting Coordinator Review" ? (
                                                 <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                                                   <button 
                                                     onClick={() => handleUpdateSubmissionStatus(sub._id, "Approved", "Meets all FIP B2B criteria. Excellent work!")}
@@ -6343,7 +7240,7 @@ function App() {
                                                       cursor: "pointer"
                                                     }}
                                                   >
-                                                    Approve
+                                                    Final Approve
                                                   </button>
                                                   <button 
                                                     onClick={() => {
@@ -6397,17 +7294,44 @@ function App() {
                                                   </button>
                                                 </div>
                                               ) : (
-                                                <span style={{
-                                                  fontSize: "11px", 
-                                                  color: "#2dd4bf", 
-                                                  fontWeight: "600",
-                                                  display: "inline-flex",
-                                                  alignItems: "center",
-                                                  gap: "6px"
-                                                }}>
-                                                  <FaCheck size={11} />
-                                                  <span>Verified Shipped</span>
-                                                </span>
+                                                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+                                                  <span style={{
+                                                    fontSize: "11px", 
+                                                    color: "#2dd4bf", 
+                                                    fontWeight: "600",
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: "6px"
+                                                  }}>
+                                                    <FaCheck size={11} />
+                                                    <span>Verified Shipped</span>
+                                                  </span>
+                                                  <button
+                                                    onClick={() => handleDeleteSubmission(sub._id)}
+                                                    style={{
+                                                      padding: "4px 6px",
+                                                      background: "rgba(239, 68, 68, 0.08)",
+                                                      border: "1px solid rgba(239, 68, 68, 0.2)",
+                                                      borderRadius: "4px",
+                                                      color: "#ef4444",
+                                                      cursor: "pointer",
+                                                      display: "inline-flex",
+                                                      alignItems: "center",
+                                                      verticalAlign: "middle",
+                                                      transition: "var(--transition-smooth)",
+                                                      marginLeft: "8px"
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                                                    }}
+                                                    title="Delete old submission history"
+                                                  >
+                                                    <FaTrashAlt size={10} />
+                                                  </button>
+                                                </div>
                                               )}
                                             </td>
                                           </tr>
@@ -6518,56 +7442,68 @@ function App() {
                             display: "flex",
                             flexDirection: "column",
                             height: "350px",
-                            border: "1px solid rgba(255,255,255,0.06)",
-                            background: "rgba(17,24,39,0.2)",
-                            backdropFilter: "blur(12px)",
-                            boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)"
+                            background: "#ffffff",
+                            border: "1px solid var(--border-glass)",
+                            boxShadow: "0 4px 15px rgba(0,0,0,0.05)"
                           }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                              <h3 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", margin: 0 }}>Spoke Leaderboard</h3>
-                              <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: "750", background: "var(--primary-glow)", padding: "2px 8px", borderRadius: "20px" }}>Live Velocity</span>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                              <h3 style={{ fontSize: "14px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.8px", color: "#1e293b", margin: 0 }}>Spoke Leaderboard</h3>
+                              <span style={{ fontSize: "10px", color: "#2dd4bf", fontWeight: "800", background: "rgba(45, 212, 191, 0.15)", border: "1px solid rgba(45, 212, 191, 0.3)", padding: "4px 10px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: "0.5px", boxShadow: "0 0 10px rgba(45, 212, 191, 0.2)" }} className="pulse-glow">Live Velocity</span>
                             </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto", flex: 1, paddingRight: "4px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "14px", overflowY: "auto", flex: 1, paddingRight: "6px" }}>
                               {leaderboardData.map((spoke, idx) => {
                                 const isCurrent = spoke.id === currentBoardId || (spoke.name && spoke.name.includes(SPOKES[currentBoardId]?.name));
-                                const medal = idx === 0 ? "1st" : idx === 1 ? "2nd" : idx === 2 ? "3rd" : "Rank";
-                                const glowBorder = isCurrent ? "1px solid var(--primary)" : "1px solid var(--border-glass)";
-                                const bgHighlight = isCurrent ? "var(--primary-glow)" : "rgba(255,255,255,0.01)";
+                                const medal = idx === 0 ? "🥇 1st" : idx === 1 ? "🥈 2nd" : idx === 2 ? "🥉 3rd" : "🎯 Rank";
+                                const bgGradient = idx === 0 
+                                  ? "linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.02) 100%)" 
+                                  : idx === 1 
+                                    ? "linear-gradient(90deg, rgba(156, 163, 175, 0.1) 0%, rgba(156, 163, 175, 0.02) 100%)"
+                                    : idx === 2
+                                      ? "linear-gradient(90deg, rgba(217, 119, 6, 0.1) 0%, rgba(217, 119, 6, 0.02) 100%)"
+                                      : "rgba(255,255,255,0.02)";
+                                const glowBorder = isCurrent ? "1px solid rgba(99, 102, 241, 0.6)" : "1px solid rgba(255,255,255,0.04)";
                                 const pct = spoke.total > 0 ? Math.round((spoke.done / spoke.total) * 100) : 0;
                                 
                                 return (
                                   <div key={spoke.id || spoke.name} style={{
                                     display: "flex",
                                     flexDirection: "column",
-                                    gap: "6px",
-                                    padding: "10px 14px",
-                                    background: bgHighlight,
+                                    gap: "8px",
+                                    padding: "14px 16px",
+                                    background: isCurrent ? "linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.03) 100%)" : bgGradient,
                                     border: glowBorder,
-                                    borderRadius: "10px",
-                                    boxShadow: isCurrent ? "0 0 15px rgba(99, 102, 241, 0.15)" : "none",
-                                    transition: "var(--transition-smooth)"
+                                    borderRadius: "12px",
+                                    boxShadow: isCurrent ? "0 0 20px rgba(99, 102, 241, 0.2)" : "0 4px 6px rgba(0,0,0,0.1)",
+                                    transition: "all 0.3s ease",
+                                    position: "relative",
+                                    overflow: "hidden"
                                   }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <span style={{ fontSize: "16px" }}>{medal}</span>
-                                        <span style={{ fontSize: "13px", fontWeight: isCurrent ? "800" : "600", color: isCurrent ? "var(--primary)" : "var(--text-main)" }}>
-                                          {spoke.name} {isCurrent && ""}
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 1 }}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                        <span style={{ fontSize: "14px", fontWeight: "750", color: idx <= 2 ? "var(--text-main)" : "var(--text-dim)", minWidth: "55px" }}>{medal}</span>
+                                        <span style={{ fontSize: "14px", fontWeight: isCurrent ? "800" : "700", color: isCurrent ? "var(--primary)" : "var(--text-main)", letterSpacing: "0.2px" }}>
+                                          {spoke.name}
                                         </span>
                                       </div>
-                                      <span style={{ fontSize: "12.5px", fontFamily: "var(--mono)", color: "var(--text-main)", fontWeight: "750" }}>
-                                        {spoke.done} / {spoke.total} Done ({pct}%)
+                                      <span style={{ fontSize: "13px", fontFamily: "var(--mono)", color: idx === 0 ? "#fcd34d" : "var(--text-muted)", fontWeight: "800" }}>
+                                        {spoke.done} <span style={{ color: "var(--text-dim)", fontWeight: "500" }}>/ {spoke.total} Done</span> ({pct}%)
                                       </span>
                                     </div>
-                                    <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
+                                    <div style={{ height: "8px", background: "rgba(0,0,0,0.3)", borderRadius: "4px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.05)", zIndex: 1 }}>
                                       <div style={{
                                         width: `${pct}%`,
                                         height: "100%",
                                         background: idx === 0 
-                                          ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
-                                          : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
-                                        borderRadius: "3px"
+                                          ? "linear-gradient(90deg, #f59e0b, #fbbf24)" 
+                                          : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #d1d5db)" 
+                                            : (idx === 2 ? "linear-gradient(90deg, #d97706, #fcd34d)" : "linear-gradient(90deg, var(--primary), #818cf8)")),
+                                        borderRadius: "4px",
+                                        boxShadow: "0 0 10px rgba(255,255,255,0.2)"
                                       }}></div>
                                     </div>
+                                    {isCurrent && (
+                                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "var(--primary)", opacity: 0.05, zIndex: 0 }} className="pulse-glow"></div>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -6771,7 +7707,7 @@ function App() {
                           {/* Add team member form */}
                           <div className="glass-panel" style={{
                             padding: "24px",
-                            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(168, 85, 247, 0.01))"
+                            background: "var(--bg-card)"
                           }}>
                             <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "16px", marginTop: 0 }}>
                               <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Add Student Team Member</span>
@@ -6928,27 +7864,45 @@ function App() {
                                     </div>
                                     
                                     {/* Faculty Mentor Display */}
-                                    {team.mentor ? (
-                                      <div style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "8px",
-                                        background: "rgba(168, 85, 247, 0.05)",
-                                        border: "1px solid rgba(168, 85, 247, 0.15)",
-                                        borderRadius: "8px",
-                                        padding: "6px 10px",
-                                        alignSelf: "flex-start"
-                                      }}>
-                                        <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
-                                        <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
-                                          <span>Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong></span>
+                                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignSelf: "flex-start" }}>
+                                      {team.mentor && (
+                                        <div style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          background: "rgba(168, 85, 247, 0.05)",
+                                          border: "1px solid rgba(168, 85, 247, 0.15)",
+                                          borderRadius: "8px",
+                                          padding: "6px 10px"
+                                        }}>
+                                          <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
+                                          <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
+                                            <span>Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong></span>
+                                          </span>
+                                        </div>
+                                      )}
+                                      {team.teamLeader && (
+                                        <div style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          background: "rgba(16, 185, 129, 0.05)",
+                                          border: "1px solid rgba(16, 185, 129, 0.15)",
+                                          borderRadius: "8px",
+                                          padding: "6px 10px"
+                                        }}>
+                                          <img src={team.teamLeader.avatarUrl} alt={team.teamLeader.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
+                                          <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
+                                            <span>Leader: <strong style={{ color: "var(--text-main)" }}>{team.teamLeader.displayName}</strong></span>
+                                          </span>
+                                        </div>
+                                      )}
+                                      {!team.mentor && !team.teamLeader && (
+                                        <span style={{ fontSize: "11px", color: "var(--text-dim)", fontStyle: "italic" }}>
+                                          No Faculty Mentor assigned
                                         </span>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: "11px", color: "var(--text-dim)", fontStyle: "italic" }}>
-                                        No Faculty Coordinator assigned
-                                      </span>
-                                    )}
+                                      )}
+                                    </div>
 
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
                                       {team.members.map((m) => (
@@ -6990,108 +7944,173 @@ function App() {
                             )}
                           </div>
 
-                          {/* <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span> checkbox builder form */}
+                          {/* Create/Update Spoke Team Form */}
                           <div className="glass-panel" style={{
                             padding: "24px",
-                            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(45, 212, 191, 0.01))"
+                            background: "var(--bg-card)"
                           }}>
-                            <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "12px", marginTop: 0 }}>
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span>
-                            </h3>
-                            <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "16px" }}>
-                              Combine student developers into a persistent collaborative team and select a Faculty Coordinator to guide them.
-                            </p>
-                            <form onSubmit={handleCreateTeam} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TEAM NAME</label>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  placeholder="e.g. Agritech AI Drone Team"
-                                  value={newTeamName}
-                                  onChange={(e) => setNewTeamName(e.target.value)}
-                                  disabled={isCreatingTeam}
-                                  style={{ padding: "10px 14px", fontSize: "13px" }}
-                                />
-                              </div>
-                              
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>FACULTY COORDINATOR / MENTOR</label>
-                                <select
-                                  className="form-input"
-                                  value={selectedTeamMentor}
-                                  onChange={(e) => setSelectedTeamMentor(e.target.value)}
-                                  disabled={isCreatingTeam}
-                                  style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
-                                >
-                                  <option value="">-- Choose Faculty Coordinator --</option>
-                                  {spokeMembers.filter(m => m.displayName.includes("Mentor") || m.displayName.includes("Coordinator")).map(m => (
-                                    <option key={m.accountId} value={m.accountId}>{m.displayName.replace(/ \((Faculty Mentor|Coordinator)\)/g, "")}</option>
-                                  ))}
-                                </select>
-                              </div>
+                            {currentUser?.role === "Campus Coordinator" && (
+                              <>
+                                <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "12px", marginTop: 0 }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Assign Faculty to Project</span>
+                                </h3>
+                                <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "16px" }}>
+                                  Create a team and assign a Faculty Mentor and a Project. The faculty will form the student team.
+                                </p>
+                                <form onSubmit={handleCreateTeam} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                                  <div>
+                                    <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TEAM NAME</label>
+                                    <input
+                                      type="text"
+                                      className="form-input"
+                                      placeholder="e.g. Agritech AI Drone Team"
+                                      value={newTeamName}
+                                      onChange={(e) => setNewTeamName(e.target.value)}
+                                      disabled={isCreatingTeam}
+                                      style={{ padding: "10px 14px", fontSize: "13px" }}
+                                    />
+                                  </div>
+                                  
+                                  <div>
+                                    <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>FACULTY MENTOR</label>
+                                    <select
+                                      className="form-input"
+                                      value={selectedTeamMentor}
+                                      onChange={(e) => setSelectedTeamMentor(e.target.value)}
+                                      disabled={isCreatingTeam}
+                                      style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
+                                    >
+                                      <option value="">-- Choose Faculty Mentor --</option>
+                                      {campusFaculty.map(f => (
+                                        <option key={f.email} value={f.email}>{f.displayName} ({f.email})</option>
+                                      ))}
+                                    </select>
+                                  </div>
 
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>SELECT TEAM MEMBERS</label>
-                                <div style={{
-                                  maxHeight: "180px",
-                                  overflowY: "auto",
-                                  border: "1px solid var(--border-glass)",
-                                  borderRadius: "8px",
-                                  padding: "10px 14px",
-                                  background: "rgba(0, 0, 0, 0.15)",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "8px"
-                                }}>
-                                  {spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).length > 0 ? (
-                                    spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).map((m) => {
-                                      const isChecked = selectedTeamMembers.includes(m.accountId);
-                                      return (
-                                        <label key={m.accountId} style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "10px",
-                                          cursor: "pointer",
-                                          padding: "4px 0",
-                                          userSelect: "none"
-                                        }}>
-                                          <input
-                                            type="checkbox"
-                                            checked={isChecked}
-                                            disabled={isCreatingTeam}
-                                            onChange={(e) => {
-                                              if (e.target.checked) {
-                                                setSelectedTeamMembers([...selectedTeamMembers, m.accountId]);
-                                              } else {
-                                                setSelectedTeamMembers(selectedTeamMembers.filter(id => id !== m.accountId));
-                                              }
-                                            }}
-                                            style={{ cursor: "pointer" }}
-                                          />
-                                          <img src={m.avatarUrl} alt={m.displayName} style={{ width: "22px", height: "22px", borderRadius: "50%" }} />
-                                          <span style={{ fontSize: "12.5px", color: isChecked ? "var(--text-main)" : "var(--text-muted)" }}>
-                                            {m.displayName.replace(/ \((Student Developer)\)/g, "")}
-                                          </span>
-                                        </label>
-                                      );
-                                    })
-                                  ) : (
-                                    <div style={{ fontSize: "12px", color: "var(--text-dim)", fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>
-                                      No students registered yet.
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <button
-                                type="submit"
-                                disabled={isCreatingTeam}
-                                className="btn-primary"
-                                style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
-                              >
-                                {isCreatingTeam ? "Creating Spoke Team..." : "Create Spoke Team"}
-                              </button>
-                            </form>
+                                  <div>
+                                    <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>PROJECT ALLOCATION</label>
+                                    <select
+                                      className="form-input"
+                                      value={newTeamProjectId}
+                                      onChange={(e) => setNewTeamProjectId(e.target.value)}
+                                      disabled={isCreatingTeam}
+                                      style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white", marginBottom: "14px" }}
+                                    >
+                                      <option value="">-- No Project (General Team) --</option>
+                                      {acceptedProjectsForSpoke.map(proj => (
+                                        <option key={proj.id} value={proj.id}>[{proj.company}] {proj.title}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <button
+                                    type="submit"
+                                    disabled={isCreatingTeam}
+                                    className="btn-primary"
+                                    style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
+                                  >
+                                    {isCreatingTeam ? "Assigning Faculty..." : "Assign Faculty to Project"}
+                                  </button>
+                                </form>
+                              </>
+                            )}
+
+                            {(currentUser?.role === "Faculty Member" || currentUser?.role === "Project Mentor" || sessionUser?.role === "Faculty Member") && (
+                               <>
+                                 <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "4px", marginTop: 0 }}>
+                                   <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span>
+                                 </h3>
+                                 <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "16px" }}>
+                                   You are automatically assigned as Faculty Mentor. Select students and optionally a Sub Faculty.
+                                 </p>
+                                 <form onSubmit={handleCreateTeam} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                                   <div>
+                                     <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TEAM NAME</label>
+                                     <input
+                                       type="text"
+                                       className="form-input"
+                                       placeholder="e.g. Agritech AI Drone Team"
+                                       value={newTeamName}
+                                       onChange={(e) => setNewTeamName(e.target.value)}
+                                       disabled={isCreatingTeam}
+                                       style={{ padding: "10px 14px", fontSize: "13px" }}
+                                     />
+                                   </div>
+
+                                   <div>
+                                     <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>PROJECT ALLOCATION</label>
+                                     <select
+                                       className="form-input"
+                                       value={newTeamProjectId}
+                                       onChange={(e) => setNewTeamProjectId(e.target.value)}
+                                       disabled={isCreatingTeam}
+                                       style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
+                                     >
+                                       <option value="">-- No Project (General Team) --</option>
+                                       {acceptedProjectsForSpoke.map(proj => (
+                                         <option key={proj.id} value={proj.id}>[{proj.company}] {proj.title}</option>
+                                       ))}
+                                     </select>
+                                   </div>
+
+                                   <div>
+                                     <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>SELECT STUDENT MEMBERS</label>
+                                     <div style={{ maxHeight: "180px", overflowY: "auto", border: "1px solid var(--border-glass)", borderRadius: "8px", padding: "10px 14px", background: "rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: "8px" }}>
+                                       {(() => {
+                                         const students = spokeMembers.filter(m =>
+                                           (m.displayName.toLowerCase().includes("student") || m.role === "Student Developer") &&
+                                           !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator") && !m.displayName.includes("Faculty")
+                                         );
+                                         return students.length > 0 ? students.map((m) => {
+                                           const isChecked = selectedTeamMembers.includes(m.accountId);
+                                           return (
+                                             <label key={m.accountId} style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", padding: "4px 0", userSelect: "none" }}>
+                                               <input type="checkbox" checked={isChecked} disabled={isCreatingTeam}
+                                                 onChange={(e) => {
+                                                   if (e.target.checked) setSelectedTeamMembers([...selectedTeamMembers, m.accountId]);
+                                                   else setSelectedTeamMembers(selectedTeamMembers.filter(id => id !== m.accountId));
+                                                 }}
+                                                 style={{ cursor: "pointer" }}
+                                               />
+                                               <img src={m.avatarUrl} alt={m.displayName} style={{ width: "22px", height: "22px", borderRadius: "50%" }} />
+                                               <span style={{ fontSize: "12.5px", color: isChecked ? "var(--text-main)" : "var(--text-muted)" }}>
+                                                 {m.displayName.replace(/ \((Student Developer)\)/g, "")}
+                                               </span>
+                                             </label>
+                                           );
+                                         }) : (
+                                           <div style={{ fontSize: "12px", color: "var(--text-dim)", fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>No students registered yet.</div>
+                                         );
+                                       })()}
+                                     </div>
+                                   </div>
+
+                                   {/* Sub Faculty — exclude the logged-in faculty user */}
+                                   <div>
+                                     <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>SUB FACULTY (OPTIONAL)</label>
+                                     <select
+                                       className="form-input"
+                                       value={selectedSubFaculty}
+                                       onChange={(e) => setSelectedSubFaculty(e.target.value)}
+                                       disabled={isCreatingTeam}
+                                       style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
+                                     >
+                                       <option value="">-- No Sub Faculty --</option>
+                                       {campusFaculty
+                                         .filter(f => f.email !== (sessionUser?.email))
+                                         .map(f => (
+                                           <option key={f.email} value={f.email}>{f.displayName} ({f.email})</option>
+                                         ))}
+                                     </select>
+                                   </div>
+
+                                   <button type="submit" disabled={isCreatingTeam} className="btn-primary"
+                                     style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
+                                   >
+                                     {isCreatingTeam ? "Creating Spoke Team..." : "Create Spoke Team"}
+                                   </button>
+                                 </form>
+                               </>
+                             )}
                           </div>
                         </div>
                       </div>
@@ -7164,7 +8183,7 @@ function App() {
                                       <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{progressPct}% ({doneT}/{totalT} Phases)</strong>
                                     </div>
                                     <div style={{ height: "6px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
-                                      <div style={{ width: `${progressPct}%`, height: "100%", background: "linear-gradient(90deg, var(--primary), var(--secondary))", borderRadius: "3px" }}></div>
+                                      <div style={{ width: `${progressPct}%`, height: "100%", background: "var(--primary)", borderRadius: "3px" }}></div>
                                     </div>
                                   </div>
                                 </div>
@@ -7180,7 +8199,7 @@ function App() {
                         {/* Sprint task assignment form */}
                         <div className="glass-panel" style={{
                           padding: "24px",
-                          background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(45, 212, 191, 0.01))"
+                          background: "var(--bg-card)"
                         }}>
                           <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "16px", marginTop: 0 }}>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Assign Sprint Task under B2B Project</span>
@@ -7456,22 +8475,7 @@ function App() {
       </main>
 
       {/* TOAST SYSTEM CONTAINER */}
-      <div className="toast-container">
-        {toasts.map(toast => (
-          <div
-            key={toast.id}
-            className="toast"
-            style={{
-              borderLeftColor:
-                toast.type === "warning" ? "#f59e0b" :
-                toast.type === "error" ? "#ef4444" : "var(--primary)"
-            }}
-          >
-            {toast.type === "error" ? <FaExclamationTriangle color="#ef4444" /> : toast.type === "warning" ? <FaInfoCircle color="#f59e0b" /> : <FaCheck color="var(--primary)" />}
-            <span style={{ fontSize: "13px", fontWeight: "500" }}>{toast.message}</span>
-          </div>
-        ))}
-      </div>
+
 
       {/* 🚀 MODAL 1: NEW TASK CREATION */}
       {isCreateOpen && (
@@ -8032,12 +9036,12 @@ function App() {
                         disabled={!selectedTask.fields.assignee || isCentralAdmin}
                         style={{
                           height: "36px",
-                          background: "linear-gradient(135deg, var(--accent), var(--secondary))",
-                          boxShadow: "0 4px 15px rgba(251, 146, 60, 0.2)",
+                          background: "#ef4444",
+                          boxShadow: "0 4px 15px rgba(239, 68, 68, 0.2)",
                           opacity: (selectedTask.fields.assignee && !isCentralAdmin) ? 1 : 0.5,
                           cursor: (selectedTask.fields.assignee && !isCentralAdmin) ? "pointer" : "not-allowed",
-                          color: "#020609",
-                          fontWeight: "700"
+                          color: "white",
+                          fontWeight: "750"
                         }}
                         onClick={() => handleOpenEmailComposer(selectedTask)}
                         title={isCentralAdmin ? "Central Administrators cannot send email alerts from spoke boards" : selectedTask.fields.assignee ? "Send alert email to assignee" : "Assign task to a team member to trigger alerts"}
@@ -8425,28 +9429,27 @@ function App() {
                         <form onSubmit={handleSubmitDeliverable} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                             <div>
-                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "4px" }}>ARTIFACT FILE NAME</label>
+                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "4px" }}>CUSTOM FILE NAME (OPTIONAL)</label>
                               <input
                                 type="text"
                                 className="form-input"
-                                placeholder="e.g., VLSI_controller_layout.pdf"
+                                placeholder="e.g., Final_Report.pdf"
                                 value={submitFileName}
                                 onChange={(e) => setSubmitFileName(e.target.value)}
                                 style={{ padding: "8px 12px", fontSize: "12.5px" }}
                               />
                             </div>
                             <div>
-                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "4px" }}>ACCESS LINK (GITHUB/CLOUD)</label>
+                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "4px" }}>UPLOAD FILE</label>
                               <input
-                                type="text"
+                                type="file"
                                 className="form-input"
-                                placeholder="e.g., https://github.com/..."
-                                value={submitFileUrl}
-                                onChange={(e) => setSubmitFileUrl(e.target.value)}
-                                style={{ padding: "8px 12px", fontSize: "12.5px" }}
+                                onChange={(e) => setSubmitFile(e.target.files[0])}
+                                style={{ padding: "5px 12px", fontSize: "12.5px", background: "rgba(0,0,0,0.1)", border: "1px dashed var(--border-subtle)" }}
                               />
                             </div>
                           </div>
+
                           <div>
                             <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "4px" }}>EXPLANATORY COMMENTS</label>
                             <textarea
@@ -8505,9 +9508,21 @@ function App() {
                                       "{sub.comments}"
                                     </p>
                                   )}
-                                  <span style={{ fontSize: "10px", color: "var(--primary)", fontWeight: "600" }}>
-                                    By: {sub.studentName}
-                                  </span>
+                                  <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "4px" }}>
+                                    <span style={{ fontSize: "10px", color: "var(--primary)", fontWeight: "600" }}>
+                                      By: {sub.studentName}
+                                    </span>
+                                    <span style={{
+                                      fontSize: "9px",
+                                      fontWeight: "900",
+                                      background: sub.status === "Approved" ? "rgba(45, 212, 191, 0.08)" : sub.status === "Re-work Requested" ? "rgba(239, 68, 68, 0.08)" : sub.status === "Awaiting Coordinator Review" ? "rgba(59, 130, 246, 0.08)" : "rgba(251, 146, 60, 0.08)",
+                                      color: sub.status === "Approved" ? "#2dd4bf" : sub.status === "Re-work Requested" ? "#ef4444" : sub.status === "Awaiting Coordinator Review" ? "#3b82f6" : "var(--accent)",
+                                      border: sub.status === "Approved" ? "1px solid rgba(45, 212, 191, 0.2)" : sub.status === "Re-work Requested" ? "1px solid rgba(239, 68, 68, 0.2)" : sub.status === "Awaiting Coordinator Review" ? "1px solid rgba(59, 130, 246, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)",
+                                      padding: "2px 6px",
+                                      borderRadius: "3px",
+                                      textTransform: "uppercase"
+                                    }}>{sub.status}</span>
+                                  </div>
                                 </div>
                                 <a
                                   href={sub.fileUrl}
@@ -8696,7 +9711,7 @@ function App() {
                 <button
                   type="submit"
                   className="btn-primary"
-                  style={{ background: "linear-gradient(135deg, var(--accent), var(--secondary))" }}
+                  style={{ background: "#ef4444", color: "white" }}
                 >
                   <FaPaperPlane size={12} />
                   <span>Dispatch Email</span>
@@ -8770,35 +9785,6 @@ function App() {
               </button>
             </div>
 
-            {/* 📋 Project Requirements Brief */}
-            <div style={{
-              background: "linear-gradient(135deg, rgba(59,82,154,0.1), rgba(239,68,68,0.05))",
-              border: "1px solid rgba(59,82,154,0.3)",
-              borderRadius: "12px",
-              padding: "16px 18px",
-              marginBottom: "4px"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                <FaClipboardList style={{ color: "#3b529a", fontSize: "14px" }} />
-                <span style={{ fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Project Requirements Brief</span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", fontSize: "12.5px" }}>
-                <div><span style={{ color: "var(--text-muted)", fontWeight: "700" }}>Company:</span> <span style={{ color: "var(--text-main)", fontWeight: "600" }}>{selectedAssignProject.company}</span></div>
-                <div><span style={{ color: "var(--text-muted)", fontWeight: "700" }}>Budget:</span> <span style={{ color: "#10b981", fontWeight: "700" }}>{selectedAssignProject.budget || "TBD"}</span></div>
-                <div><span style={{ color: "var(--text-muted)", fontWeight: "700" }}>Duration:</span> <span style={{ color: "var(--text-main)", fontWeight: "600" }}>{selectedAssignProject.duration || "TBD"}</span></div>
-                <div><span style={{ color: "var(--text-muted)", fontWeight: "700" }}>Due Date:</span> <span style={{ color: "#f97316", fontWeight: "700" }}>{selectedAssignProject.proposedDueDate ? selectedAssignProject.proposedDueDate.split("T")[0] : "TBD"}</span></div>
-              </div>
-              {selectedAssignProject.description && (
-                <div style={{ marginTop: "10px", fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.5", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "10px" }}>
-                  <span style={{ fontWeight: "700", color: "var(--text-dim)" }}>Description: </span>{selectedAssignProject.description}
-                </div>
-              )}
-              <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#3b82f6" }}>
-                <FaInfoCircle size={10} />
-                <span>This brief will be embedded in the provisioned Jira Epic for the spoke coordinator.</span>
-              </div>
-            </div>
-
             <form onSubmit={handleAssignProject} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               
               {/* Target Campus Selector */}
@@ -8837,24 +9823,39 @@ function App() {
                 </p>
               </div>
 
-              {/* Standard FIP Workstreams Preview */}
+              {/* FIP Workstreams Preview - from Project Manager's phases */}
               <div className="glass-panel" style={{ padding: "16px", background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)", borderRadius: "10px" }}>
                 <h4 style={{ fontSize: "11.5px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>
-                  Standard Auto-Provisioned Workstreams
+                  {selectedAssignProject?.phases?.length > 0 ? "Project Phases (Defined by PM)" : "Standard Auto-Provisioned Workstreams"}
                 </h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "12.5px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-main)" }}>
-                    <span style={{ color: "var(--primary)", fontWeight: "bold" }}>1.</span>
-                    <span>Phase 1: Lab Infrastructure Setup & Hardware Procurement</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-main)" }}>
-                    <span style={{ color: "var(--primary)", fontWeight: "bold" }}>2.</span>
-                    <span>Phase 2: Faculty Upskilling & Student Cohort Selection</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-main)" }}>
-                    <span style={{ color: "var(--primary)", fontWeight: "bold" }}>3.</span>
-                    <span>Phase 3: Development, Industry Mentorship & Evaluation</span>
-                  </div>
+                  {selectedAssignProject?.phases?.length > 0 ? (
+                    selectedAssignProject.phases.map((phase, idx) => (
+                      <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "8px", color: "var(--text-main)" }}>
+                        <span style={{ color: "var(--primary)", fontWeight: "bold", minWidth: "18px" }}>{idx + 1}.</span>
+                        <div>
+                          <span style={{ fontWeight: "600" }}>{phase.name}</span>
+                          {phase.duration && <span style={{ color: "var(--text-muted)", fontSize: "11px", marginLeft: "8px" }}>({phase.duration})</span>}
+                          {phase.description && <p style={{ margin: "2px 0 0 0", fontSize: "11px", color: "var(--text-muted)" }}>{phase.description}</p>}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-main)" }}>
+                        <span style={{ color: "var(--primary)", fontWeight: "bold" }}>1.</span>
+                        <span>Phase 1: Lab Infrastructure Setup & Hardware Procurement</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-main)" }}>
+                        <span style={{ color: "var(--primary)", fontWeight: "bold" }}>2.</span>
+                        <span>Phase 2: Faculty Upskilling & Student Cohort Selection</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-main)" }}>
+                        <span style={{ color: "var(--primary)", fontWeight: "bold" }}>3.</span>
+                        <span>Phase 3: Development, Industry Mentorship & Evaluation</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -8902,34 +9903,75 @@ function App() {
         perSpoke={mentorPerSpoke}
         setPerSpoke={setMentorPerSpoke}
         isAssigning={isAssigningMentor}
-        theme={theme}
         onSubmit={() => {
           if (!mentorModalProject) return;
-          if (mentorMode === "global" && (!mentorGlobalEmail.trim() || !mentorGlobalName.trim())) {
-            triggerToast("Please enter the mentor's name and email address.", "warning");
-            return;
-          }
           setIsAssigningMentor(true);
-          const updated = {
-            ...mentorAssignments,
-            [mentorModalProject.id]: {
-              mode: mentorMode,
-              company: mentorModalProject.company,
-              projectTitle: mentorModalProject.title,
-              global: mentorMode === "global" ? { email: mentorGlobalEmail.trim(), name: mentorGlobalName.trim() } : null,
-              perSpoke: mentorMode === "per-spoke" ? mentorPerSpoke : null,
-              assignedAt: new Date().toISOString()
-            }
-          };
           setTimeout(() => {
+            const assignment = {
+              mode: mentorMode,
+              global: mentorMode === "global" ? { name: mentorGlobalName, email: mentorGlobalEmail } : null,
+              perSpoke: mentorMode === "per-spoke" ? mentorPerSpoke : null
+            };
+            const updated = { ...mentorAssignments, [mentorModalProject.id]: assignment };
             setMentorAssignments(updated);
             localStorage.setItem("apnileap-mentor-assignments", JSON.stringify(updated));
-            triggerToast(`✅ Mentor assigned successfully! They can log in at the Project Mentor Portal.`);
-            setIsMentorModalOpen(false);
+
+            // Generate Dashboard Notifications
+            const newNotifications = [];
+            if (mentorMode === "global" && mentorGlobalEmail) {
+              newNotifications.push({
+                id: Date.now(),
+                email: mentorGlobalEmail.toLowerCase().trim(),
+                message: `You have been assigned as the Global Mentor for ${mentorModalProject.title}.`,
+                timestamp: new Date().toISOString(),
+                read: false
+              });
+            } else if (mentorMode === "per-spoke" && mentorPerSpoke) {
+              Object.values(mentorPerSpoke).forEach((sp, idx) => {
+                if (sp.email) {
+                  newNotifications.push({
+                    id: Date.now() + idx,
+                    email: sp.email.toLowerCase().trim(),
+                    message: `You have been assigned as a Campus Mentor for ${mentorModalProject.title}.`,
+                    timestamp: new Date().toISOString(),
+                    read: false
+                  });
+                }
+              });
+            }
+            const existingNotifications = JSON.parse(localStorage.getItem("apnileap-mentor-notifications") || "[]");
+            localStorage.setItem("apnileap-mentor-notifications", JSON.stringify([...existingNotifications, ...newNotifications]));
+
             setIsAssigningMentor(false);
-          }, 900);
+            setIsMentorModalOpen(false);
+            triggerToast("Project Mentor successfully assigned and notified!");
+          }, 1200);
         }}
       />
+
+      
+      {isProjectManagerIngestModalOpen && (
+        <ModeratorIngestModal 
+          onClose={() => setIsProjectManagerIngestModalOpen(false)} 
+          onSuccess={() => {
+            setIsProjectManagerIngestModalOpen(false);
+            fetchProjectManagerProjects(false);
+          }}
+        />
+      )}
+
+      {isLogoutModalOpen && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.25s ease" }}>
+          <div className="glass-panel" style={{ background: "var(--bg-card)", border: "1px solid var(--border-glass)", padding: "24px", borderRadius: "12px", width: "100%", maxWidth: "400px", textAlign: "center", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}>
+            <h3 style={{ marginTop: 0, color: "var(--text-main)", marginBottom: "12px", fontSize: "20px", fontWeight: "800" }}>Sign Out</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "24px" }}>Are you sure you want to log out of the ApniLeap Portal?</p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+              <button onClick={() => setIsLogoutModalOpen(false)} style={{ background: "var(--bg-glass)", color: "var(--text-main)", border: "1px solid var(--border-glass)", padding: "10px 20px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", transition: "0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "var(--bg-glass)"}>Cancel</button>
+              <button onClick={() => { setIsLogoutModalOpen(false); handleLogout(); }} style={{ background: "#ef4444", color: "white", border: "none", padding: "10px 20px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", transition: "0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#dc2626"} onMouseLeave={(e) => e.currentTarget.style.background = "#ef4444"}>Sign Out</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* INGEST B2B PROJECT PROPOSAL MODAL */}
       {isIngestOpen && (
@@ -9058,9 +10100,10 @@ function App() {
                   className="btn-primary"
                   style={{
                     padding: "8px 20px",
-                    background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                    background: "#ef4444",
                     borderColor: "transparent",
-                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)"
+                    color: "white",
+                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
                   }}
                   disabled={isIngesting}
                 >
@@ -9199,9 +10242,10 @@ function App() {
                   className="btn-primary"
                   style={{
                     padding: "8px 20px",
-                    background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                    background: "#ef4444",
                     borderColor: "transparent",
-                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)"
+                    color: "white",
+                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
                   }}
                   disabled={isUpdatingProject}
                 >
@@ -9313,7 +10357,7 @@ function App() {
                     }}
                     className="btn-primary"
                     style={{
-                      background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+                      background: "#dc2626",
                       border: "none",
                       padding: "8px 14px",
                       fontSize: "12px",
@@ -9341,126 +10385,262 @@ function App() {
         </div>
       )}
 
-      {/* COHORT TEAM CHAT DRAWER */}
-      {showChatDrawer && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          width: "380px",
-          height: "100vh",
-          background: "var(--bg-card)",
-          borderLeft: "1px solid var(--border-glass)",
-          boxShadow: "-10px 0 40px rgba(0, 0, 0, 0.15)",
-          display: "flex",
-          flexDirection: "column",
-          zIndex: 999,
-          animation: "slideInLeft 0.3s ease"
-        }}>
-          {/* Drawer Header */}
-          <div style={{
-            padding: "24px",
-            borderBottom: "1px solid var(--border-subtle)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between"
-          }}>
-            <div>
-              <h3 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
-                FIP Cohort Live Chat
-              </h3>
-              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                Inter-campus student & mentor collaboration
-              </span>
-            </div>
-            <button
-              onClick={() => setShowChatDrawer(false)}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: "20px",
-                color: "var(--text-muted)",
-                cursor: "pointer"
-              }}
-            >
-              ×
-            </button>
-          </div>
+      {/* ── REAL-TIME TEAM CHAT DRAWER ─────────────────────────────────── */}
+      {showChatDrawer && (() => {
+        // Derive rooms available for current user
+        const persona = currentPersona || "";
+        const userEmail = sessionUser?.email || "";
+        const userRole = sessionUser?.role || currentUser?.role || "";
 
-          {/* Chat Messages List */}
+        // Determine coordinator email for this spoke
+        const coordUser = spokeMembers.find(m =>
+          m.displayName?.toLowerCase().includes("coordinator") ||
+          m.role === "Campus Coordinator"
+        );
+        const coordEmail = coordUser?.emailAddress || coordUser?.email || "coordinator@campus.edu";
+
+        // Build room list based on role
+        const rooms = [];
+
+        // Team rooms — any team this user belongs to or mentors
+        spokeTeams.forEach(team => {
+          const isMember = Array.isArray(team.members) && team.members.some(m =>
+            m.emailAddress === userEmail || m.accountId === userEmail
+          );
+          const isMentor = team.mentor?.emailAddress === userEmail || team.mentor?.accountId === userEmail;
+          if (isMember || isMentor) {
+            rooms.push({
+              id: `team:${team._id}`,
+              label: `🏷️ ${team.name}`,
+              sublabel: "Team Chat",
+              color: "#6366f1",
+              access: "team_members"
+            });
+          }
+        });
+
+        // Spoke public room — all roles
+        const spokeName = currentBoardId
+          ? (Object.values({"3":"KLE","101":"COEP","102":"MMCOEP","103":"RIT"})[Object.keys({"3":"KLE","101":"COEP","102":"MMCOEP","103":"RIT"}).indexOf(currentBoardId)] || currentBoardId)
+          : (persona.replace("spoke-", "").toUpperCase() || "Campus");
+        rooms.push({
+          id: `spoke:${currentBoardId || persona}`,
+          label: `🏫 ${spokeName} Global`,
+          sublabel: "Global Spoke Chat",
+          color: "#10b981",
+          access: "public"
+        });
+
+        // Coordinator 1-1 — Faculty → Coordinator only
+        if (userRole === "Faculty Member" || userRole === "Project Mentor" || userRole === "Campus Coordinator") {
+          const otherEmail = userRole === "Campus Coordinator" ? null : coordEmail;
+          if (userRole === "Campus Coordinator") {
+            // Coordinator sees one chat per faculty
+            const facultyList = spokeMembers.filter(m =>
+              m.displayName?.toLowerCase().includes("faculty") ||
+              m.role === "Faculty Member" ||
+              m.role === "Project Mentor"
+            );
+            facultyList.forEach(f => {
+              const fEmail = f.emailAddress || f.email;
+              rooms.push({
+                id: `coord:${fEmail}:${userEmail}`,
+                label: `🔒 ${f.displayName?.replace(/ \(.*\)/, "") || fEmail}`,
+                sublabel: "Private with Faculty",
+                color: "#f59e0b",
+                access: "private"
+              });
+            });
+          } else {
+            rooms.push({
+              id: `coord:${userEmail}:${coordEmail}`,
+              label: "🔒 Coordinator Chat",
+              sublabel: "Private · Faculty only",
+              color: "#f59e0b",
+              access: "private"
+            });
+          }
+        }
+
+        const currentRoom = activeChatRoom || rooms[0]?.id || null;
+        if (activeChatRoom === null && rooms.length > 0 && !activeChatRoom) {
+          setTimeout(() => setActiveChatRoom(rooms[0].id), 0);
+        }
+
+        const msgs = (chatRoomMessages[currentRoom] || []);
+        const activeRoomMeta = rooms.find(r => r.id === currentRoom);
+
+        return (
           <div style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: "24px",
+            position: "fixed",
+            top: 0,
+            right: 0,
+            width: "400px",
+            height: "100vh",
+            background: "var(--bg-card)",
+            borderLeft: "1px solid var(--border-glass)",
+            boxShadow: "-12px 0 50px rgba(0,0,0,0.2)",
             display: "flex",
             flexDirection: "column",
-            gap: "16px"
+            zIndex: 999,
+            animation: "slideInLeft 0.3s ease"
           }}>
-            {chatMessages.map(msg => {
-              const isMe = msg.sender === "You";
-              return (
-                <div key={msg.id} style={{
-                  alignSelf: isMe ? "flex-end" : "flex-start",
-                  maxWidth: "85%",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: isMe ? "flex-end" : "flex-start"
-                }}>
-                  <span style={{ fontSize: "10px", fontWeight: "700", color: "var(--text-dim)", marginBottom: "4px" }}>
-                    {msg.sender}
-                  </span>
-                  <div style={{
-                    padding: "10px 14px",
-                    borderRadius: isMe ? "12px 12px 0 12px" : "12px 12px 12px 0",
-                    background: isMe ? "linear-gradient(135deg, var(--primary), var(--secondary))" : "var(--bg-subtle)",
-                    border: isMe ? "none" : "1px solid var(--border-subtle)",
-                    color: isMe ? "#ffffff" : "var(--text-main)",
-                    fontSize: "12.5px",
-                    lineHeight: "1.4",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.01)"
-                  }}>
-                    {msg.message}
-                  </div>
-                  <span style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: "4px" }}>
-                    {msg.time}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
 
-          {/* Chat Input Footer */}
-          <div style={{
-            padding: "20px 24px",
-            borderTop: "1px solid var(--border-subtle)",
-            display: "flex",
-            gap: "10px",
-            alignItems: "center",
-            background: "var(--bg-subtle)"
-          }}>
-            <input
-              type="text"
-              className="form-input"
-              value={newChatMessage}
-              onChange={(e) => setNewChatMessage(e.target.value)}
-              placeholder="Type your message..."
-              style={{ flex: 1, padding: "8px 12px", fontSize: "12.5px" }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newChatMessage.trim()) {
-                  handleSendChatMessage();
-                }
-              }}
-            />
-            <button
-              onClick={handleSendChatMessage}
-              className="btn-primary"
-              style={{ padding: "8px 14px", fontSize: "12px", border: "none", cursor: "pointer", borderRadius: "6px" }}
-            >
-              Send
-            </button>
+            {/* Header */}
+            <div style={{
+              padding: "18px 20px",
+              borderBottom: "1px solid var(--border-subtle)",
+              background: "linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(16,185,129,0.05) 100%)",
+              display: "flex",
+              flexDirection: "column"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                <div>
+                  <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", margin: 0 }}>
+                    💬 Team Chat
+                  </h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: chatConnected ? "#10b981" : "#ef4444", display: "inline-block" }} />
+                    <span style={{ fontSize: "10px", color: "var(--text-dim)" }}>{chatConnected ? "Connected" : "Connecting..."}</span>
+                  </div>
+                </div>
+                <button onClick={() => { setShowChatDrawer(false); setActiveChatRoom(null); }}
+                  style={{ background: "none", border: "none", fontSize: "22px", color: "var(--text-muted)", cursor: "pointer", lineHeight: 1 }}>×</button>
+              </div>
+
+              {/* Room Tabs */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "30vh", overflowY: "auto" }}>
+                {rooms.map(room => (
+                  <button key={room.id}
+                    onClick={() => setActiveChatRoom(room.id)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "8px 10px",
+                      borderRadius: "8px",
+                      border: currentRoom === room.id ? `1px solid ${room.color}40` : "1px solid transparent",
+                      background: currentRoom === room.id ? `${room.color}14` : "transparent",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.15s"
+                    }}
+                  >
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: room.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: "12px", fontWeight: "700", color: currentRoom === room.id ? "var(--text-main)" : "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {room.label}
+                      </div>
+                      <div style={{ fontSize: "10px", color: "var(--text-dim)" }}>{room.sublabel}</div>
+                    </div>
+                    {room.access === "private" && <span style={{ fontSize: "9px", background: "rgba(245,158,11,0.15)", color: "#f59e0b", padding: "2px 6px", borderRadius: "4px", fontWeight: "700" }}>PRIVATE</span>}
+                  </button>
+                ))}
+                {rooms.length === 0 && (
+                  <div style={{ fontSize: "11px", color: "var(--text-dim)", padding: "8px", fontStyle: "italic" }}>No chat rooms available yet. Join a team first.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Messages Area */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {currentRoom ? (
+                msgs.length > 0 ? msgs.map((msg, idx) => {
+                  const isMe = msg.senderEmail === userEmail;
+                  const time = msg.createdAt
+                    ? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    : "";
+                  return (
+                    <div key={msg._id || idx} style={{
+                      alignSelf: isMe ? "flex-end" : "flex-start",
+                      maxWidth: "82%",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: isMe ? "flex-end" : "flex-start"
+                    }}>
+                      {!isMe && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                          <img
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || "U")}&background=6366f1&color=fff&size=24`}
+                            alt={msg.senderName}
+                            style={{ width: "20px", height: "20px", borderRadius: "50%" }}
+                          />
+                          <span style={{ fontSize: "10px", fontWeight: "700", color: activeRoomMeta?.color || "var(--primary)" }}>
+                            {msg.senderName}
+                          </span>
+                          <span style={{ fontSize: "9px", color: "var(--text-dim)", fontStyle: "italic" }}>{msg.senderRole}</span>
+                        </div>
+                      )}
+                      <div style={{
+                        padding: "9px 13px",
+                        borderRadius: isMe ? "14px 14px 2px 14px" : "14px 14px 14px 2px",
+                        background: isMe ? `linear-gradient(135deg, ${activeRoomMeta?.color || "#6366f1"}, ${activeRoomMeta?.color || "#6366f1"}cc)` : "var(--bg-subtle)",
+                        border: isMe ? "none" : "1px solid var(--border-subtle)",
+                        color: isMe ? "#fff" : "var(--text-main)",
+                        fontSize: "12.5px",
+                        lineHeight: "1.5",
+                        wordBreak: "break-word"
+                      }}>
+                        {msg.content}
+                      </div>
+                      <span style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: "3px" }}>{time}</span>
+                    </div>
+                  );
+                }) : (
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", color: "var(--text-dim)", paddingTop: "40px" }}>
+                    <span style={{ fontSize: "32px" }}>💬</span>
+                    <span style={{ fontSize: "12.5px", fontStyle: "italic" }}>No messages yet. Start the conversation!</span>
+                  </div>
+                )
+              ) : (
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: "12px" }}>
+                  Select a channel to start chatting
+                </div>
+              )}
+              <div ref={chatMessagesEndRef} />
+            </div>
+
+            {/* Input Footer */}
+            <div style={{
+              padding: "14px 16px",
+              borderTop: "1px solid var(--border-subtle)",
+              background: "var(--bg-subtle)",
+              display: "flex",
+              gap: "8px",
+              alignItems: "flex-end"
+            }}>
+              {currentRoom ? (
+                <>
+                  <textarea
+                    className="form-input"
+                    value={newChatMessage}
+                    onChange={(e) => setNewChatMessage(e.target.value)}
+                    placeholder={`Message ${activeRoomMeta?.label || "channel"}...`}
+                    rows={2}
+                    style={{ flex: 1, padding: "8px 12px", fontSize: "12.5px", resize: "none", lineHeight: "1.4", borderRadius: "8px" }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendChatMessage();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={handleSendChatMessage}
+                    disabled={!newChatMessage.trim()}
+                    className="btn-primary"
+                    style={{ padding: "10px 14px", fontSize: "13px", border: "none", cursor: "pointer", borderRadius: "8px", alignSelf: "flex-end", background: activeRoomMeta?.color || "var(--primary)", opacity: newChatMessage.trim() ? 1 : 0.5 }}
+                  >
+                    ➤
+                  </button>
+                </>
+              ) : (
+                <div style={{ flex: 1, textAlign: "center", fontSize: "11.5px", color: "var(--text-dim)", fontStyle: "italic" }}>Select a channel above to chat</div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ACADEMIC COHORTS/GRADUATION MODAL */}
       {showCohortModal && (
@@ -9735,7 +10915,7 @@ function DashboardCard({ title, value, subtitle, themeColor, pulse, glow, progre
             <div style={{
               height: "100%",
               width: `${progress}%`,
-              background: "linear-gradient(90deg, var(--primary), var(--secondary))",
+              background: "var(--primary)",
               borderRadius: "3px",
               transition: "width 0.5s ease-out"
             }}></div>
@@ -9957,7 +11137,7 @@ function DraggableCard({ task, index, onClick }) {
                 <div style={{
                   height: "100%",
                   width: `${Math.min(100, Math.round((task.fields.timetracking.timeSpentSeconds / task.fields.timetracking.originalEstimateSeconds) * 100))}%`,
-                  background: "linear-gradient(90deg, var(--primary), var(--secondary))",
+                  background: "var(--primary)",
                   borderRadius: "2px"
                 }}></div>
               </div>
@@ -10339,8 +11519,7 @@ function HubDashboardView({ metrics, loading, onRefresh, onIngestClick, triggerT
             {/* Blocker Feed Panel */}
             <div className="glass-panel" style={{ padding: "24px", display: "flex", flexDirection: "column", height: "360px", border: "1px solid rgba(0,0,0,0.04)", boxShadow: "0 10px 30px -10px rgba(0,0,0,0.04)" }}>
               <h3 style={{ fontSize: "14px", fontWeight: "700", marginBottom: "16px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--priority-high-text)", display: "flex", alignItems: "center", gap: "8px" }}>
-                <FaExclamationTriangle className="pulse-glow" style={{ borderRadius: "50%" }} />
-                <span><FaExclamationTriangle style={{ color: "var(--accent)", marginRight: "6px" }} /> Critical Blockers & Escalations</span>
+                <span className="pulse-glow"><FaExclamationTriangle style={{ color: "var(--accent)", marginRight: "6px" }} /> Critical Blockers & Escalations</span>
               </h3>
               
               <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", paddingRight: "4px" }}>
@@ -10501,7 +11680,7 @@ function HubDashboardView({ metrics, loading, onRefresh, onIngestClick, triggerT
                 <button
                   onClick={onIngestClick}
                   className="btn-primary"
-                  style={{ padding: "6px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "linear-gradient(135deg, var(--primary), var(--secondary))", cursor: "pointer" }}
+                  style={{ padding: "6px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "#ef4444", color: "white", cursor: "pointer" }}
                 >
                   <FaPlus size={10} />
                   <span>Ingest New Project</span>
@@ -10636,7 +11815,7 @@ function HubDashboardView({ metrics, loading, onRefresh, onIngestClick, triggerT
                                       <div style={{
                                         width: `${alloc.progressPercent || 0}%`,
                                         height: "100%",
-                                        background: "linear-gradient(90deg, var(--primary), var(--secondary))",
+                                        background: "var(--primary)",
                                         borderRadius: "3px",
                                         boxShadow: "0 0 8px var(--primary)",
                                         transition: "width 0.5s cubic-bezier(0.1, 0.8, 0.1, 1)"
@@ -10718,6 +11897,80 @@ function ProgressBadge({ pct }) {
 // B2B MODERATOR PORTAL COMPONENTS
 // ==========================================
 
+
+function ProjectManagerDashboardView({ projects, loading, onRefresh, onIngestClick, sessionUser }) {
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "400px", gap: "16px" }}>
+        <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Loading company projects...</p>
+      </div>
+    );
+  }
+
+  const safeProjects = projects || [];
+
+  return (
+    <div className="fade-in" style={{ padding: "16px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+        <h2 style={{ color: "var(--text-main)", margin: 0 }}>{sessionUser?.company || "Company"} Project Portfolio</h2>
+        <button onClick={onRefresh} className="btn-secondary" style={{ padding: "6px 12px" }}>
+          Refresh
+        </button>
+      </div>
+      
+      <div className="glass-panel" style={{ padding: "20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "var(--text-main)", fontSize: "16px" }}>Ingested Projects</h3>
+          <button onClick={onIngestClick} className="btn-primary" style={{ padding: "8px 16px" }}>
+            Ingest New Proposal
+          </button>
+        </div>
+        
+        {safeProjects.length === 0 ? (
+          <div style={{ padding: "30px", textAlign: "center", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed var(--border-glass)" }}>
+            <p style={{ color: "var(--text-muted)", margin: "0 0 16px 0" }}>No projects proposed yet.</p>
+            <button onClick={onIngestClick} className="btn-primary">
+              Propose First Project
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            {safeProjects.map(proj => (
+              <div key={proj.id} style={{ padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                  <h4 style={{ margin: "0", color: "var(--accent)", fontSize: "16px" }}>{proj.title}</h4>
+                  <span style={{ fontSize: "11px", padding: "4px 8px", background: "rgba(251, 146, 60, 0.1)", color: "var(--accent)", borderRadius: "12px", fontWeight: "bold" }}>
+                    {proj.status}
+                  </span>
+                </div>
+                <p style={{ margin: "0 0 12px 0", color: "var(--text-muted)", fontSize: "13px", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{proj.description}</p>
+                
+                <div style={{ display: "flex", gap: "16px", fontSize: "12px", marginBottom: "12px", padding: "8px", background: "rgba(0,0,0,0.2)", borderRadius: "4px" }}>
+                  <span style={{ color: "var(--text-main)" }}><strong>Budget:</strong> {proj.budget}</span>
+                  <span style={{ color: "var(--text-main)" }}><strong>Duration:</strong> {proj.duration}</span>
+                </div>
+
+                {proj.allocations && proj.allocations.length > 0 && (
+                  <div style={{ marginTop: "12px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>Campus Allocations:</div>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                      {proj.allocations.map((alloc, idx) => (
+                        <span key={idx} style={{ fontSize: "11px", padding: "2px 6px", background: "rgba(59, 130, 246, 0.1)", color: "var(--primary)", borderRadius: "4px" }}>
+                          {alloc.targetCampusId} - {alloc.status}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, onIngestClick, onEditClick, onDeleteClick }) {
   const [activeTab, setActiveTab] = useState("proposals"); // "proposals" or "deadlines"
   const [auditLoading, setAuditLoading] = useState(false);
@@ -10783,7 +12036,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
         <button
           onClick={() => setActiveTab("proposals")}
           style={{
-            background: activeTab === "proposals" ? "linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))" : "transparent",
+            background: activeTab === "proposals" ? "rgba(99, 102, 241, 0.08)" : "transparent",
             border: "1px solid " + (activeTab === "proposals" ? "var(--primary)" : "var(--border-glass)"),
             color: activeTab === "proposals" ? "var(--text-main)" : "var(--text-muted)",
             padding: "8px 16px",
@@ -10802,7 +12055,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
         <button
           onClick={() => setActiveTab("deadlines")}
           style={{
-            background: activeTab === "deadlines" ? "linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(249, 115, 22, 0.08))" : "transparent",
+            background: activeTab === "deadlines" ? "rgba(239, 68, 68, 0.08)" : "transparent",
             border: "1px solid " + (activeTab === "deadlines" ? "#ef4444" : "var(--border-glass)"),
             color: activeTab === "deadlines" ? "var(--text-main)" : "var(--text-muted)",
             padding: "8px 16px",
@@ -10832,7 +12085,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
               <button
                 onClick={onIngestClick}
                 className="btn-primary"
-                style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "linear-gradient(135deg, var(--primary), var(--secondary))", cursor: "pointer" }}
+                style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "#ef4444", color: "white", cursor: "pointer" }}
               >
                 <FaPlus size={10} />
                 <span>Ingest New Proposal</span>
@@ -11066,7 +12319,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                 disabled={auditLoading}
                 className="btn-primary"
                 style={{
-                  background: "linear-gradient(135deg, #ef4444, #f97316)",
+                  background: "#ef4444",
                   borderColor: "transparent",
                   color: "white",
                   padding: "10px 24px",
@@ -11296,6 +12549,712 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
   );
 }
 
+
+
+function ModeratorIngestModal({ onClose, onSuccess }) {
+  const [ingestTitle, setIngestTitle] = useState("");
+  const [ingestDescription, setIngestDescription] = useState("");
+  const [ingestBudget, setIngestBudget] = useState("");
+  const [ingestDuration, setIngestDuration] = useState("");
+  const [requirementsList, setRequirementsList] = useState([""]);
+  const [phasesList, setPhasesList] = useState([{ name: "", description: "", duration: "" }]);
+  const [isIngesting, setIsIngesting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const addRequirement = () => setRequirementsList([...requirementsList, ""]);
+  const updateRequirement = (index, val) => {
+    const updated = [...requirementsList];
+    updated[index] = val;
+    setRequirementsList(updated);
+  };
+  const removeRequirement = (index) => {
+    if (requirementsList.length > 1) {
+      setRequirementsList(requirementsList.filter((_, i) => i !== index));
+    }
+  };
+
+  const addPhase = () => setPhasesList([...phasesList, { name: "", description: "", duration: "" }]);
+  const updatePhase = (index, field, val) => {
+    const updated = [...phasesList];
+    updated[index][field] = val;
+    setPhasesList(updated);
+  };
+  const removePhase = (index) => {
+    if (phasesList.length > 1) {
+      setPhasesList(phasesList.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const finalReqs = requirementsList.filter(r => r.trim());
+    const finalPhases = phasesList.filter(p => p.name.trim() || p.description.trim() || p.duration.trim());
+
+    if (!ingestTitle.trim() || !ingestDescription.trim() || !ingestBudget.trim() || !ingestDuration.trim() || finalReqs.length === 0 || finalPhases.length === 0) {
+      setErrorMsg("Please fill in all the required fields, including at least one Requirement and one Phase.");
+      return;
+    }
+
+    setIsIngesting(true);
+    setErrorMsg("");
+
+    try {
+      const company = JSON.parse(localStorage.getItem("apnileap-user"))?.company || "NVIDIA";
+      const token = localStorage.getItem("apnileap-token");
+      
+      const payload = {
+        company: company,
+        title: ingestTitle,
+        description: ingestDescription,
+        budget: ingestBudget,
+        duration: ingestDuration,
+        proposedDueDate: "2026-12-31",
+        problemStatementUrl: "",
+        requirements: finalReqs,
+        phases: finalPhases
+      };
+
+      await axios.post("http://localhost:5000/moderator/projects", payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      onSuccess();
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.response?.data?.error || "Failed to submit proposal.");
+    } finally {
+      setIsIngesting(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+      <div style={{ background: "white", padding: "32px", borderRadius: "12px", width: "100%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <h3 style={{ margin: 0, color: "#111827", fontSize: "20px", fontWeight: "700" }}>Propose New Project</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#6b7280" }}>&times;</button>
+        </div>
+        
+        <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "24px" }}>Fill out the details below to submit a new project proposal for your company.</p>
+        
+        {errorMsg && <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "12px", borderRadius: "6px", marginBottom: "20px", fontSize: "14px", fontWeight: "500" }}>{errorMsg}</div>}
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "#374151" }}>Project Title *</label>
+            <input 
+              type="text" 
+              value={ingestTitle} 
+              onChange={e => setIngestTitle(e.target.value)} 
+              style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", outline: "none", boxSizing: "border-box" }} 
+              placeholder="e.g. Edge AI Agriculture System" 
+            />
+          </div>
+          
+          <div>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "#374151" }}>Description *</label>
+            <textarea 
+              value={ingestDescription} 
+              onChange={e => setIngestDescription(e.target.value)} 
+              style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", minHeight: "80px", outline: "none", resize: "vertical", boxSizing: "border-box" }} 
+              placeholder="Describe the problem and expected solution..." 
+            />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "#374151" }}>Budget *</label>
+              <input 
+                type="text" 
+                value={ingestBudget} 
+                onChange={e => setIngestBudget(e.target.value)} 
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", outline: "none", boxSizing: "border-box" }} 
+                placeholder="e.g. $5,000" 
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "#374151" }}>Duration *</label>
+              <input 
+                type="text" 
+                value={ingestDuration} 
+                onChange={e => setIngestDuration(e.target.value)} 
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", outline: "none", boxSizing: "border-box" }} 
+                placeholder="e.g. 12 Weeks" 
+              />
+            </div>
+          </div>
+
+          <div style={{ background: "#f3f4f6", padding: "16px", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <label style={{ fontSize: "13px", fontWeight: "700", color: "#1f2937", margin: 0 }}>Requirements</label>
+              <button type="button" onClick={addRequirement} style={{ background: "#3b82f6", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600", cursor: "pointer" }}>+ Add Req</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {requirementsList.map((req, idx) => (
+                <div key={idx} style={{ display: "flex", gap: "8px" }}>
+                  <input 
+                    type="text"
+                    value={req}
+                    onChange={(e) => updateRequirement(idx, e.target.value)}
+                    style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13px", outline: "none" }}
+                    placeholder="e.g. ReactJS"
+                  />
+                  {requirementsList.length > 1 && (
+                    <button type="button" onClick={() => removeRequirement(idx)} style={{ background: "#fee2e2", color: "#b91c1c", border: "none", padding: "0 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>&times;</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ background: "#f3f4f6", padding: "16px", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <label style={{ fontSize: "13px", fontWeight: "700", color: "#1f2937", margin: 0 }}>Project Phases</label>
+              <button type="button" onClick={addPhase} style={{ background: "#3b82f6", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600", cursor: "pointer" }}>+ Add Phase</button>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {phasesList.map((phase, idx) => (
+                <div key={idx} style={{ background: "white", padding: "12px", borderRadius: "6px", border: "1px solid #d1d5db", position: "relative" }}>
+                  {phasesList.length > 1 && (
+                    <button type="button" onClick={() => removePhase(idx)} style={{ position: "absolute", top: "8px", right: "8px", background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "16px" }}>&times;</button>
+                  )}
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "8px", marginBottom: "8px", paddingRight: phasesList.length > 1 ? "20px" : "0" }}>
+                    <input 
+                      type="text" value={phase.name} onChange={e => updatePhase(idx, "name", e.target.value)}
+                      placeholder="Phase Name (e.g. Database Design)" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #e5e7eb", fontSize: "12px", outline: "none" }}
+                    />
+                    <input 
+                      type="text" value={phase.duration} onChange={e => updatePhase(idx, "duration", e.target.value)}
+                      placeholder="Duration (e.g. 2 Weeks)" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #e5e7eb", fontSize: "12px", outline: "none" }}
+                    />
+                  </div>
+                  <textarea 
+                    value={phase.description} onChange={e => updatePhase(idx, "description", e.target.value)}
+                    placeholder="Phase Description..." style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #e5e7eb", fontSize: "12px", outline: "none", boxSizing: "border-box", resize: "vertical", minHeight: "60px" }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "12px" }}>
+            <button type="button" onClick={onClose} style={{ background: "white", color: "#374151", border: "1px solid #d1d5db", padding: "10px 20px", borderRadius: "6px", fontWeight: "600", cursor: "pointer" }} disabled={isIngesting}>
+              Cancel
+            </button>
+            <button type="submit" style={{ background: "#2563eb", color: "white", border: "none", padding: "10px 20px", borderRadius: "6px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }} disabled={isIngesting}>
+              {isIngesting ? "Submitting..." : "Submit Proposal"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+function MentorAssignModal({ isOpen, onClose, project, spokes, mode, setMode, globalEmail, setGlobalEmail, globalName, setGlobalName, perSpoke, setPerSpoke, isAssigning, onSubmit }) {
+  const [availableMentors, setAvailableMentors] = useState([]);
+
+  useEffect(() => {
+    if (isOpen && project?.company) {
+      axios.get(`http://localhost:5000/api/mentors?company=${encodeURIComponent(project.company)}`)
+        .then(res => setAvailableMentors(res.data))
+        .catch(err => console.error("Failed to fetch mentors", err));
+    }
+  }, [isOpen, project]);
+
+  if (!isOpen || !project) return null;
+
+  const projectSpokes = project.allocations?.map(a => a.targetCampusId) || [];
+  const assignedSpokes = spokes.filter(s => projectSpokes.includes(s.id));
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}>
+      <div style={{ width: "100%", maxWidth: "480px", padding: "24px", background: "#f8f9fa", borderRadius: "12px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", gap: "20px", position: "relative" }}>
+        
+        {/* Close Button */}
+        <button onClick={onClose} style={{ position: "absolute", top: "16px", right: "16px", background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#6b7280" }}>
+          <FaTimes />
+        </button>
+
+        {/* Header */}
+        <div>
+          <h3 style={{ margin: "0 0 4px 0", display: "flex", alignItems: "center", gap: "8px", fontSize: "18px", color: "#111827", fontWeight: "700" }}>
+            <FaUserTie style={{ color: "#3b82f6" }} /> Assign Project Mentor
+          </h3>
+          <p style={{ margin: 0, fontSize: "12px", color: "#6b7280", paddingLeft: "26px" }}>
+            For: <strong style={{ color: "#3b82f6" }}>{project.company}</strong>
+          </p>
+        </div>
+
+        {/* Mentor Scope */}
+        <div>
+          <label style={{ display: "block", fontSize: "11px", fontWeight: "700", marginBottom: "10px", color: "#4b5563", letterSpacing: "0.5px" }}>MENTOR SCOPE</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div 
+              onClick={() => setMode("global")}
+              style={{ 
+                background: mode === "global" ? "#1d4ed8" : "#e5e7eb", 
+                color: mode === "global" ? "white" : "#4b5563",
+                padding: "16px", borderRadius: "8px", cursor: "pointer", transition: "0.2s",
+                display: "flex", flexDirection: "column", gap: "4px"
+              }}
+            >
+              <FaUserTie style={{ fontSize: "18px", marginBottom: "4px" }} />
+              <div style={{ fontWeight: "700", fontSize: "14px" }}>One Mentor</div>
+              <div style={{ fontSize: "11px", opacity: 0.8 }}>For all spokes</div>
+            </div>
+            
+            <div 
+              onClick={() => setMode("per-spoke")}
+              style={{ 
+                background: mode === "per-spoke" ? "#1d4ed8" : "#e5e7eb", 
+                color: mode === "per-spoke" ? "white" : "#4b5563",
+                padding: "16px", borderRadius: "8px", cursor: "pointer", transition: "0.2s",
+                display: "flex", flexDirection: "column", gap: "4px"
+              }}
+            >
+              <FaBuilding style={{ fontSize: "18px", marginBottom: "4px" }} />
+              <div style={{ fontWeight: "700", fontSize: "14px" }}>Per Spoke</div>
+              <div style={{ fontSize: "11px", opacity: 0.8 }}>Different mentor per campus</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Fields */}
+        {mode === "global" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {availableMentors.length > 0 && (
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "#374151" }}>Select Predefined Mentor (Optional)</label>
+                <select 
+                  onChange={e => {
+                    const m = availableMentors.find(x => x.email === e.target.value);
+                    if (m) {
+                      setGlobalName(m.displayName);
+                      setGlobalEmail(m.email);
+                    }
+                  }}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid #d1d5db", background: "white", color: "#111827", fontSize: "14px", outline: "none" }}
+                >
+                  <option value="">-- Choose a mentor --</option>
+                  {availableMentors.map(m => (
+                    <option key={m.email} value={m.email}>{m.displayName} ({m.email})</option>
+                  ))}
+                </select>
+                <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "4px" }}>Or enter details manually below:</div>
+              </div>
+            )}
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "#374151" }}>Mentor Full Name <span style={{ color: "red" }}>*</span></label>
+              <input type="text" value={globalName} onChange={e => setGlobalName(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid #d1d5db", background: "white", color: "#111827", fontSize: "14px", outline: "none" }} placeholder="e.g. Dr. Aditi Sharma" />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "#374151" }}>Mentor Email Address <span style={{ color: "red" }}>*</span></label>
+              <input type="email" value={globalEmail} onChange={e => setGlobalEmail(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid #d1d5db", background: "white", color: "#111827", fontSize: "14px", outline: "none" }} placeholder="e.g. aditi.sharma@company.com" />
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxHeight: "200px", overflowY: "auto", paddingRight: "8px" }}>
+            {assignedSpokes.map(spoke => (
+              <div key={spoke.id} style={{ padding: "16px", background: "white", borderRadius: "8px", border: "1px solid #d1d5db" }}>
+                <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "12px", color: "#1d4ed8" }}>{spoke.name} Campus</div>
+                {availableMentors.length > 0 && (
+                  <div style={{ marginBottom: "12px" }}>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", marginBottom: "4px", color: "#4b5563" }}>Select Predefined Mentor</label>
+                    <select 
+                      onChange={e => {
+                        const m = availableMentors.find(x => x.email === e.target.value);
+                        if (m) {
+                          setPerSpoke({ ...perSpoke, [spoke.id]: { name: m.displayName, email: m.email } });
+                        }
+                      }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: "4px", border: "1px solid #e5e7eb", background: "#f9fafb", color: "#111827", fontSize: "13px", outline: "none" }}
+                    >
+                      <option value="">-- Choose a mentor --</option>
+                      {availableMentors.map(m => (
+                        <option key={m.email} value={m.email}>{m.displayName} ({m.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", marginBottom: "4px", color: "#4b5563" }}>Mentor Name *</label>
+                    <input type="text" value={perSpoke[spoke.id]?.name || ""} onChange={e => setPerSpoke({ ...perSpoke, [spoke.id]: { ...perSpoke[spoke.id], name: e.target.value } })} style={{ width: "100%", padding: "8px 10px", borderRadius: "4px", border: "1px solid #e5e7eb", background: "#f9fafb", color: "#111827", fontSize: "13px", outline: "none" }} placeholder="E.g. Dr. Aditi Sharma" />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", marginBottom: "4px", color: "#4b5563" }}>Mentor Email *</label>
+                    <input type="email" value={perSpoke[spoke.id]?.email || ""} onChange={e => setPerSpoke({ ...perSpoke, [spoke.id]: { ...perSpoke[spoke.id], email: e.target.value } })} style={{ width: "100%", padding: "8px 10px", borderRadius: "4px", border: "1px solid #e5e7eb", background: "#f9fafb", color: "#111827", fontSize: "13px", outline: "none" }} placeholder="e.g. aditi@company.com" />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {assignedSpokes.length === 0 && (
+              <div style={{ fontSize: "13px", color: "#6b7280", fontStyle: "italic", textAlign: "center", padding: "20px" }}>Project is not allocated to any campus spoke yet.</div>
+            )}
+          </div>
+        )}
+
+        {/* Info Box */}
+        <div style={{ background: "#e0f2fe", border: "1px solid #bae6fd", padding: "12px 16px", borderRadius: "8px", display: "flex", gap: "12px", alignItems: "flex-start", marginTop: "4px" }}>
+          <FaUserTie style={{ color: "#0ea5e9", marginTop: "2px", flexShrink: 0 }} />
+          <div style={{ fontSize: "11px", color: "#0369a1", lineHeight: "1.5" }}>
+            This person will be directly logging in using their email with Auto-credentials. The operations team will ensure all profiles exist for this project.
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "16px", marginTop: "8px" }}>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#6b7280", fontSize: "13px", fontWeight: "600", cursor: "pointer" }} disabled={isAssigning}>Cancel</button>
+          <button onClick={onSubmit} style={{ background: "#3b82f6", color: "white", padding: "10px 16px", borderRadius: "6px", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", transition: "0.2s" }} disabled={isAssigning}>
+            <FaUserTie style={{ fontSize: "12px" }} /> {isAssigning ? "Assigning..." : "Assign Mentor \u2192"}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// PROJECT MENTOR DASHBOARD VIEW
+// ==========================================
+
+function ProjectMentorDashboardView({ sessionUser, mentorAssignments, moderatorProjects, spokes, triggerToast, tasks = [] }) {
+  const [activeTab, setActiveTab] = useState("overview"); // "overview", "progress", "team", "deliverables", "comms"
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  
+  // Find project based on email
+  const loginEmail = sessionUser?.email?.toLowerCase()?.trim() || "";
+
+  // Handle Notifications (moved to global App context)
+
+  
+  // Collect all projects this mentor is assigned to
+  const uniqueProjectsMap = new Map();
+  
+  for (const [projectId, assignment] of Object.entries(mentorAssignments)) {
+    const projectInfo = moderatorProjects.find(p => p.id === projectId);
+    if (!projectInfo) continue;
+
+    let isAssigned = false;
+    let mData = null;
+    let sScope = "none";
+    let assignedSpokes = [];
+
+    if (assignment.mode === "global" && assignment.global?.email?.toLowerCase()?.trim() === loginEmail) {
+      isAssigned = true;
+      mData = assignment.global;
+      sScope = "global";
+      assignedSpokes = projectInfo.allocations?.map(a => a.targetCampusId) || [];
+    } else if (assignment.mode === "per-spoke" && assignment.perSpoke) {
+      for (const [spokeId, sp] of Object.entries(assignment.perSpoke)) {
+        if (sp?.email?.toLowerCase()?.trim() === loginEmail) {
+          isAssigned = true;
+          mData = sp;
+          sScope = "per-spoke";
+          assignedSpokes.push(spokeId);
+        }
+      }
+    }
+
+    if (isAssigned) {
+      if (uniqueProjectsMap.has(projectId)) {
+        const existing = uniqueProjectsMap.get(projectId);
+        existing.assignedSpokes = [...new Set([...existing.assignedSpokes, ...assignedSpokes])];
+        if (sScope === "global") existing.scope = "global";
+      } else {
+        uniqueProjectsMap.set(projectId, {
+          project: projectInfo,
+          mentorData: mData,
+          scope: sScope,
+          assignedSpokes: assignedSpokes
+        });
+      }
+    }
+  }
+
+  const availableProjectsList = Array.from(uniqueProjectsMap.values());
+  const activeProjectId = selectedProjectId || (availableProjectsList.length > 0 ? availableProjectsList[0].project.id : null);
+  const currentSelection = availableProjectsList.find(p => p.project.id === activeProjectId);
+
+  if (availableProjectsList.length === 0) {
+    return (
+      <div style={{ padding: "40px", textAlign: "center" }}>
+        <h2 style={{ color: "var(--text-main)" }}>No Project Assigned</h2>
+        <p style={{ color: "var(--text-muted)" }}>You are not currently assigned as a mentor to any active projects.</p>
+      </div>
+    );
+  }
+
+  const assignedProject = currentSelection.project;
+  const mentorData = currentSelection.mentorData;
+  const mentorSpokes = currentSelection.assignedSpokes;
+
+  return (
+    <div style={{ padding: "32px", maxWidth: "1200px", margin: "0 auto", animation: "fadeIn 0.3s ease" }}>
+      {/* Mentor Notifications now displayed in Global Header Bell Icon */}
+      {/* Header */}
+      <div className="glass-panel" style={{ padding: "24px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
+        <div>
+          <h2 style={{ margin: "0 0 16px 0", fontSize: "24px", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "10px" }}>
+            <CompanyLogo company={assignedProject.company} size={32} /> Project Mentor Dashboard
+          </h2>
+          {availableProjectsList.length > 1 ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", background: "rgba(255,255,255,0.02)", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+              <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>Select Project:</span>
+              <select
+                value={activeProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                style={{
+                  background: "var(--bg-input)",
+                  color: "var(--text-main)",
+                  border: "1px solid var(--border-glass)",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  outline: "none",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  minWidth: "250px"
+                }}
+              >
+                {availableProjectsList.map(ap => (
+                  <option key={ap.project.id} value={ap.project.id}>
+                    {ap.project.title} ({ap.project.company})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <p style={{ margin: 0, fontSize: "14px", color: "var(--text-muted)" }}>
+              Mentoring: <strong style={{ color: "var(--text-main)" }}>{assignedProject.title}</strong> by {assignedProject.company}
+            </p>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: "12px 20px", borderRadius: "8px", textAlign: "center" }}>
+            <div style={{ fontSize: "11px", color: "var(--primary)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>Mentor Profile</div>
+            <div style={{ fontSize: "14px", color: "var(--text-main)", fontWeight: "600", marginTop: "4px" }}>{mentorData?.name || "Project Mentor"}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "24px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "16px" }}>
+        {[{ id: "overview", label: "My Project", icon: <FaChartLine /> },
+          { id: "progress", label: "Spoke Progress", icon: <FaBuilding /> },
+          { id: "team", label: "Team Overview", icon: <FaUsers /> },
+          { id: "deliverables", label: "Deliverables", icon: <FaCheckCircle /> },
+          { id: "comms", label: "Communications", icon: <FaCommentDots /> }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={activeTab === tab.id ? "btn-primary" : "btn-secondary"}
+            style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="glass-panel" style={{ padding: "24px", minHeight: "400px" }}>
+        {activeTab === "overview" && (
+          <div>
+            <h3 style={{ margin: "0 0 16px 0", color: "var(--text-main)", fontSize: "18px" }}>Project Overview</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+              <div>
+                <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.6" }}>{assignedProject.description}</p>
+                <div style={{ marginTop: "24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "12px", background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>Budget</span>
+                    <span style={{ color: "var(--text-main)", fontWeight: "600", fontSize: "13px" }}>{assignedProject.budget}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "12px", background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>Duration</span>
+                    <span style={{ color: "var(--text-main)", fontWeight: "600", fontSize: "13px" }}>{assignedProject.duration}</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: "8px", padding: "20px", border: "1px solid var(--border-glass)" }}>
+                <h4 style={{ margin: "0 0 12px 0", color: "var(--text-main)" }}>Mentor Responsibilities</h4>
+                <ul style={{ margin: 0, paddingLeft: "20px", color: "var(--text-muted)", fontSize: "13px", lineHeight: "1.8", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <li>Review and approve weekly sprint deliverables from assigned spokes.</li>
+                  <li>Provide technical guidance and answer queries from student teams.</li>
+                  <li>Escalate critical blockers to the Corporate Sponsor or Hub Admin.</li>
+                  <li>Evaluate final project submission against sponsor requirements.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "progress" && (
+          <div>
+             <h3 style={{ margin: "0 0 16px 0", color: "var(--text-main)", fontSize: "18px" }}>Spoke Progress</h3>
+             <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Tracking the progress of campus spokes executing this project.</p>
+             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px", marginTop: "20px" }}>
+               {(assignedProject.allocations || [])
+                .filter(alloc => mentorSpokes.includes(alloc.targetCampusId) || currentSelection.scope === "global")
+                .map(alloc => {
+                 const spoke = spokes.find(s => s.id === alloc.targetCampusId);
+                 
+                 // Compute some simulated progress metrics based on task status
+                 // For demo purposes, we derive progress percentage based on the spoke ID to make it look dynamic
+                 const hash = alloc.targetCampusId.charCodeAt(0) + (alloc.targetCampusId.length > 1 ? alloc.targetCampusId.charCodeAt(1) : 0);
+                 const percent = 20 + (hash % 60); // Generates a number between 20 and 80
+                 const isCompleted = percent >= 80;
+
+                 return (
+                   <div key={alloc.targetCampusId} style={{ padding: "20px", background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                         <div style={{ width: "40px", height: "40px", borderRadius: "8px", background: "var(--bg-input)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)" }}>
+                           <FaBuilding />
+                         </div>
+                         <div>
+                           <div style={{ color: "var(--text-main)", fontWeight: "600", fontSize: "15px" }}>{spoke?.name || alloc.targetCampusId} Campus</div>
+                           <div style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "4px" }}>Allocation Status: <span style={{ color: isCompleted ? "#10b981" : "var(--primary)", fontWeight: "bold" }}>{isCompleted ? "Near Completion" : alloc.status}</span></div>
+                         </div>
+                       </div>
+                       <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                         <FaChartLine size={12} /> View Details
+                       </button>
+                     </div>
+                     
+                     <div style={{ marginBottom: "8px", display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-muted)" }}>
+                       <span>Sprint Progress</span>
+                       <span style={{ fontWeight: "600", color: "var(--text-main)" }}>{percent}% Completed</span>
+                     </div>
+                     <div style={{ width: "100%", height: "8px", background: "var(--bg-input)", borderRadius: "4px", overflow: "hidden", marginBottom: "16px" }}>
+                       <div style={{ width: `${percent}%`, height: "100%", background: isCompleted ? "#10b981" : "var(--primary)", borderRadius: "4px", transition: "width 1s ease" }}></div>
+                     </div>
+                     
+                     <div style={{ padding: "12px", background: "rgba(0,0,0,0.15)", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                       <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: "600", textTransform: "uppercase" }}>Student Team</div>
+                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                           <img src={`https://ui-avatars.com/api/?name=Student+1&background=6366f1&color=fff`} style={{ width: "24px", height: "24px", borderRadius: "50%" }} alt="student" />
+                           <span style={{ fontSize: "13px", color: "var(--text-main)" }}>Lead Developer</span>
+                         </div>
+                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                           <img src={`https://ui-avatars.com/api/?name=Student+2&background=10b981&color=fff`} style={{ width: "24px", height: "24px", borderRadius: "50%" }} alt="student" />
+                           <span style={{ fontSize: "13px", color: "var(--text-main)" }}>Contributor</span>
+                         </div>
+                         <div style={{ fontSize: "12px", color: "var(--primary)", marginLeft: "auto", cursor: "pointer", fontWeight: "500" }}>
+                           View All
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 );
+               })}
+             </div>
+          </div>
+        )}
+
+        {activeTab === "team" && (
+          <div>
+            <h3 style={{ margin: "0 0 16px 0", color: "var(--text-main)", fontSize: "18px" }}>Team Overview</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Faculty mentors and student developers assigned to this project.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px", marginTop: "20px" }}>
+              {(assignedProject.allocations || [])
+                .filter(alloc => mentorSpokes.includes(alloc.targetCampusId) || currentSelection.scope === "global")
+                .map(alloc => {
+                  const spoke = spokes.find(s => s.id === alloc.targetCampusId);
+                  const domain = spoke?.name?.toLowerCase()?.replace(/\s+/g, '') || "campus";
+                  return (
+                    <div key={alloc.targetCampusId} style={{ background: "rgba(255,255,255,0.03)", borderRadius: "12px", border: "1px solid var(--border-glass)", overflow: "hidden" }}>
+                      <div style={{ padding: "16px", background: "rgba(0,0,0,0.2)", borderBottom: "1px solid var(--border-glass)", display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "rgba(59, 130, 246, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#3b82f6" }}>
+                          <FaBuilding size={16} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: "700", color: "var(--text-main)", fontSize: "15px" }}>{spoke?.name || alloc.targetCampusId} Campus</div>
+                          <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Development Team</div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                        {/* Coordinator */}
+                        <div>
+                          <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "12px", letterSpacing: "0.5px" }}>Faculty Mentor</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                            <img src={`https://ui-avatars.com/api/?name=${spoke?.name || "Campus"}+Coordinator&background=3b82f6&color=fff`} style={{ width: "32px", height: "32px", borderRadius: "50%" }} alt="coordinator" />
+                            <div>
+                              <div style={{ fontSize: "14px", color: "var(--text-main)", fontWeight: "600" }}>{spoke?.name} Coordinator</div>
+                              <div style={{ fontSize: "12px", color: "var(--primary)" }}>coordinator@{domain}.edu</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Students */}
+                        <div>
+                          <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "12px", letterSpacing: "0.5px" }}>Student Developers</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px", background: "rgba(255,255,255,0.02)", borderRadius: "8px" }}>
+                              <img src={`https://ui-avatars.com/api/?name=Lead+Dev&background=6366f1&color=fff`} style={{ width: "28px", height: "28px", borderRadius: "50%" }} alt="student" />
+                              <div>
+                                <div style={{ fontSize: "13px", color: "var(--text-main)", fontWeight: "500" }}>Lead Developer</div>
+                                <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>student1@{domain}.edu</div>
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px", background: "rgba(255,255,255,0.02)", borderRadius: "8px" }}>
+                              <img src={`https://ui-avatars.com/api/?name=Frontend+Dev&background=10b981&color=fff`} style={{ width: "28px", height: "28px", borderRadius: "50%" }} alt="student" />
+                              <div>
+                                <div style={{ fontSize: "13px", color: "var(--text-main)", fontWeight: "500" }}>Frontend Contributor</div>
+                                <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>student2@{domain}.edu</div>
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px", background: "rgba(255,255,255,0.02)", borderRadius: "8px" }}>
+                              <img src={`https://ui-avatars.com/api/?name=Backend+Dev&background=f59e0b&color=fff`} style={{ width: "28px", height: "28px", borderRadius: "50%" }} alt="student" />
+                              <div>
+                                <div style={{ fontSize: "13px", color: "var(--text-main)", fontWeight: "500" }}>Backend Contributor</div>
+                                <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>student3@{domain}.edu</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              
+              {(!assignedProject.allocations || assignedProject.allocations.filter(alloc => mentorSpokes.includes(alloc.targetCampusId) || currentSelection.scope === "global").length === 0) && (
+                <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px", color: "var(--text-muted)", background: "rgba(255,255,255,0.02)", borderRadius: "12px", border: "1px dashed var(--border-glass)" }}>
+                  <FaUsers style={{ fontSize: "32px", opacity: 0.5, marginBottom: "16px" }} />
+                  <h4>No Teams Assigned Yet</h4>
+                  <p style={{ fontSize: "13px" }}>This project has not been allocated to any campus spokes within your mentorship scope.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "deliverables" && (
+          <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>
+            <FaCheckCircle style={{ fontSize: "32px", opacity: 0.5, marginBottom: "16px" }} />
+            <h3>Deliverables</h3>
+            <p>Review submitted pull requests, documents, and milestones from the student teams.</p>
+          </div>
+        )}
+
+        {activeTab === "comms" && (
+          <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>
+            <FaCommentDots style={{ fontSize: "32px", opacity: 0.5, marginBottom: "16px" }} />
+            <h3>Communications</h3>
+            <p>Direct chat channel with student developers and faculty mentors for Q&A.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ==========================================
 // CORPORATE PARTNER SPONSORSHIP PORTAL VIEW
 // ==========================================
@@ -11309,6 +13268,7 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
   const [duration, setDuration] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("2026-09-15");
+  const [phases, setPhases] = useState([{ name: "", description: "", duration: "" }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (loading) {
@@ -11374,12 +13334,15 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
         description,
         budget: budget.startsWith("$") ? budget : `$${budget}`,
         duration: duration.includes("Month") ? duration : `${duration} Months`,
-        proposedDueDate: dueDate
+        proposedDueDate: dueDate,
+        phases: phases.filter(p => p.name.trim() !== ""),
+        requirements: ["React/Node.js stack", "Weekly sprint reviews", "Agile methodologies"] // Default requirements for now
       });
       setTitle("");
       setBudget("");
       setDuration("");
       setDescription("");
+      setPhases([{ name: "", description: "", duration: "" }]);
       setActiveTab("portfolio");
     } catch (err) {
       console.error(err);
@@ -11404,7 +13367,8 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
         gap: "16px"
       }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "900", color: "var(--text-main)", letterSpacing: "-0.5px" }}>
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "900", color: "var(--text-main)", letterSpacing: "-0.5px", display: "flex", alignItems: "center", gap: "10px" }}>
+            <CompanyLogo company={companyName} size={28} />
             Corporate Partner Sponsorship Portal
           </h2>
           <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.5" }}>
@@ -11422,11 +13386,12 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
               padding: "8px 16px",
               fontSize: "12.5px",
               borderRadius: "8px",
-              background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+              background: "#ef4444",
               borderColor: "transparent",
+              color: "white",
               cursor: "pointer",
               fontWeight: "800",
-              boxShadow: "0 4px 12px rgba(249, 115, 22, 0.2)"
+              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
             }}
           >
             Propose B2B Project
@@ -11598,20 +13563,38 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                             <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4", maxWidth: "340px" }}>
                               {proj.description}
                             </p>
+                            
                             {/* Project Mentor Assignment Button */}
-                            <div style={{ marginTop: "12px" }}>
-                              <button
-                                onClick={() => onOpenMentorModal && onOpenMentorModal(proj)}
-                                className="btn-secondary"
-                                style={{
-                                  padding: "6px 12px", fontSize: "11px", borderColor: "rgba(59, 130, 246, 0.3)",
-                                  color: "#3b82f6", display: "inline-flex", alignItems: "center", gap: "6px",
-                                  background: "rgba(59, 130, 246, 0.05)"
-                                }}
-                              >
-                                <FaUserTie /> {mentorAssignments && mentorAssignments[proj.id] ? "Manage Mentor Assignment" : "Assign Project Mentor"}
-                              </button>
-                            </div>
+                            {isAllocated && (
+                              <div style={{ marginTop: "12px" }}>
+                                {proj.allocations?.some(a => a.status !== "Proposed") ? (
+                                  <button
+                                    onClick={() => onOpenMentorModal && onOpenMentorModal(proj)}
+                                    className="btn-secondary"
+                                    style={{
+                                      padding: "6px 12px", fontSize: "11px", borderColor: "rgba(59, 130, 246, 0.3)",
+                                      color: "#3b82f6", display: "inline-flex", alignItems: "center", gap: "6px",
+                                      background: "rgba(59, 130, 246, 0.05)"
+                                    }}
+                                  >
+                                    <FaUserTie /> {mentorAssignments && mentorAssignments[proj.id] ? "Manage Mentor Assignment" : "Assign Project Mentor"}
+                                  </button>
+                                ) : (
+                                  <button
+                                    disabled
+                                    title="Awaiting spoke acceptance before mentor can be assigned."
+                                    className="btn-secondary"
+                                    style={{
+                                      padding: "6px 12px", fontSize: "11px", borderColor: "rgba(156, 163, 175, 0.3)",
+                                      color: "#9ca3af", display: "inline-flex", alignItems: "center", gap: "6px",
+                                      background: "rgba(156, 163, 175, 0.05)", cursor: "not-allowed"
+                                    }}
+                                  >
+                                    <FaUserTie /> Assign Project Mentor
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -11659,7 +13642,7 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                               <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{progressPct}%</strong>
                             </div>
                             <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
-                              <div style={{ width: `${progressPct}%`, height: "100%", background: "linear-gradient(90deg, var(--primary), var(--secondary))", borderRadius: "3px" }} />
+                              <div style={{ width: `${progressPct}%`, height: "100%", background: "var(--primary)", borderRadius: "3px" }} />
                             </div>
                           </div>
                         ) : (
@@ -11702,11 +13685,12 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                             padding: "10px 20px",
                             fontSize: "12.5px",
                             borderRadius: "8px",
-                            background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                            background: "#ef4444",
                             borderColor: "transparent",
+                            color: "white",
                             cursor: "pointer",
                             fontWeight: "800",
-                            boxShadow: "0 4px 15px rgba(249, 115, 22, 0.25)"
+                            boxShadow: "0 4px 15px rgba(239, 68, 68, 0.25)"
                           }}
                         >
                           Propose Your First Project
@@ -11849,6 +13833,75 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
               />
             </div>
 
+            {/* Dynamic Phases Block */}
+            <div style={{ background: "rgba(0,0,0,0.1)", border: "1px solid var(--border-glass)", borderRadius: "8px", padding: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <label style={{ fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Project Phases (To Do Kanban Tasks)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPhases([...phases, { name: "", description: "", duration: "" }])}
+                  style={{ background: "var(--primary-glow)", border: "1px solid var(--border-glass)", color: "var(--primary)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
+                >
+                  + Add Phase
+                </button>
+              </div>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {phases.map((phase, idx) => (
+                  <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 40px", gap: "8px", alignItems: "center" }}>
+                    <input
+                      type="text"
+                      placeholder={`Phase ${idx+1} Name`}
+                      value={phase.name}
+                      onChange={(e) => {
+                        const newPhases = [...phases];
+                        newPhases[idx].name = e.target.value;
+                        setPhases(newPhases);
+                      }}
+                      style={{ padding: "8px 10px", borderRadius: "6px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", color: "var(--text-main)", fontSize: "12px", outline: "none" }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Description"
+                      value={phase.description}
+                      onChange={(e) => {
+                        const newPhases = [...phases];
+                        newPhases[idx].description = e.target.value;
+                        setPhases(newPhases);
+                      }}
+                      style={{ padding: "8px 10px", borderRadius: "6px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", color: "var(--text-main)", fontSize: "12px", outline: "none" }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Duration"
+                      value={phase.duration}
+                      onChange={(e) => {
+                        const newPhases = [...phases];
+                        newPhases[idx].duration = e.target.value;
+                        setPhases(newPhases);
+                      }}
+                      style={{ padding: "8px 10px", borderRadius: "6px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", color: "var(--text-main)", fontSize: "12px", outline: "none" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (phases.length > 1) {
+                          setPhases(phases.filter((_, i) => i !== idx));
+                        } else {
+                          setPhases([{ name: "", description: "", duration: "" }]);
+                        }
+                      }}
+                      style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#ef4444", padding: "6px", borderRadius: "6px", cursor: "pointer" }}
+                    >
+                      <FaTrashAlt size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={isSubmitting}
@@ -11857,10 +13910,11 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                 padding: "12px",
                 fontSize: "13px",
                 borderRadius: "8px",
-                background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                background: "#ef4444",
                 border: "none",
+                color: "white",
                 fontWeight: "800",
-                boxShadow: "0 4px 15px rgba(249, 115, 22, 0.25)",
+                boxShadow: "0 4px 15px rgba(239, 68, 68, 0.25)",
                 cursor: "pointer",
                 marginTop: "10px"
               }}
@@ -11913,8 +13967,8 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                         width: `${pct}%`,
                         height: "100%",
                         background: idx === 0 
-                          ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
-                          : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
+                          ? "#f59e0b" 
+                          : (idx === 1 ? "#9ca3af" : "var(--primary)"),
                         borderRadius: "2px"
                       }}></div>
                     </div>
@@ -12220,7 +14274,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                     minHeight: "38px",
                     borderRadius: "8px",
                     background: isSelected 
-                      ? "linear-gradient(135deg, var(--primary), var(--secondary))"
+                      ? "#ef4444"
                       : "transparent",
                     border: "1px solid transparent",
                     color: isSelected ? "white" : "var(--text-main)",
@@ -12422,9 +14476,10 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                         padding: "6px 14px",
                         fontSize: "11.5px",
                         borderRadius: "6px",
-                        background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                        background: "#ef4444",
                         border: "none",
-                        boxShadow: "0 4px 12px rgba(249, 115, 22, 0.15)",
+                        color: "white",
+                        boxShadow: "0 4px 12px rgba(239, 68, 68, 0.15)",
                         cursor: "pointer"
                       }}
                     >
@@ -12558,8 +14613,9 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
               marginTop: "8px",
               fontWeight: "700",
               fontSize: "13px",
-              background: "linear-gradient(135deg, var(--primary), var(--secondary))",
-              boxShadow: "0 4px 15px rgba(99, 102, 241, 0.2)",
+              background: "#ef4444",
+              color: "white",
+              boxShadow: "0 4px 15px rgba(239, 68, 68, 0.2)",
               cursor: "pointer"
             }}
           >
@@ -12624,8 +14680,9 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                 className="btn-primary"
                 style={{
                   padding: "8px 16px",
-                  background: "linear-gradient(135deg, #ef4444, #b91c1c)",
+                  background: "#ef4444",
                   border: "none",
+                  color: "white",
                   cursor: "pointer",
                   fontSize: "12.5px",
                   fontWeight: "700",
@@ -12689,641 +14746,6 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
         </div>
       )}
 
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 🧑‍💼 PROJECT MENTOR DASHBOARD VIEW
-// ─────────────────────────────────────────────────────────────────────────────
-function ProjectMentorDashboardView({
-  sessionUser, mentorAssignments, projects, loading, onRefresh,
-  activeTab, onTabChange, triggerToast, theme,
-  mentorEmailRecipient, setMentorEmailRecipient,
-  mentorEmailBody, setMentorEmailBody,
-  isSendingMentorEmail, onSendMentorEmail,
-  getMentorProjectInfo, allSubmissions, spokeTeams, spokes
-}) {
-  const mentorEmail = sessionUser?.email || "mentor@nvidia.com";
-  const mentorInfo = getMentorProjectInfo(mentorEmail, mentorAssignments);
-
-  // Find the project details from projects list
-  const myProject = projects.find(p => p.id === mentorInfo?.projectId) ||
-    (projects.length > 0 ? projects[0] : null); // fallback for demo
-
-  const cardStyle = {
-    background: theme === "dark" ? "rgba(255,255,255,0.03)" : "#ffffff",
-    border: theme === "dark" ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e2e8f0",
-    borderRadius: "16px",
-    padding: "24px",
-    boxShadow: theme === "dark" ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 15px rgba(0,0,0,0.06)"
-  };
-
-  const labelStyle = {
-    fontSize: "11px", fontWeight: "800", textTransform: "uppercase",
-    letterSpacing: "0.5px", color: theme === "dark" ? "#64748b" : "#94a3b8",
-    marginBottom: "6px", display: "block"
-  };
-
-  const tabs = [
-    { id: "project", label: "My Project", icon: "📋" },
-    { id: "progress", label: "Spoke Progress", icon: "📊" },
-    { id: "teams", label: "Team Overview", icon: "👥" },
-    { id: "deliverables", label: "Deliverables", icon: "📁" },
-    { id: "comms", label: "Communications", icon: "✉️" }
-  ];
-
-  const SPOKE_COLORS = {
-    "3": { bg: "rgba(59,130,246,0.12)", border: "#3b82f6", text: "#3b82f6" },
-    "101": { bg: "rgba(16,185,129,0.12)", border: "#10b981", text: "#10b981" },
-    "102": { bg: "rgba(245,158,11,0.12)", border: "#f59e0b", text: "#f59e0b" },
-    "103": { bg: "rgba(239,68,68,0.12)", border: "#ef4444", text: "#ef4444" }
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "28px", fontFamily: "var(--font-sans)" }}>
-
-      {/* Welcome Banner */}
-      <div style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f2744 100%)",
-        borderRadius: "20px",
-        padding: "28px 32px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "16px",
-        border: "1.5px solid rgba(59,130,246,0.25)",
-        boxShadow: "0 0 40px rgba(59,130,246,0.1)"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
-          <div style={{
-            width: "56px", height: "56px", borderRadius: "16px",
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "24px", boxShadow: "0 0 20px rgba(59,130,246,0.4)"
-          }}>🧑‍💼</div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "800", color: "#ffffff", letterSpacing: "-0.3px" }}>
-              Project Mentor Dashboard
-            </h2>
-            <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8" }}>
-              Welcome, <span style={{ color: "#60a5fa", fontWeight: "700" }}>{mentorInfo?.mentorName || sessionUser?.displayName || "Project Mentor"}</span>
-              {myProject && <> &nbsp;·&nbsp; Assigned to: <span style={{ color: "#34d399", fontWeight: "700" }}>{myProject.title || "Corporate Project"}</span></>}
-            </p>
-          </div>
-        </div>
-        <div style={{
-          background: "rgba(59,130,246,0.15)",
-          border: "1px solid rgba(59,130,246,0.3)",
-          borderRadius: "12px",
-          padding: "10px 18px",
-          fontSize: "13px",
-          color: "#93c5fd",
-          fontWeight: "700",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px"
-        }}>
-          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#34d399", display: "inline-block" }} className="pulse-glow" />
-          Mentor Portal Active
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div style={{
-        display: "flex",
-        gap: "6px",
-        background: theme === "dark" ? "rgba(255,255,255,0.03)" : "#f1f5f9",
-        padding: "6px",
-        borderRadius: "14px",
-        border: theme === "dark" ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e2e8f0"
-      }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            style={{
-              flex: 1,
-              padding: "10px 12px",
-              borderRadius: "10px",
-              border: "none",
-              cursor: "pointer",
-              fontWeight: "700",
-              fontSize: "12.5px",
-              transition: "all 0.2s ease",
-              background: activeTab === tab.id
-                ? "linear-gradient(135deg, #3b529a, #1d4ed8)"
-                : "transparent",
-              color: activeTab === tab.id ? "#ffffff" : (theme === "dark" ? "#94a3b8" : "#64748b"),
-              boxShadow: activeTab === tab.id ? "0 4px 12px rgba(59,82,154,0.3)" : "none"
-            }}
-          >
-            <span style={{ marginRight: "6px" }}>{tab.icon}</span>{tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── TAB: MY PROJECT ── */}
-      {activeTab === "project" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {!myProject ? (
-            <div style={{ ...cardStyle, textAlign: "center", padding: "60px", color: "#64748b" }}>
-              <div style={{ fontSize: "48px", marginBottom: "16px" }}>📋</div>
-              <h3 style={{ fontWeight: "800" }}>No Project Assigned Yet</h3>
-              <p style={{ fontSize: "13px", marginTop: "8px" }}>Your company has not yet assigned a project to your mentor account. Please check back after your company admin assigns you to a project.</p>
-            </div>
-          ) : (
-            <>
-              {/* Project Overview Card */}
-              <div style={cardStyle}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                    <div style={{
-                      width: "48px", height: "48px", borderRadius: "12px",
-                      background: "linear-gradient(135deg, #76b900, #3d6200)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "20px", border: "1.5px solid #76b900", boxShadow: "0 0 16px rgba(118,185,0,0.25)"
-                    }}>🏢</div>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: theme === "dark" ? "#f8fafc" : "#0f172a" }}>{myProject.title}</h3>
-                      <p style={{ margin: "3px 0 0", fontSize: "13px", color: "#64748b", fontWeight: "600" }}>by {myProject.company}</p>
-                    </div>
-                  </div>
-                  <span style={{
-                    padding: "6px 14px", borderRadius: "20px", fontSize: "11px", fontWeight: "800",
-                    background: myProject.status === "Active" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)",
-                    color: myProject.status === "Active" ? "#10b981" : "#f59e0b",
-                    border: `1px solid ${myProject.status === "Active" ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`
-                  }}>{myProject.status || "Active"}</span>
-                </div>
-
-                {/* KPI Row */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginBottom: "20px" }}>
-                  {[
-                    { label: "Budget", value: myProject.budget || "TBD", color: "#10b981", icon: "💰" },
-                    { label: "Duration", value: myProject.duration || "TBD", color: "#3b82f6", icon: "⏱️" },
-                    { label: "Due Date", value: myProject.proposedDueDate ? myProject.proposedDueDate.split("T")[0] : "TBD", color: "#f97316", icon: "📅" },
-                    { label: "Spokes", value: myProject.allocations?.length || (myProject.assignedTo ? 1 : 0), color: "#8b5cf6", icon: "🏛️" }
-                  ].map(kpi => (
-                    <div key={kpi.label} style={{
-                      padding: "14px",
-                      borderRadius: "12px",
-                      background: theme === "dark" ? "rgba(255,255,255,0.04)" : "#f8fafc",
-                      border: `1px solid ${theme === "dark" ? "rgba(255,255,255,0.06)" : "#e2e8f0"}`
-                    }}>
-                      <div style={{ fontSize: "18px", marginBottom: "6px" }}>{kpi.icon}</div>
-                      <div style={{ fontSize: "14px", fontWeight: "800", color: kpi.color }}>{kpi.value}</div>
-                      <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>{kpi.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Requirements Brief */}
-                <div style={{
-                  background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.06))",
-                  border: "1px solid rgba(59,130,246,0.2)",
-                  borderRadius: "12px",
-                  padding: "18px"
-                }}>
-                  <h4 style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "800", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.5px" }}>📋 Project Requirements Brief</h4>
-                  <p style={{ margin: 0, fontSize: "13.5px", color: theme === "dark" ? "#cbd5e1" : "#334155", lineHeight: "1.7", fontWeight: "500" }}>
-                    {myProject.description || "Detailed project requirements and technical specifications will be provided by your company coordinator. This project involves collaboration with campus spokes and student development teams."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Assigned Spokes */}
-              <div style={cardStyle}>
-                <h3 style={{ margin: "0 0 16px", fontSize: "14px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>🏛️ Assigned Campus Spokes</h3>
-                {(myProject.allocations && myProject.allocations.length > 0) ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
-                    {myProject.allocations.map((alloc, i) => {
-                      const spokeColor = SPOKE_COLORS[alloc.targetCampusId] || SPOKE_COLORS["3"];
-                      return (
-                        <div key={i} style={{
-                          padding: "16px",
-                          borderRadius: "12px",
-                          background: spokeColor.bg,
-                          border: `1px solid ${spokeColor.border}40`
-                        }}>
-                          <div style={{ fontWeight: "800", fontSize: "14px", color: spokeColor.text, marginBottom: "6px" }}>{alloc.assignedTo}</div>
-                          <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>Epic: <span style={{ color: spokeColor.text }}>{alloc.assignedKey || "Pending"}</span></div>
-                          <div style={{ marginTop: "10px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#64748b", marginBottom: "4px" }}>
-                              <span>Progress</span><span style={{ fontWeight: "700", color: spokeColor.text }}>{alloc.progressPercent || 0}%</span>
-                            </div>
-                            <div style={{ height: "5px", background: "rgba(255,255,255,0.1)", borderRadius: "99px", overflow: "hidden" }}>
-                              <div style={{ height: "100%", width: `${alloc.progressPercent || 0}%`, background: spokeColor.border, borderRadius: "99px", transition: "width 0.6s ease" }} />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : myProject.assignedTo ? (
-                  <div style={{
-                    padding: "16px", borderRadius: "12px",
-                    background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)"
-                  }}>
-                    <div style={{ fontWeight: "800", color: "#3b82f6" }}>{myProject.assignedTo}</div>
-                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>Epic: {myProject.assignedKey || "Provisioning..."}</div>
-                  </div>
-                ) : (
-                  <p style={{ color: "#64748b", fontSize: "13px" }}>No spokes assigned yet. Moderator will assign campus spokes shortly.</p>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB: SPOKE PROGRESS ── */}
-      {activeTab === "progress" && (
-        <div style={cardStyle}>
-          <h3 style={{ margin: "0 0 20px", fontSize: "16px", fontWeight: "800", color: theme === "dark" ? "#f8fafc" : "#0f172a" }}>📊 Spoke Progress Overview</h3>
-          {!myProject ? (
-            <p style={{ color: "#64748b", textAlign: "center", padding: "40px" }}>No project data available.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {(myProject.allocations?.length > 0 ? myProject.allocations : [
-                { assignedTo: myProject.assignedTo || "Campus", progressPercent: 40, targetCampusId: "3", assignedKey: myProject.assignedKey }
-              ]).map((alloc, i) => {
-                const spokeColor = SPOKE_COLORS[alloc.targetCampusId] || SPOKE_COLORS["3"];
-                const progress = alloc.progressPercent || Math.floor(Math.random() * 60 + 20);
-                return (
-                  <div key={i} style={{
-                    padding: "20px",
-                    borderRadius: "14px",
-                    background: theme === "dark" ? "rgba(255,255,255,0.03)" : "#f8fafc",
-                    border: theme === "dark" ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e2e8f0"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: "800", fontSize: "15px", color: spokeColor.text }}>{alloc.assignedTo}</div>
-                        <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", marginTop: "2px" }}>Epic: {alloc.assignedKey || "Pending"}</div>
-                      </div>
-                      <span style={{
-                        padding: "6px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: "800",
-                        background: spokeColor.bg, color: spokeColor.text, border: `1px solid ${spokeColor.border}40`
-                      }}>{progress}% Complete</span>
-                    </div>
-                    <div style={{ height: "10px", background: "rgba(255,255,255,0.08)", borderRadius: "99px", overflow: "hidden" }}>
-                      <div style={{
-                        height: "100%", width: `${progress}%`, borderRadius: "99px",
-                        background: `linear-gradient(90deg, ${spokeColor.border}, ${spokeColor.border}aa)`,
-                        transition: "width 0.8s ease",
-                        boxShadow: `0 0 10px ${spokeColor.border}50`
-                      }} />
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px", marginTop: "14px" }}>
-                      {[{label: "Phase 1", done: progress > 30}, {label: "Phase 2", done: progress > 60}, {label: "Phase 3", done: progress > 90}].map(ph => (
-                        <div key={ph.label} style={{
-                          padding: "8px 12px", borderRadius: "8px", textAlign: "center", fontSize: "12px", fontWeight: "700",
-                          background: ph.done ? `${spokeColor.bg}` : "rgba(255,255,255,0.02)",
-                          color: ph.done ? spokeColor.text : "#64748b",
-                          border: `1px solid ${ph.done ? spokeColor.border + "50" : "rgba(255,255,255,0.06)"}`
-                        }}>
-                          {ph.done ? "✅" : "⏳"} {ph.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB: TEAM OVERVIEW ── */}
-      {activeTab === "teams" && (
-        <div style={cardStyle}>
-          <h3 style={{ margin: "0 0 20px", fontSize: "16px", fontWeight: "800", color: theme === "dark" ? "#f8fafc" : "#0f172a" }}>👥 Teams Working on This Project</h3>
-          {spokeTeams && spokeTeams.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              {spokeTeams.map((team, i) => (
-                <div key={team._id || i} style={{
-                  padding: "18px 20px", borderRadius: "14px",
-                  background: theme === "dark" ? "rgba(255,255,255,0.03)" : "#f8fafc",
-                  border: theme === "dark" ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e2e8f0"
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
-                    <div style={{ fontWeight: "800", fontSize: "15px", color: theme === "dark" ? "#f1f5f9" : "#0f172a" }}>{team.name}</div>
-                    <span style={{
-                      padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: "700",
-                      background: "rgba(139,92,246,0.12)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.25)"
-                    }}>{team.members?.length || 0} Members</span>
-                  </div>
-                  {team.mentor && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", padding: "8px 12px", borderRadius: "8px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                      <span style={{ fontSize: "14px" }}>🎓</span>
-                      <span style={{ fontSize: "12.5px", fontWeight: "700", color: "#10b981" }}>Faculty Mentor: {team.mentor.displayName}</span>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {(team.members || []).map((m, mi) => (
-                      <div key={mi} style={{
-                        display: "flex", alignItems: "center", gap: "6px",
-                        padding: "6px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600",
-                        background: theme === "dark" ? "rgba(255,255,255,0.06)" : "#f1f5f9",
-                        color: theme === "dark" ? "#cbd5e1" : "#334155"
-                      }}>
-                        <img src={m.avatarUrl || `https://i.pravatar.cc/32?u=${m.accountId}`} alt="" style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
-                        {m.displayName}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
-              <div style={{ fontSize: "48px", marginBottom: "12px" }}>👥</div>
-              <p style={{ fontSize: "14px", fontWeight: "600" }}>No teams created yet for this project.</p>
-              <p style={{ fontSize: "13px", marginTop: "4px" }}>Spoke coordinators will create teams once the project is provisioned on their campus.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB: DELIVERABLES ── */}
-      {activeTab === "deliverables" && (
-        <div style={cardStyle}>
-          <h3 style={{ margin: "0 0 20px", fontSize: "16px", fontWeight: "800", color: theme === "dark" ? "#f8fafc" : "#0f172a" }}>📁 Submitted Deliverables</h3>
-          {allSubmissions && allSubmissions.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {allSubmissions.map((sub, i) => (
-                <div key={sub._id || i} style={{
-                  padding: "16px 18px", borderRadius: "12px",
-                  background: theme === "dark" ? "rgba(255,255,255,0.03)" : "#f8fafc",
-                  border: theme === "dark" ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e2e8f0",
-                  display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{
-                      width: "36px", height: "36px", borderRadius: "10px",
-                      background: sub.status === "Approved" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)",
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px"
-                    }}>{sub.status === "Approved" ? "✅" : "📄"}</div>
-                    <div>
-                      <div style={{ fontWeight: "700", fontSize: "13.5px", color: theme === "dark" ? "#f1f5f9" : "#0f172a" }}>{sub.fileName}</div>
-                      <div style={{ fontSize: "12px", color: "#64748b" }}>{sub.studentName} · {sub.taskKey}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{
-                      padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: "800",
-                      background: sub.status === "Approved" ? "rgba(16,185,129,0.15)" : sub.status === "Rejected" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)",
-                      color: sub.status === "Approved" ? "#10b981" : sub.status === "Rejected" ? "#ef4444" : "#f59e0b"
-                    }}>{sub.status || "Pending"}</span>
-                    {sub.fileUrl && (
-                      <a href={sub.fileUrl} target="_blank" rel="noreferrer" style={{
-                        padding: "6px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: "700",
-                        background: "rgba(59,130,246,0.12)", color: "#3b82f6",
-                        border: "1px solid rgba(59,130,246,0.25)", textDecoration: "none"
-                      }}>View</a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
-              <div style={{ fontSize: "48px", marginBottom: "12px" }}>📁</div>
-              <p style={{ fontSize: "14px", fontWeight: "600" }}>No deliverables submitted yet.</p>
-              <p style={{ fontSize: "13px", marginTop: "4px" }}>Deliverables will appear here as students submit their work on the spoke Kanban boards.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB: COMMUNICATIONS ── */}
-      {activeTab === "comms" && (
-        <div style={cardStyle}>
-          <h3 style={{ margin: "0 0 20px", fontSize: "16px", fontWeight: "800", color: theme === "dark" ? "#f8fafc" : "#0f172a" }}>✉️ Contact Spoke Coordinators</h3>
-          <form onSubmit={onSendMentorEmail} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label style={labelStyle}>Recipient (Coordinator Email)</label>
-              <select
-                value={mentorEmailRecipient}
-                onChange={e => setMentorEmailRecipient(e.target.value)}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: "10px", fontSize: "14px",
-                  background: theme === "dark" ? "rgba(255,255,255,0.05)" : "#f8fafc",
-                  border: theme === "dark" ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e2e8f0",
-                  color: theme === "dark" ? "#f1f5f9" : "#0f172a",
-                  outline: "none"
-                }}
-              >
-                <option value="">— Select coordinator —</option>
-                <option value="coordinator@kle.edu">KLE Spoke Coordinator</option>
-                <option value="coordinator@coep.edu">COEP Spoke Coordinator</option>
-                <option value="coordinator@mmcoep.edu">MMCOEP Spoke Coordinator</option>
-                <option value="coordinator@rit.edu">RIT Spoke Coordinator</option>
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Message</label>
-              <textarea
-                value={mentorEmailBody}
-                onChange={e => setMentorEmailBody(e.target.value)}
-                placeholder="Write your message to the spoke coordinator..."
-                rows={6}
-                style={{
-                  width: "100%", padding: "12px 14px", borderRadius: "10px", fontSize: "13.5px",
-                  background: theme === "dark" ? "rgba(255,255,255,0.05)" : "#f8fafc",
-                  border: theme === "dark" ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e2e8f0",
-                  color: theme === "dark" ? "#f1f5f9" : "#0f172a",
-                  outline: "none", resize: "vertical", lineHeight: "1.6", boxSizing: "border-box"
-                }}
-              />
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button
-                type="submit"
-                disabled={isSendingMentorEmail}
-                style={{
-                  padding: "10px 24px", borderRadius: "10px", border: "none",
-                  background: "linear-gradient(135deg, #3b529a, #1d4ed8)",
-                  color: "#ffffff", fontWeight: "800", fontSize: "14px",
-                  cursor: isSendingMentorEmail ? "wait" : "pointer",
-                  display: "flex", alignItems: "center", gap: "8px",
-                  opacity: isSendingMentorEmail ? 0.7 : 1,
-                  boxShadow: "0 4px 12px rgba(59,82,154,0.3)"
-                }}
-              >
-                <FaPaperPlane size={13} /> {isSendingMentorEmail ? "Sending..." : "Send Message"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 🧑‍💼 MENTOR ASSIGN MODAL — rendered inside CorporateSponsorDashboardView
-// ─────────────────────────────────────────────────────────────────────────────
-function MentorAssignModal({
-  isOpen, onClose, project, spokes,
-  mode, setMode, globalEmail, setGlobalEmail, globalName, setGlobalName,
-  perSpoke, setPerSpoke, isAssigning, onSubmit, theme
-}) {
-  if (!isOpen || !project) return null;
-
-  const assignedSpokeIds = project.allocations?.map(a => a.targetCampusId)
-    || (project.assignedTo ? ["3"] : []);
-  const relevantSpokes = spokes.filter(s => assignedSpokeIds.includes(s.id) || assignedSpokeIds.length === 0);
-
-  const inputStyle = {
-    width: "100%", padding: "9px 12px", borderRadius: "8px", fontSize: "13px",
-    background: theme === "dark" ? "rgba(255,255,255,0.06)" : "#f8fafc",
-    border: theme === "dark" ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e2e8f0",
-    color: theme === "dark" ? "#f1f5f9" : "#0f172a",
-    outline: "none", boxSizing: "border-box"
-  };
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-      backdropFilter: "blur(8px)", display: "flex",
-      alignItems: "center", justifyContent: "center", zIndex: 2000
-    }}>
-      <div style={{
-        background: theme === "dark" ? "#0f172a" : "#ffffff",
-        border: theme === "dark" ? "1.5px solid rgba(255,255,255,0.1)" : "1.5px solid #e2e8f0",
-        borderRadius: "20px",
-        width: "90%", maxWidth: "540px",
-        padding: "28px",
-        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)",
-        maxHeight: "90vh", overflowY: "auto"
-      }}>
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: theme === "dark" ? "#f8fafc" : "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
-              <FaUserTie style={{ color: "#3b82f6" }} /> Assign Project Mentor
-            </h2>
-            <p style={{ margin: "4px 0 0", fontSize: "12.5px", color: "#64748b" }}>
-              {project.title} · <strong>{project.company}</strong>
-            </p>
-          </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "18px" }}>
-            <FaTimes />
-          </button>
-        </div>
-
-        {/* Mode selector */}
-        <div style={{ marginBottom: "20px" }}>
-          <label style={{ fontSize: "12px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "10px" }}>Mentor Scope</label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            {[
-              { id: "global", label: "One Mentor", sub: "For all spokes", icon: "👤" },
-              { id: "per-spoke", label: "Per Spoke", sub: "Different mentor per campus", icon: "🏛️" }
-            ].map(opt => (
-              <button
-                key={opt.id}
-                onClick={() => setMode(opt.id)}
-                style={{
-                  padding: "14px", borderRadius: "12px", border: "none", cursor: "pointer",
-                  background: mode === opt.id
-                    ? "linear-gradient(135deg, #3b529a, #1d4ed8)"
-                    : (theme === "dark" ? "rgba(255,255,255,0.04)" : "#f8fafc"),
-                  color: mode === opt.id ? "#ffffff" : (theme === "dark" ? "#94a3b8" : "#334155"),
-                  border: mode === opt.id ? "none" : (theme === "dark" ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e2e8f0"),
-                  textAlign: "left", transition: "all 0.2s ease"
-                }}
-              >
-                <div style={{ fontSize: "18px", marginBottom: "4px" }}>{opt.icon}</div>
-                <div style={{ fontWeight: "800", fontSize: "13px" }}>{opt.label}</div>
-                <div style={{ fontSize: "11px", opacity: 0.8, marginTop: "2px" }}>{opt.sub}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Global mentor fields */}
-        {mode === "global" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px" }}>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "6px" }}>Mentor Full Name *</label>
-              <input type="text" value={globalName} onChange={e => setGlobalName(e.target.value)} placeholder="e.g. Dr. Anita Sharma" style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "6px" }}>Mentor Email Address *</label>
-              <input type="email" value={globalEmail} onChange={e => setGlobalEmail(e.target.value)} placeholder="e.g. anita.sharma@company.com" style={inputStyle} />
-            </div>
-            <div style={{
-              padding: "12px 14px", borderRadius: "10px", fontSize: "12px",
-              background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)",
-              color: "#60a5fa", display: "flex", gap: "8px", alignItems: "flex-start", lineHeight: "1.5"
-            }}>
-              <FaInfoCircle style={{ marginTop: "2px", flexShrink: 0 }} />
-              <span>The mentor will be able to log in using this email with password <strong>mentor123</strong>. Their dashboard will show all spoke progress for this project.</span>
-            </div>
-          </div>
-        )}
-
-        {/* Per-spoke mentor fields */}
-        {mode === "per-spoke" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px" }}>
-            {(relevantSpokes.length > 0 ? relevantSpokes : spokes).map(spoke => (
-              <div key={spoke.id} style={{
-                padding: "14px", borderRadius: "12px",
-                background: theme === "dark" ? "rgba(255,255,255,0.03)" : "#f8fafc",
-                border: theme === "dark" ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e2e8f0"
-              }}>
-                <div style={{ fontWeight: "800", fontSize: "13px", color: theme === "dark" ? "#cbd5e1" : "#334155", marginBottom: "10px" }}>🏛️ {spoke.name}</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                  <input
-                    type="text"
-                    placeholder="Mentor name"
-                    value={perSpoke[spoke.id]?.name || ""}
-                    onChange={e => setPerSpoke(prev => ({ ...prev, [spoke.id]: { ...prev[spoke.id], name: e.target.value } }))}
-                    style={inputStyle}
-                  />
-                  <input
-                    type="email"
-                    placeholder="Mentor email"
-                    value={perSpoke[spoke.id]?.email || ""}
-                    onChange={e => setPerSpoke(prev => ({ ...prev, [spoke.id]: { ...prev[spoke.id], email: e.target.value } }))}
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", paddingTop: "16px", borderTop: theme === "dark" ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e2e8f0" }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: "9px 20px", borderRadius: "10px", border: theme === "dark" ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e2e8f0",
-              background: "transparent", color: theme === "dark" ? "#94a3b8" : "#64748b",
-              fontWeight: "700", fontSize: "13px", cursor: "pointer"
-            }}
-          >Cancel</button>
-          <button
-            onClick={onSubmit}
-            disabled={isAssigning}
-            style={{
-              padding: "9px 24px", borderRadius: "10px", border: "none",
-              background: "linear-gradient(135deg, #3b529a, #1d4ed8)",
-              color: "#ffffff", fontWeight: "800", fontSize: "13px",
-              cursor: isAssigning ? "wait" : "pointer",
-              display: "flex", alignItems: "center", gap: "8px",
-              opacity: isAssigning ? 0.7 : 1,
-              boxShadow: "0 4px 12px rgba(59,82,154,0.35)"
-            }}
-          >
-            <FaUserTie size={12} /> {isAssigning ? "Assigning..." : "Assign Mentor →"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

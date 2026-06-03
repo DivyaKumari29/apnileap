@@ -21,6 +21,10 @@ const AllocationSchema = new mongoose.Schema({
   assignedKey: {
     type: String,
     default: null
+  },
+  facultyAssigned: {
+    type: String,
+    default: null
   }
 });
 
@@ -70,6 +74,10 @@ const CorporateProjectSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  facultyAssigned: {
+    type: String,
+    default: null
+  },
   dateAdded: {
     type: String,
     default: () => new Date().toISOString().split("T")[0]
@@ -78,6 +86,15 @@ const CorporateProjectSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  requirements: {
+    type: [String],
+    default: []
+  },
+  phases: [{
+    name: String,
+    description: String,
+    duration: String
+  }],
   allocations: [AllocationSchema]
 });
 

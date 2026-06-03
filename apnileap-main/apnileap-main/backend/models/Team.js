@@ -29,8 +29,20 @@ const TeamSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  projectId: {
+    type: String,
+    default: null
+  },
   members: [TeamMemberSchema],
   mentor: {
+    type: TeamMemberSchema,
+    default: null
+  },
+  teamLeader: {
+    type: TeamMemberSchema,
+    default: null
+  },
+  subFaculty: {
     type: TeamMemberSchema,
     default: null
   },
