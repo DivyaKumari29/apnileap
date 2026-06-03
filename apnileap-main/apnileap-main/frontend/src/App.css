@@ -1,0 +1,41 @@
+/* Custom styles for ApniLeap App */
+
+.slide-in {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Kanban column drag state custom style overrides */
+.kanban-column-dragging-over {
+  background: rgba(99, 102, 241, 0.04) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+}
+
+.kanban-card-dragging {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 0 15px rgba(99, 102, 241, 0.3) !important;
+  border-color: var(--primary) !important;
+  transform: scale(1.02);
+}
