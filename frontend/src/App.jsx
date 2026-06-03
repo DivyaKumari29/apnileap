@@ -255,6 +255,21 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem("apnileap-auth") === "true";
   });
+
+  // Public Landing Page & Redirection States
+  const [viewMode, setViewMode] = useState(() => {
+    const auth = localStorage.getItem("apnileap-auth") === "true";
+    return auth ? "dashboard" : "landing";
+  });
+  const [landingTab, setLandingTab] = useState("home"); // "home", "about", "collaboration", "contact", "login"
+  const [portalModal, setPortalModal] = useState(null); // null, "academia", "industries", "startups"
+
+  // Form submission state for Contact Us
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactSubject, setContactSubject] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const [sessionUser, setSessionUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("apnileap-user")) || null;
@@ -557,6 +572,7 @@ function App() {
 
       const { user, token } = response.data;
       setIsAuthenticated(true);
+      setViewMode("dashboard");
       setSessionUser(user);
       setCurrentPersona(user.persona);
       setActiveWorkspace(user.persona === "executive" ? "hub" : user.persona === "moderator" ? "moderator" : user.persona);
@@ -612,6 +628,7 @@ function App() {
 
       const { user, token } = response.data;
       setIsAuthenticated(true);
+      setViewMode("dashboard");
       setSessionUser(user);
       setCurrentPersona(user.persona);
       setActiveWorkspace(user.persona);
@@ -663,6 +680,7 @@ function App() {
 
       const { user, token } = response.data;
       setIsAuthenticated(true);
+      setViewMode("dashboard");
       setSessionUser(user);
       setCurrentPersona(user.persona);
       setActiveWorkspace(user.persona === "executive" ? "hub" : user.persona === "moderator" ? "moderator" : user.persona);
@@ -686,6 +704,8 @@ function App() {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setViewMode("landing");
+    setLandingTab("home");
     setSessionUser(null);
     setCurrentPersona("moderator");
     setActiveWorkspace("hub");
@@ -1879,8 +1899,1308 @@ function App() {
     gap: "14px"
   });
 
-  if (!isAuthenticated) {
-    const recognizedPersona = mapEmailToPersona(loginEmail);
+  const handleContactSubmit = (e) => {
+    e.preventDefault();
+    if (!contactName.trim() || !contactEmail.trim() || !contactSubject.trim() || !contactMessage.trim()) {
+      triggerToast("Please fill in all form fields.", "warning");
+      return;
+    }
+    
+    setIsSubmittingContact(true);
+    setTimeout(() => {
+      triggerToast("Message sent successfully! Our coordinator will contact you shortly.");
+      setContactName("");
+      setContactEmail("");
+      setContactSubject("");
+      setContactMessage("");
+      setIsSubmittingContact(false);
+    }, 1500);
+  };
+
+  const renderPublicNavbar = () => {
+    return (
+      <header style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "20px 60px",
+        background: theme === "dark" ? "#0f172a" : "#ffffff",
+        borderBottom: theme === "dark" ? "1px solid #1e293b" : "1px solid #e2e8f0",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        width: "100%",
+        transition: "var(--transition-smooth)"
+      }}>
+        {/* Brand Logo */}
+        <div 
+          onClick={() => setLandingTab("home")}
+          style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: "var(--font-sans)", fontWeight: "800", fontSize: "28px", cursor: "pointer" }}
+        >
+          <span style={{ color: "#ef4444" }}>Apni</span>
+          <span style={{ color: "#3b529a", position: "relative", display: "inline-flex", alignItems: "center" }}>
+            Leap
+            <span style={{ color: "#10b981", marginLeft: "4px", fontSize: "20px", fontWeight: "900" }}>↗</span>
+          </span>
+        </div>
+
+        {/* Navigation Links */}
+        <nav style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+          {[
+            { key: "home", label: "Home" },
+            { key: "about", label: "About" },
+            { key: "collaboration", label: "Industry-Academia Collaboration" },
+            { key: "contact", label: "Contact Us" }
+          ].map(link => {
+            const isActive = landingTab === link.key;
+            return (
+              <button
+                key={link.key}
+                onClick={() => setLandingTab(link.key)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: isActive 
+                    ? "#ef4444" 
+                    : (theme === "dark" ? "#cbd5e1" : "#3b529a"),
+                  fontWeight: "700",
+                  fontSize: "14.5px",
+                  cursor: "pointer",
+                  padding: "8px 0",
+                  position: "relative",
+                  transition: "var(--transition-smooth)"
+                }}
+              >
+                {link.label}
+                {isActive && (
+                  <div style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "3px",
+                    backgroundColor: "#ef4444",
+                    borderRadius: "2px"
+                  }} />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Action CTA */}
+        <div>
+          {isAuthenticated ? (
+            <button
+              onClick={() => setViewMode("dashboard")}
+              style={{
+                background: "#ef4444",
+                color: "#ffffff",
+                border: "none",
+                padding: "10px 22px",
+                borderRadius: "8px",
+                fontWeight: "750",
+                fontSize: "14px",
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(239, 68, 68, 0.2)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "var(--transition-smooth)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(239, 68, 68, 0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 15px rgba(239, 68, 68, 0.2)";
+              }}
+            >
+              Go to Dashboard <FaChevronRight size={12} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setLandingTab("login")}
+              style={{
+                background: "#3b529a",
+                color: "#ffffff",
+                border: "none",
+                padding: "10px 22px",
+                borderRadius: "8px",
+                fontWeight: "750",
+                fontSize: "14px",
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(59, 82, 154, 0.2)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "var(--transition-smooth)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(59, 82, 154, 0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 15px rgba(59, 82, 154, 0.2)";
+              }}
+            >
+              Portal Sign In <FaLock size={12} />
+            </button>
+          )}
+        </div>
+      </header>
+    );
+  };
+
+  const renderPublicFooter = () => {
+    return (
+      <footer style={{
+        background: "#0a1128",
+        color: "#ffffff",
+        padding: "60px 80px 20px 80px",
+        fontFamily: "var(--font-sans)",
+        width: "100%",
+        borderTop: "1px solid rgba(255,255,255,0.05)"
+      }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: "40px",
+          marginBottom: "40px",
+          maxWidth: "1200px",
+          margin: "0 auto 40px auto"
+        }}>
+          {/* Column 1: Logo & Socials */}
+          <div style={{ flex: "1 1 300px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "800", fontSize: "28px", marginBottom: "20px" }}>
+              <span style={{ color: "#ef4444" }}>Apni</span>
+              <span style={{ color: "#ffffff", position: "relative", display: "inline-flex", alignItems: "center" }}>
+                Leap
+                <span style={{ color: "#10b981", marginLeft: "4px", fontSize: "20px" }}>↗</span>
+              </span>
+            </div>
+            {/* Social Circles */}
+            <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+              {[
+                { icon: <FaGlobe />, url: "#" },
+                { icon: <FaEnvelope />, url: "mailto:info@apnileap.org" },
+                { icon: <FaUser />, url: "#" },
+                { icon: <FaUsers />, url: "#" }
+              ].map((soc, idx) => (
+                <a 
+                  key={idx}
+                  href={soc.url}
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    background: "#122047",
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "16px",
+                    transition: "var(--transition-smooth)",
+                    textDecoration: "none"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#ef4444";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#122047";
+                  }}
+                >
+                  {soc.icon}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Column 2: Quick Links */}
+          <div style={{ flex: "1 1 200px" }}>
+            <h4 style={{ fontSize: "13px", fontWeight: "800", color: "#60a5fa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "20px" }}>
+              Quick Links
+            </h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {[
+                { key: "home", label: "HOME" },
+                { key: "about", label: "ABOUT" },
+                { key: "collaboration", label: "INDUSTRY-ACADEMIA COLLABORATION" },
+                { key: "contact", label: "CONTACT US" }
+              ].map(link => (
+                <button
+                  key={link.key}
+                  onClick={() => {
+                    setLandingTab(link.key);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: landingTab === link.key ? "#ef4444" : "#cbd5e1",
+                    fontWeight: "700",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    padding: 0,
+                    transition: "var(--transition-smooth)",
+                    letterSpacing: "0.5px"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (landingTab !== link.key) e.currentTarget.style.color = "#ffffff";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (landingTab !== link.key) e.currentTarget.style.color = "#cbd5e1";
+                  }}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Column 3: Address */}
+          <div style={{ flex: "1 1 300px" }}>
+            <h4 style={{ fontSize: "13px", fontWeight: "800", color: "#60a5fa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "20px" }}>
+              Address
+            </h4>
+            <p style={{ fontSize: "13.5px", color: "#94a3b8", lineHeight: "1.7", fontWeight: "500" }}>
+              NETRA Accelerator Foundation CTIE, RH Kulkarni Memorial Complex, BVB Campus, Revenue Colony, Vidya Nagar BVB, Hubli Eng College, Dharwad, Hubli 580031, Karnataka, India
+            </p>
+          </div>
+        </div>
+
+        {/* Copyright line */}
+        <div style={{
+          borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+          paddingTop: "20px",
+          textAlign: "center",
+          fontSize: "12px",
+          color: "#64748b",
+          fontWeight: "600",
+          maxWidth: "1200px",
+          margin: "0 auto"
+        }}>
+          Copyright © 2026 ApniLeap | Powered by ArrayPointer
+        </div>
+      </footer>
+    );
+  };
+
+  const renderPortalModals = () => {
+    if (!portalModal) return null;
+    
+    let title = "";
+    let content = null;
+    
+    if (portalModal === "academia") {
+      title = "Select Campus Workspace";
+      const spokesList = [
+        { id: "3", name: "KLE Tech Hub Campus", mentor: "coordinator@kle.edu", student: "student@kle.edu" },
+        { id: "101", name: "COEP Campus", mentor: "coordinator@coep.edu", student: "student@coep.edu" },
+        { id: "102", name: "MMCOEP Campus", mentor: "coordinator@mmcoep.edu", student: "student@mmcoep.edu" },
+        { id: "103", name: "RIT Campus", mentor: "coordinator@rit.edu", student: "student@rit.edu" }
+      ];
+      
+      content = (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
+          {spokesList.map(sp => (
+            <div key={sp.id} style={{
+              padding: "16px",
+              borderRadius: "12px",
+              background: theme === "dark" ? "#1e293b" : "#f8fafc",
+              border: theme === "dark" ? "1px solid #334155" : "1px solid #e2e8f0",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px"
+            }}>
+              <span style={{ fontWeight: "800", fontSize: "14.5px", color: theme === "dark" ? "#f8fafc" : "#3b529a" }}>{sp.name}</span>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <button
+                  onClick={() => {
+                    handleQuickConnect(sp.mentor);
+                    setPortalModal(null);
+                  }}
+                  style={{
+                    background: "#3b529a",
+                    color: "white",
+                    border: "none",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontWeight: "700",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    transition: "var(--transition-smooth)"
+                  }}
+                >
+                  Faculty Coordinator
+                </button>
+                <button
+                  onClick={() => {
+                    handleQuickConnect(sp.student);
+                    setPortalModal(null);
+                  }}
+                  style={{
+                    background: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontWeight: "700",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    transition: "var(--transition-smooth)"
+                  }}
+                >
+                  Student Developer Space
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    } else if (portalModal === "industries") {
+      title = "Select Corporate Partner Workspace";
+      content = (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
+          <button
+            onClick={() => {
+              handleQuickConnect("moderator@apnileap.com");
+              setPortalModal(null);
+            }}
+            style={{
+              background: "#3b529a",
+              color: "white",
+              border: "none",
+              padding: "12px",
+              borderRadius: "8px",
+              fontWeight: "750",
+              fontSize: "14px",
+              cursor: "pointer",
+              transition: "var(--transition-smooth)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}
+          >
+            <FaTools /> Central Portfolio & Moderation Hub
+          </button>
+          <button
+            onClick={() => {
+              handleQuickConnect("sponsor@nvidia.com");
+              setPortalModal(null);
+            }}
+            style={{
+              background: "#3b529a",
+              color: "white",
+              border: "none",
+              padding: "12px",
+              borderRadius: "8px",
+              fontWeight: "750",
+              fontSize: "14px",
+              cursor: "pointer",
+              transition: "var(--transition-smooth)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}
+          >
+            <FaDesktop /> NVIDIA Corporate Sponsorship Portal
+          </button>
+        </div>
+      );
+    } else if (portalModal === "startups") {
+      title = "Select Startup & Venture Console";
+      content = (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
+          <button
+            onClick={() => {
+              handleQuickConnect("admin@apnileap.com");
+              setPortalModal(null);
+            }}
+            style={{
+              background: "#ef4444",
+              color: "white",
+              border: "none",
+              padding: "12px",
+              borderRadius: "8px",
+              fontWeight: "750",
+              fontSize: "14px",
+              cursor: "pointer",
+              transition: "var(--transition-smooth)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}
+          >
+            <FaCrown /> Executive Administration Console
+          </button>
+        </div>
+      );
+    }
+    
+    return (
+      <div style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        background: "rgba(15, 23, 42, 0.6)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000
+      }}>
+        <div style={{
+          background: theme === "dark" ? "#0f172a" : "#ffffff",
+          border: theme === "dark" ? "1px solid #1e293b" : "1px solid #e2e8f0",
+          borderRadius: "16px",
+          width: "90%",
+          maxWidth: "420px",
+          padding: "24px",
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          position: "relative"
+        }}>
+          <button
+            onClick={() => setPortalModal(null)}
+            style={{
+              position: "absolute",
+              top: "16px",
+              right: "16px",
+              background: "transparent",
+              border: "none",
+              color: theme === "dark" ? "#cbd5e1" : "#475569",
+              cursor: "pointer",
+              fontSize: "18px"
+            }}
+          >
+            <FaTimes />
+          </button>
+          
+          <h3 style={{
+            fontSize: "18px",
+            fontWeight: "800",
+            color: theme === "dark" ? "#ffffff" : "#0f172a",
+            textAlign: "center"
+          }}>
+            {title}
+          </h3>
+          
+          {content}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPublicTabContent = () => {
+    if (landingTab === "home") {
+      return (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "100%",
+          background: theme === "dark" ? "#0b0f19" : "#ffffff",
+          padding: "60px 20px",
+          transition: "var(--transition-smooth)"
+        }}>
+          {/* Page Heading */}
+          <h2 style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: "850",
+            fontSize: "36px",
+            color: theme === "dark" ? "#60a5fa" : "#1e3a8a",
+            marginBottom: "40px",
+            letterSpacing: "-0.5px"
+          }}>
+            ApniLeap Ecosystem Partners
+          </h2>
+          
+          {/* Main Triple-Column Card */}
+          <div style={{
+            background: theme === "dark" ? "#1e293b" : "#ffffff",
+            border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.04)",
+            borderRadius: "32px",
+            boxShadow: theme === "dark" ? "0 10px 30px rgba(0,0,0,0.3)" : "0 15px 45px rgba(0,0,0,0.05)",
+            width: "100%",
+            maxWidth: "1150px",
+            padding: "50px 40px",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gap: "40px",
+            transition: "var(--transition-smooth)"
+          }}>
+            {/* Column 1: Academia */}
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center"
+            }}>
+              <div style={{ marginBottom: "20px" }}>
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Academia</h3>
+              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Student & Faculty Development</p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                <button 
+                  onClick={() => setPortalModal("academia")}
+                  style={{
+                    background: "#0048ba",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    fontWeight: "750",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                >
+                  Ecosystem & Product Incubation
+                </button>
+                <button 
+                  onClick={() => setPortalModal("academia")}
+                  style={{
+                    background: "#0048ba",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    fontWeight: "750",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                >
+                  Placement & Entrepreneurship
+                </button>
+              </div>
+            </div>
+            
+            {/* Column 2: Industries */}
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center"
+            }}>
+              <div style={{ marginBottom: "20px" }}>
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Industries</h3>
+              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Enterprise Collaborations</p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                <button 
+                  onClick={() => setPortalModal("industries")}
+                  style={{
+                    background: "#0048ba",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    fontWeight: "750",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                >
+                  Product Design & Development
+                </button>
+                <button 
+                  onClick={() => setPortalModal("industries")}
+                  style={{
+                    background: "#0048ba",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    fontWeight: "750",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                >
+                  Joint Research & IP Creation
+                </button>
+              </div>
+            </div>
+            
+            {/* Column 3: Startups */}
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center"
+            }}>
+              <div style={{ marginBottom: "20px" }}>
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4.5 16.5c-1.5 1.25-2.5 3.5-2.5 3.5s2.25-1 3.5-2.5M12 2C6 2 2 6 2 12c0 2.5 1 4.5 2.5 6h11c1.5-1.5 2.5-3.5 2.5-6 0-6-4-10-10-10z"/>
+                  <path d="M9 15l6-6M11.5 6.5A1.5 1.5 0 1 0 10 5a1.5 1.5 0 0 0 1.5 1.5z"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Startups</h3>
+              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Venture & Startup Ecosystem</p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                <button 
+                  onClick={() => setPortalModal("startups")}
+                  style={{
+                    background: "#0048ba",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    fontWeight: "750",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                >
+                  Acceleration & Mentorship
+                </button>
+                <button 
+                  onClick={() => setPortalModal("startups")}
+                  style={{
+                    background: "#0048ba",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    fontWeight: "750",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "var(--transition-smooth)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                >
+                  Capital & Venture Funding
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Bottom Call to Action */}
+          <button 
+            onClick={() => setLandingTab("contact")}
+            style={{
+              marginTop: "40px",
+              background: "#0048ba",
+              color: "#ffffff",
+              border: "none",
+              padding: "14px 28px",
+              borderRadius: "8px",
+              fontWeight: "750",
+              fontSize: "15px",
+              cursor: "pointer",
+              boxShadow: "0 4px 15px rgba(0, 72, 186, 0.2)",
+              transition: "var(--transition-smooth)"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 72, 186, 0.35)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 72, 186, 0.2)";
+            }}
+          >
+            Inquire for Partnership
+          </button>
+        </div>
+      );
+    } else if (landingTab === "about") {
+      const coFounders = [
+        {
+          name: "Vivek Pawar",
+          region: "India",
+          initials: "VP",
+          bulletPoints: [
+            "Vivek's previous role was the CEO of the Deshpande Foundation and continues to serve as an Advisor on the Academic council of BVB KLE Tech University",
+            "Prior, Vivek was the Founder and Executive Chairman of Sankalp Semiconductors which he incubated at BVBKLE Tech. Acquired by HCL in 2019."
+          ]
+        },
+        {
+          name: "Prof. Dr. Ashok Shettar",
+          region: "India",
+          initials: "AS",
+          bulletPoints: [
+            "Professor Shettar is Pro-Chancellor of KLE Tech University and previously served as the Principal of BVB College of Engineering",
+            "Nationally recognized thought leader in engineering education and industry collaboration, he has led KLE Tech for past 20 years."
+          ]
+        },
+        {
+          name: "Mahesh Jadhav",
+          region: "USA",
+          initials: "MJ",
+          bulletPoints: [
+            "Mahesh was one of the Founding Investors and Board Members of Sankalp Semiconductors and serves as a Board Member of BVB KLE Tech Incubation Center",
+            "Mahesh is a Private Equity Investor (Mubadala Capital). Prior, he worked in R&D, Finance & Strategic Leadership roles (Tata, Siemens, PwC, Accenture, Cognizant)."
+          ]
+        }
+      ];
+
+      return (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "100%",
+          background: theme === "dark" ? "#0b0f19" : "#ffffff",
+          padding: "60px 20px",
+          transition: "var(--transition-smooth)"
+        }}>
+          <h2 style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: "850",
+            fontSize: "36px",
+            color: theme === "dark" ? "#60a5fa" : "#1e3a8a",
+            marginBottom: "50px",
+            letterSpacing: "-0.5px"
+          }}>
+            ApniLeap Co-Founders
+          </h2>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: "40px", width: "100%", maxWidth: "900px" }}>
+            {coFounders.map((founder, idx) => (
+              <div key={idx} style={{
+                display: "flex",
+                background: theme === "dark" ? "#1e293b" : "#ffffff",
+                border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.04)",
+                borderRadius: "16px",
+                boxShadow: theme === "dark" ? "0 4px 20px rgba(0,0,0,0.2)" : "0 10px 30px rgba(0,0,0,0.03)",
+                overflow: "hidden",
+                flexDirection: "row",
+                flexWrap: "wrap",
+                transition: "var(--transition-smooth)"
+              }}>
+                {/* Left Profile Panel */}
+                <div style={{
+                  flex: "1 1 200px",
+                  background: "linear-gradient(135deg, #ffeef0, #ffd3d6)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "30px 20px",
+                  textAlign: "center"
+                }}>
+                  {/* Styled Avatar Placeholder */}
+                  <div style={{
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    border: "3px solid #3b529a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: "900",
+                    fontSize: "32px",
+                    color: "#3b529a",
+                    marginBottom: "16px",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+                  }}>
+                    {founder.initials}
+                  </div>
+                  <h4 style={{ fontSize: "18px", fontWeight: "850", color: "#3b529a", margin: "0" }}>{founder.name}</h4>
+                  <span style={{ fontSize: "12px", fontWeight: "750", color: "#3b529a", textTransform: "uppercase", opacity: 0.8 }}>-{founder.region}</span>
+                </div>
+                
+                {/* Right Content Panel */}
+                <div style={{
+                  flex: "2 1 400px",
+                  padding: "30px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  borderLeft: theme === "dark" ? "1px solid #334155" : "1px solid #f1f5f9"
+                }}>
+                  <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {founder.bulletPoints.map((bp, bpIdx) => (
+                      <li key={bpIdx} style={{
+                        position: "relative",
+                        paddingLeft: "24px",
+                        fontSize: "14.5px",
+                        lineHeight: "1.7",
+                        color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                        fontWeight: "500"
+                      }}>
+                        <span style={{
+                          position: "absolute",
+                          left: "4px",
+                          top: "8px",
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          background: "#0055d4"
+                        }} />
+                        {bp}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    } else if (landingTab === "collaboration") {
+      return (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "100%",
+          background: theme === "dark" ? "#0b0f19" : "#ffffff",
+          padding: "60px 20px",
+          transition: "var(--transition-smooth)"
+        }}>
+          <h2 style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: "850",
+            fontSize: "36px",
+            color: theme === "dark" ? "#60a5fa" : "#1e3a8a",
+            textAlign: "center",
+            margin: "0 0 10px 0",
+            letterSpacing: "-0.5px"
+          }}>
+            ApniLeap Operating Model and Governance
+          </h2>
+          <p style={{
+            fontSize: "16px",
+            color: theme === "dark" ? "#94a3b8" : "#475569",
+            fontWeight: "600",
+            textAlign: "center",
+            marginBottom: "50px",
+            maxWidth: "800px"
+          }}>
+            Build shared goals, strategy and research collaboration through a Hub-and-Spoke operating model
+          </p>
+          
+          <div style={{
+            display: "flex",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: "50px",
+            width: "100%",
+            maxWidth: "1150px",
+            alignItems: "center",
+            justifyContent: "center"
+          }}>
+            {/* Venn Diagram Column */}
+            <div style={{
+              flex: "1 1 450px",
+              maxWidth: "500px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              {/* Venn Diagram SVG Vector */}
+              <svg width="450" height="420" viewBox="0 0 450 420" style={{ maxWidth: "100%", height: "auto" }}>
+                <defs>
+                  <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                    <feDropShadow dx="0" dy="8" stdDeviation="6" floodOpacity="0.08" />
+                  </filter>
+                </defs>
+                
+                {/* Academic Institution Circle */}
+                <circle cx="180" cy="180" r="110" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" filter="url(#shadow)" />
+                {/* Learning Ecosystem Circle */}
+                <circle cx="170" cy="270" r="100" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" filter="url(#shadow)" />
+                {/* Research Ecosystem Circle */}
+                <circle cx="280" cy="250" r="100" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" filter="url(#shadow)" />
+                
+                {/* Overlaps and details */}
+                <text x="180" y="110" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="12.5">Academic Institution</text>
+                <text x="120" y="270" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="12">Learning</text>
+                <text x="120" y="286" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="12">Ecosystem</text>
+                <text x="120" y="302" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="11">(Students)</text>
+                
+                <text x="330" y="250" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="12">Research</text>
+                <text x="330" y="266" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="12">Ecosystem</text>
+                <text x="330" y="282" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="11">(Faculty)</text>
+                
+                <text x="250" y="190" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="11.5">Industry and</text>
+                <text x="250" y="206" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="11.5">Startup Ecosystem</text>
+                
+                {/* Center ApniLeap white circle */}
+                <circle cx="225" cy="225" r="46" fill="#ffffff" stroke="#10b981" strokeWidth="3" filter="url(#shadow)" />
+                <text x="225" y="222" textAnchor="middle" fill="#ef4444" fontWeight="900" fontSize="11">Apni<tspan fill="#3b529a">Leap</tspan></text>
+                <text x="225" y="238" textAnchor="middle" fill="#10b981" fontWeight="950" fontSize="16">↗</text>
+                
+                {/* Title and notes at the bottom */}
+                <text x="225" y="390" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="15">IAC Ecosystem Model</text>
+              </svg>
+              <div style={{
+                fontSize: "12px",
+                color: theme === "dark" ? "#64748b" : "#475569",
+                fontWeight: "600",
+                marginTop: "10px",
+                textAlign: "center",
+                lineHeight: "1.4",
+                maxWidth: "360px"
+              }}>
+                Note: Off-campus Central Hub (not shown) managed by Netra Accelerator Foundation
+              </div>
+            </div>
+            
+            {/* Detail Cards Column */}
+            <div style={{
+              flex: "1 1 450px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "24px"
+            }}>
+              {[
+                {
+                  points: [
+                    "Support applied research and development by",
+                    "Fostering an innovation mindset in students",
+                    "While enabling scalable collaboration between academia & industry"
+                  ]
+                },
+                {
+                  points: [
+                    "Align institutional strategy & goals with industry and startups",
+                    "Academic institutions, faculty, students, startups and industry partners have defined roles",
+                    "ApniLeap Campus Center governance by a Board comprising representatives from the Institution, Industry, Academia and ApniLeap"
+                  ]
+                },
+                {
+                  points: [
+                    "Drive change from within – ApniLeap Centers on campuses",
+                    "Managed by PoPs: Professor of Practice and Students",
+                    "Supported by the ApniLeap Central-Hub providing IP, frameworks, and engagement models for effective collaboration"
+                  ]
+                }
+              ].map((card, idx) => (
+                <div key={idx} style={{
+                  background: theme === "dark" ? "#1e293b" : "#f8fafc",
+                  borderLeft: "5px solid #3b529a",
+                  borderRadius: "0 12px 12px 0",
+                  padding: "24px",
+                  boxShadow: theme === "dark" ? "0 4px 15px rgba(0,0,0,0.15)" : "0 4px 12px rgba(0,0,0,0.02)",
+                  transition: "var(--transition-smooth)"
+                }}>
+                  <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {card.points.map((pt, ptIdx) => (
+                      <li key={ptIdx} style={{
+                        position: "relative",
+                        paddingLeft: "20px",
+                        fontSize: "14px",
+                        lineHeight: "1.6",
+                        color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                        fontWeight: "600"
+                      }}>
+                        <span style={{
+                          position: "absolute",
+                          left: "2px",
+                          top: "7px",
+                          width: "5px",
+                          height: "5px",
+                          borderRadius: "50%",
+                          background: "#ef4444"
+                        }} />
+                        {pt}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    } else if (landingTab === "contact") {
+      return (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "100%",
+          background: theme === "dark" ? "#0b0f19" : "#ffffff",
+          padding: "60px 20px",
+          transition: "var(--transition-smooth)"
+        }}>
+          <h2 style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: "850",
+            fontSize: "36px",
+            color: theme === "dark" ? "#60a5fa" : "#1e3a8a",
+            marginBottom: "50px",
+            letterSpacing: "-0.5px"
+          }}>
+            Contact Us
+          </h2>
+          
+          <div style={{
+            display: "flex",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: "50px",
+            width: "100%",
+            maxWidth: "1050px",
+            justifyContent: "center"
+          }}>
+            {/* Info Panel */}
+            <div style={{
+              flex: "1 1 350px",
+              maxWidth: "400px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "24px"
+            }}>
+              <h3 style={{ fontSize: "22px", fontWeight: "800", color: theme === "dark" ? "#ffffff" : "#1e3a8a" }}>Get in Touch</h3>
+              <p style={{ fontSize: "14.5px", color: theme === "dark" ? "#cbd5e1" : "#475569", lineHeight: "1.6", fontWeight: "500" }}>
+                Have questions about the ApniLeap platform, campus integration, or corporate sponsorship? Contact our administration team using the details below or send us a message.
+              </p>
+              
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+                marginTop: "10px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                  <div style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "10px",
+                    background: "rgba(59, 82, 154, 0.1)",
+                    color: "#3b529a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "18px"
+                  }}>
+                    <FaEnvelope />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Email</span>
+                    <a href="mailto:info@apnileap.org" style={{ fontSize: "15px", fontWeight: "700", color: theme === "dark" ? "#60a5fa" : "#3b529a", textDecoration: "none" }}>info@apnileap.org</a>
+                  </div>
+                </div>
+                
+                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                  <div style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "10px",
+                    background: "rgba(59, 82, 154, 0.1)",
+                    color: "#3b529a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "18px"
+                  }}>
+                    <FaGlobe />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Phone Support</span>
+                    <span style={{ fontSize: "15px", fontWeight: "700", color: theme === "dark" ? "#cbd5e1" : "#1e293b" }}>+91 (0836) 2378101</span>
+                  </div>
+                </div>
+                
+                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                  <div style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "10px",
+                    background: "rgba(59, 82, 154, 0.1)",
+                    color: "#3b529a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "18px"
+                  }}>
+                    <FaBuilding />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Office Address</span>
+                    <span style={{ fontSize: "14px", fontWeight: "600", color: theme === "dark" ? "#cbd5e1" : "#475569", lineHeight: "1.4" }}>
+                      CTIE Memorial Complex, BVB KLE Tech Campus, Vidya Nagar, Hubli
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Form Panel */}
+            <div style={{
+              flex: "1 1 450px",
+              maxWidth: "500px",
+              background: theme === "dark" ? "#1e293b" : "#ffffff",
+              border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.04)",
+              borderRadius: "16px",
+              padding: "30px",
+              boxShadow: theme === "dark" ? "0 10px 30px rgba(0,0,0,0.3)" : "0 10px 30px rgba(0,0,0,0.03)",
+              transition: "var(--transition-smooth)"
+            }}>
+              <form onSubmit={handleContactSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "800", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "6px", textTransform: "uppercase" }}>Full Name</label>
+                  <input 
+                    type="text" 
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    required
+                    placeholder="Enter your name"
+                    style={{
+                      background: theme === "dark" ? "#0f172a" : "#f8fafc",
+                      border: theme === "dark" ? "1px solid #334155" : "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      padding: "12px 14px",
+                      fontSize: "14px",
+                      color: theme === "dark" ? "#ffffff" : "#0f172a",
+                      width: "100%",
+                      outline: "none"
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "800", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "6px", textTransform: "uppercase" }}>Email Address</label>
+                  <input 
+                    type="email" 
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    required
+                    placeholder="Enter your email"
+                    style={{
+                      background: theme === "dark" ? "#0f172a" : "#f8fafc",
+                      border: theme === "dark" ? "1px solid #334155" : "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      padding: "12px 14px",
+                      fontSize: "14px",
+                      color: theme === "dark" ? "#ffffff" : "#0f172a",
+                      width: "100%",
+                      outline: "none"
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "800", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "6px", textTransform: "uppercase" }}>Subject</label>
+                  <input 
+                    type="text" 
+                    value={contactSubject}
+                    onChange={(e) => setContactSubject(e.target.value)}
+                    required
+                    placeholder="Message subject"
+                    style={{
+                      background: theme === "dark" ? "#0f172a" : "#f8fafc",
+                      border: theme === "dark" ? "1px solid #334155" : "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      padding: "12px 14px",
+                      fontSize: "14px",
+                      color: theme === "dark" ? "#ffffff" : "#0f172a",
+                      width: "100%",
+                      outline: "none"
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "800", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "6px", textTransform: "uppercase" }}>Message</label>
+                  <textarea 
+                    value={contactMessage}
+                    onChange={(e) => setContactMessage(e.target.value)}
+                    required
+                    placeholder="Type your message here..."
+                    rows={4}
+                    style={{
+                      background: theme === "dark" ? "#0f172a" : "#f8fafc",
+                      border: theme === "dark" ? "1px solid #334155" : "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      padding: "12px 14px",
+                      fontSize: "14px",
+                      color: theme === "dark" ? "#ffffff" : "#0f172a",
+                      width: "100%",
+                      outline: "none",
+                      resize: "vertical"
+                    }}
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isSubmittingContact}
+                  style={{
+                    background: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    fontWeight: "750",
+                    fontSize: "15px",
+                    cursor: isSubmittingContact ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    boxShadow: "0 4px 15px rgba(239, 68, 68, 0.2)",
+                    transition: "var(--transition-smooth)",
+                    opacity: isSubmittingContact ? 0.8 : 1
+                  }}
+                >
+                  {isSubmittingContact ? (
+                    <>
+                      <FaSyncAlt style={{ animation: "spin 1.5s infinite linear" }} />
+                      <span>Sending message...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaPaperPlane />
+                      <span>Send Message</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  };
+
+  if (viewMode === "landing") {
+    if (landingTab === "login") {
+      if (isAuthenticated) {
+        setTimeout(() => setViewMode("dashboard"), 0);
+        return null;
+      }
+      const recognizedPersona = mapEmailToPersona(loginEmail);
 
     return (
       <div style={{
@@ -1992,25 +3312,26 @@ function App() {
             <div className="login-sphere sphere-3" style={{ top: "35%", left: "30%" }} />
             
             {/* Branding Orb Logo */}
-            <div style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", gap: "16px" }}>
-              <div style={{
-                background: "white",
-                width: "60px",
-                height: "60px",
-                borderRadius: "16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "950",
-                color: "#3b529a",
-                fontSize: "26px",
-                boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15), 0 0 20px rgba(255, 255, 255, 0.1)"
-              }}>
-                AL
-              </div>
-              <span style={{ fontSize: "32px", fontWeight: "950", letterSpacing: "-0.8px", color: "white" }}>
-                ApniLeap <span style={{ opacity: 0.85, fontWeight: "400" }}>Hub</span>
+            <div 
+              onClick={() => setLandingTab("home")}
+              style={{ 
+                position: "relative", 
+                zIndex: 10, 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "6px", 
+                fontFamily: "var(--font-sans)", 
+                fontWeight: "800", 
+                fontSize: "36px", 
+                cursor: "pointer" 
+              }}
+            >
+              <span style={{ color: "#ef4444" }}>Apni</span>
+              <span style={{ color: "#ffffff", display: "inline-flex", alignItems: "center" }}>
+                Leap
+                <span style={{ color: "#10b981", marginLeft: "6px", fontSize: "26px", fontWeight: "900" }}>↗</span>
               </span>
+              <span style={{ opacity: 0.85, fontWeight: "400", marginLeft: "10px", color: "#ffffff" }}>Hub</span>
             </div>
 
             {/* Core welcome text matching reference picture layout */}
@@ -2323,7 +3644,7 @@ function App() {
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
-            background: "var(--bg-card)",
+            background: theme === "dark" ? "#0f172a" : "#ffffff",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
             borderLeft: "1px solid var(--border-subtle)",
@@ -2523,13 +3844,13 @@ function App() {
                         marginTop: "10px",
                         padding: "13px 20px",
                         borderRadius: "10px",
-                        background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                        background: "#ef4444",
                         color: "#ffffff",
                         border: "none",
                         fontWeight: "800",
                         fontSize: "14.5px",
                         cursor: isLoggingIn ? "not-allowed" : "pointer",
-                        boxShadow: "0 6px 15px rgba(59, 82, 154, 0.22)",
+                        boxShadow: "0 6px 15px rgba(239, 68, 68, 0.22)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -2870,13 +4191,13 @@ function App() {
                         marginTop: "10px",
                         padding: "13px 20px",
                         borderRadius: "10px",
-                        background: "linear-gradient(135deg, var(--secondary), #a855f7)",
+                        background: "#ef4444",
                         color: "#ffffff",
                         border: "none",
                         fontWeight: "800",
                         fontSize: "14.5px",
                         cursor: isRegistering ? "not-allowed" : "pointer",
-                        boxShadow: "0 6px 15px rgba(99, 102, 241, 0.22)",
+                        boxShadow: "0 6px 15px rgba(239, 68, 68, 0.22)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -2922,6 +4243,41 @@ function App() {
         </div>
       </div>
     );
+    } else {
+      // Render public site landing pages
+      return (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+          width: "100vw",
+          background: theme === "dark" ? "#0b0f19" : "#ffffff",
+          fontFamily: "var(--font-sans)",
+          overflowX: "hidden",
+          overflowY: "auto",
+          transition: "var(--transition-smooth)"
+        }}>
+          {renderPublicNavbar()}
+          <main style={{ flex: 1, width: "100%" }}>
+            {renderPublicTabContent()}
+          </main>
+          {renderPublicFooter()}
+          {renderPortalModals()}
+          
+          {/* Toast notifications container */}
+          <div className="toast-container">
+            {toasts.map((toast) => (
+              <div key={toast.id} className="toast" style={{
+                borderLeftColor: toast.type === "warning" ? "var(--accent)" : "var(--primary)"
+              }}>
+                {toast.type === "warning" ? <FaExclamationCircle style={{ color: "var(--accent)" }} /> : <FaCheckCircle style={{ color: "var(--primary)" }} />}
+                <span>{toast.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
   }
 
   const isCentralAdmin = currentPersona === "moderator" || currentPersona === "executive";
@@ -2993,9 +4349,9 @@ function App() {
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             style={{
-              background: "rgba(255, 255, 255, 0.15)",
-              border: "none",
-              color: "#ffffff",
+              background: "var(--sidebar-btn-bg)",
+              border: "1px solid var(--sidebar-btn-border)",
+              color: "var(--sidebar-btn-color)",
               cursor: "pointer",
               padding: "8px",
               borderRadius: "10px",
@@ -3005,8 +4361,8 @@ function App() {
               marginBottom: "16px",
               transition: "var(--transition-smooth)",
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.25)"}
-            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)"}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--sidebar-hover-bg)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "var(--sidebar-btn-bg)"}
             title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {isSidebarCollapsed ? <FaChevronRight size={16} /> : <FaChevronLeft size={16} />}
@@ -3014,22 +4370,27 @@ function App() {
 
           {/* Rail Utility Icons */}
           <div style={{ display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+            {/* View Landing/Public Website */}
+            <div
+              onClick={() => {
+                setViewMode("landing");
+                setLandingTab("home");
+                triggerToast("Navigating to Public Landing Page");
+              }}
+              className="sidebar-rail-icon"
+              title="Public Home Page"
+            >
+              <FaGlobe size={20} />
+            </div>
+
             {isCentralAdmin ? (
               <div
                 onClick={() => {
                   setActiveWorkspace("hub");
-                  triggerToast("Switched Workspace: Executive HUB Portal");
+                  triggerToast("Switched Workspace: Executive Portfolio Hub");
                 }}
-                style={{
-                  color: "#ffffff",
-                  opacity: activeWorkspace === "hub" ? 1 : 0.75,
-                  cursor: "pointer",
-                  padding: "10px",
-                  borderRadius: "12px",
-                  background: activeWorkspace === "hub" ? "rgba(255,255,255,0.15)" : "transparent",
-                  transition: "var(--transition-smooth)"
-                }}
-                title="Executive Hub"
+                className={`sidebar-rail-icon ${activeWorkspace === "hub" ? "active" : ""}`}
+                title="Executive Portfolio Hub"
               >
                 <FaHome size={20} />
               </div>
@@ -3038,18 +4399,10 @@ function App() {
                 <div
                   onClick={() => {
                     setActiveWorkspace("moderator");
-                    triggerToast("Switched Workspace: Moderator Portal");
+                    triggerToast("Switched Workspace: Central Moderation Portal");
                   }}
-                  style={{
-                    color: "#ffffff",
-                    opacity: activeWorkspace === "moderator" ? 1 : 0.75,
-                    cursor: "pointer",
-                    padding: "10px",
-                    borderRadius: "12px",
-                    background: activeWorkspace === "moderator" ? "rgba(255,255,255,0.15)" : "transparent",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  title="Moderator Portal"
+                  className={`sidebar-rail-icon ${activeWorkspace === "moderator" ? "active" : ""}`}
+                  title="Central Moderation Portal"
                 >
                   <FaBook size={20} />
                 </div>
@@ -3057,17 +4410,9 @@ function App() {
                 <div
                   onClick={() => {
                     setActiveWorkspace("meetings");
-                    triggerToast("Switched Workspace: Meetings & Syncs");
+                    triggerToast("Switched Workspace: Collaboration & Sync Meetings");
                   }}
-                  style={{
-                    color: "#ffffff",
-                    opacity: activeWorkspace === "meetings" ? 1 : 0.75,
-                    cursor: "pointer",
-                    padding: "10px",
-                    borderRadius: "12px",
-                    background: activeWorkspace === "meetings" ? "rgba(255,255,255,0.15)" : "transparent",
-                    transition: "var(--transition-smooth)"
-                  }}
+                  className={`sidebar-rail-icon ${activeWorkspace === "meetings" ? "active" : ""}`}
                   title="Sync Schedule"
                 >
                   <FaCalendarAlt size={20} />
@@ -3080,15 +4425,7 @@ function App() {
                   setActiveView("dashboard");
                   triggerToast(`Switched Workspace: Sponsor Dashboard`);
                 }}
-                style={{
-                  color: "#ffffff",
-                  opacity: (activeWorkspace === currentPersona && activeView === "dashboard") ? 1 : 0.75,
-                  cursor: "pointer",
-                  padding: "10px",
-                  borderRadius: "12px",
-                  background: (activeWorkspace === currentPersona && activeView === "dashboard") ? "rgba(255,255,255,0.15)" : "transparent",
-                  transition: "var(--transition-smooth)"
-                }}
+                className={`sidebar-rail-icon ${(activeWorkspace === currentPersona && activeView === "dashboard") ? "active" : ""}`}
                 title="Sponsor Portal"
               >
                 <FaHome size={20} />
@@ -3101,15 +4438,7 @@ function App() {
                     setActiveView("dashboard");
                     triggerToast(`Switched Workspace: Spoke Dashboard`);
                   }}
-                  style={{
-                    color: "#ffffff",
-                    opacity: (activeWorkspace === currentPersona && activeView === "dashboard") ? 1 : 0.75,
-                    cursor: "pointer",
-                    padding: "10px",
-                    borderRadius: "12px",
-                    background: (activeWorkspace === currentPersona && activeView === "dashboard") ? "rgba(255,255,255,0.15)" : "transparent",
-                    transition: "var(--transition-smooth)"
-                  }}
+                  className={`sidebar-rail-icon ${(activeWorkspace === currentPersona && activeView === "dashboard") ? "active" : ""}`}
                   title="Spoke Dashboard"
                 >
                   <FaHome size={20} />
@@ -3121,15 +4450,7 @@ function App() {
                     setActiveView("kanban");
                     triggerToast(`Switched Workspace: Spoke Sprint Kanban`);
                   }}
-                  style={{
-                    color: "#ffffff",
-                    opacity: (activeWorkspace === currentPersona && activeView === "kanban") ? 1 : 0.75,
-                    cursor: "pointer",
-                    padding: "10px",
-                    borderRadius: "12px",
-                    background: (activeWorkspace === currentPersona && activeView === "kanban") ? "rgba(255,255,255,0.15)" : "transparent",
-                    transition: "var(--transition-smooth)"
-                  }}
+                  className={`sidebar-rail-icon ${(activeWorkspace === currentPersona && activeView === "kanban") ? "active" : ""}`}
                   title="Sprint Kanban Board"
                 >
                   <FaTasks size={20} />
@@ -3144,15 +4465,7 @@ function App() {
                     setShowChatDrawer(true);
                     triggerToast("Opening FIP Cohort Live Chat...");
                   }}
-                  style={{
-                    color: "#ffffff",
-                    opacity: showChatDrawer ? 1 : 0.75,
-                    cursor: "pointer",
-                    padding: "10px",
-                    borderRadius: "12px",
-                    background: showChatDrawer ? "rgba(255,255,255,0.15)" : "transparent",
-                    transition: "var(--transition-smooth)"
-                  }}
+                  className={`sidebar-rail-icon ${showChatDrawer ? "active" : ""}`}
                   title="Cohort Forums Chat"
                 >
                   <FaComments size={20} />
@@ -3163,15 +4476,7 @@ function App() {
                     setShowCohortModal(true);
                     triggerToast("Opening Academic Cohort Progress...");
                   }}
-                  style={{
-                    color: "#ffffff",
-                    opacity: showCohortModal ? 1 : 0.75,
-                    cursor: "pointer",
-                    padding: "10px",
-                    borderRadius: "12px",
-                    background: showCohortModal ? "rgba(255,255,255,0.15)" : "transparent",
-                    transition: "var(--transition-smooth)"
-                  }}
+                  className={`sidebar-rail-icon ${showCohortModal ? "active" : ""}`}
                   title="Academic Cohorts"
                 >
                   <FaGraduationCap size={20} />
@@ -3182,15 +4487,7 @@ function App() {
                     setShowSettingsModal(true);
                     triggerToast("Opening System Settings...");
                   }}
-                  style={{
-                    color: "#ffffff",
-                    opacity: showSettingsModal ? 1 : 0.75,
-                    cursor: "pointer",
-                    padding: "10px",
-                    borderRadius: "12px",
-                    background: showSettingsModal ? "rgba(255,255,255,0.15)" : "transparent",
-                    transition: "var(--transition-smooth)"
-                  }}
+                  className={`sidebar-rail-icon ${showSettingsModal ? "active" : ""}`}
                   title="System Settings"
                 >
                   <FaCog size={20} />
@@ -3215,23 +4512,27 @@ function App() {
           }}
         >
           {/* Sidebar Logo Header */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px", paddingLeft: "12px" }}>
-            <div style={{
-              background: "rgba(255, 255, 255, 0.15)",
-              width: "34px",
-              height: "34px",
-              borderRadius: "10px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: "900",
-              color: "white",
-              fontSize: "16px"
-            }}>
-              ⬢
-            </div>
-            <span style={{ fontSize: "21px", fontWeight: "900", letterSpacing: "-0.5px", color: "#ffffff" }}>
-              Smart
+          <div 
+            onClick={() => {
+              setViewMode("landing");
+              setLandingTab("home");
+            }}
+            style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "6px", 
+              fontFamily: "var(--font-sans)", 
+              fontWeight: "800", 
+              fontSize: "24px", 
+              cursor: "pointer", 
+              marginBottom: "32px", 
+              paddingLeft: "12px" 
+            }}
+          >
+            <span style={{ color: "#ef4444" }}>Apni</span>
+            <span style={{ color: "var(--sidebar-text-main)", display: "inline-flex", alignItems: "center" }}>
+              Leap
+              <span style={{ color: "#10b981", marginLeft: "4px", fontSize: "18px", fontWeight: "900" }}>↗</span>
             </span>
           </div>
 
@@ -3243,8 +4544,8 @@ function App() {
               <div style={{
                 padding: "12px 14px",
                 marginBottom: "16px",
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
+                background: "var(--sidebar-card-bg)",
+                border: "1px solid var(--sidebar-border)",
                 borderRadius: "16px",
                 marginRight: "16px",
                 marginTop: "4px"
@@ -3253,12 +4554,12 @@ function App() {
                   display: "block",
                   fontSize: "9px",
                   fontWeight: "900",
-                  color: "rgba(255, 255, 255, 0.5)",
+                  color: "var(--sidebar-text-dim)",
                   textTransform: "uppercase",
                   letterSpacing: "0.8px",
                   marginBottom: "8px"
                 }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUser /> Active Profile Role</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUser /> Select Active Role</span>
                 </label>
                 <select
                   value={currentPersona}
@@ -3269,9 +4570,9 @@ function App() {
                     triggerToast(`Switched Profile: Active permissions set to ${name}`);
                   }}
                   style={{
-                    background: "rgba(0, 0, 0, 0.2)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    color: "#ffffff",
+                    background: "var(--bg-input)",
+                    border: "1px solid var(--sidebar-border)",
+                    color: "var(--sidebar-text-main)",
                     borderRadius: "8px",
                     padding: "8px 10px",
                     fontSize: "12.5px",
@@ -3282,11 +4583,11 @@ function App() {
                     fontFamily: "var(--font-sans)"
                   }}
                 >
-                  <option value="moderator" style={{ background: "#3b529a" }}>Central Moderator (Full)</option>
-                  <option value="spoke-kle" style={{ background: "#3b529a" }}>KLE Coordinator (Private)</option>
-                  <option value="spoke-coep" style={{ background: "#3b529a" }}>COEP Coordinator (Private)</option>
-                  <option value="spoke-mmcoep" style={{ background: "#3b529a" }}>MMCOEP Coordinator (Private)</option>
-                  <option value="spoke-rit" style={{ background: "#3b529a" }}>RIT Coordinator (Private)</option>
+                  <option value="moderator" style={{ background: "var(--bg-sidebar)" }}>Central Portfolio Moderator</option>
+                  <option value="spoke-kle" style={{ background: "var(--bg-sidebar)" }}>KLE Campus Space Coordinator</option>
+                  <option value="spoke-coep" style={{ background: "var(--bg-sidebar)" }}>COEP Campus Space Coordinator</option>
+                  <option value="spoke-mmcoep" style={{ background: "var(--bg-sidebar)" }}>MMCOEP Campus Space Coordinator</option>
+                  <option value="spoke-rit" style={{ background: "var(--bg-sidebar)" }}>RIT Campus Space Coordinator</option>
                 </select>
               </div>
             )}
@@ -3294,37 +4595,39 @@ function App() {
             {/* Section 1: ACTIVE VIEW MODE (Hidden if viewing Hub or Moderator or Sponsor) */}
             {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "meetings" && sessionUser?.role !== "Corporate Partner" && (
               <>
-                <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "rgba(255, 255, 255, 0.4)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "8px", marginBottom: "4px" }}>
-                  View Mode
+                <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--sidebar-text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "8px", marginBottom: "4px" }}>
+                  Workspace View
                 </div>
                 <SidebarNavItem
                   active={activeView === "dashboard"}
                   icon={<FaChartPie size={16} />}
-                  label="Analytics Dashboard"
+                  label="Analytics Console"
                   collapsed={false}
                   onClick={() => setActiveView("dashboard")}
+                  variant="accent"
                 />
                 <SidebarNavItem
                   active={activeView === "kanban"}
                   icon={<FaTasks size={16} />}
-                  label="Kanban Board"
+                  label="Sprint Kanban Board"
                   collapsed={false}
                   onClick={() => setActiveView("kanban")}
+                  variant="accent"
                 />
-                <hr style={{ border: "none", borderTop: "1px solid rgba(255, 255, 255, 0.1)", margin: "8px 16px 8px 0" }} />
+                <hr style={{ border: "none", borderTop: "1px solid var(--sidebar-border)", margin: "8px 16px 8px 0" }} />
               </>
             )}
 
             {/* Section 3: APNILEAP SUITE */}
-            <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "rgba(255, 255, 255, 0.4)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "4px", marginBottom: "4px" }}>
-              ApniLeap Portfolio
+            <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--sidebar-text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "4px", marginBottom: "4px" }}>
+              ApniLeap Suite
             </div>
             
             {isCentralAdmin && (
               <SidebarNavItem
                 active={activeWorkspace === "hub"}
                 icon={<FaGlobe style={{ fontSize: "16px" }} />}
-                label="Executive HUB"
+                label="Executive Portfolio Hub"
                 collapsed={false}
                 onClick={() => setActiveWorkspace("hub")}
               />
@@ -3335,14 +4638,14 @@ function App() {
                 <SidebarNavItem
                   active={activeWorkspace === "moderator"}
                   icon={<FaBriefcase size={16} />}
-                  label="Moderator Portal"
+                  label="Central Moderation Portal"
                   collapsed={false}
                   onClick={() => setActiveWorkspace("moderator")}
                 />
                 <SidebarNavItem
                   active={activeWorkspace === "meetings"}
                   icon={<FaCalendarAlt style={{ fontSize: "16px" }} />}
-                  label="Meetings & Syncs"
+                  label="Collaboration & Sync Meetings"
                   collapsed={false}
                   onClick={() => setActiveWorkspace("meetings")}
                 />
@@ -3354,7 +4657,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-kle"}
                 icon={<FaBuilding />}
-                label="KLE Spoke (Live)"
+                label="KLE Campus Space"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-kle");
@@ -3366,7 +4669,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-coep"}
                 icon={<FaBuilding />}
-                label="COEP Spoke (Live)"
+                label="COEP Campus Space"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-coep");
@@ -3378,7 +4681,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-mmcoep"}
                 icon={<FaBuilding />}
-                label="MMCOEP Spoke (Live)"
+                label="MMCOEP Campus Space"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-mmcoep");
@@ -3390,7 +4693,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-rit"}
                 icon={<FaBuilding />}
-                label="RIT Spoke (Live)"
+                label="RIT Campus Space"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-rit");
@@ -3399,10 +4702,10 @@ function App() {
               />
             )}
             
-            <hr style={{ border: "none", borderTop: "1px solid rgba(255, 255, 255, 0.1)", margin: "12px 16px 12px 0" }} />
+            <hr style={{ border: "none", borderTop: "1px solid var(--sidebar-border)", margin: "12px 16px 12px 0" }} />
 
             {/* Connection Status Indicator */}
-            <div style={{ padding: "12px 14px", fontSize: "11px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", borderRadius: "16px", marginRight: "16px", marginBottom: "12px" }}>
+            <div style={{ padding: "12px 14px", fontSize: "11px", border: "1px solid var(--sidebar-border)", background: "var(--sidebar-card-bg)", borderRadius: "16px", marginRight: "16px", marginBottom: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                 <span style={{
                   width: "6px",
@@ -3411,9 +4714,9 @@ function App() {
                   backgroundColor: hasError ? "#ef4444" : "#10b981",
                   display: "inline-block"
                 }} className={hasError ? "" : "pulse-glow"}></span>
-                <span style={{ fontWeight: "700", color: "#ffffff" }}>{connectionStatus}</span>
+                <span style={{ fontWeight: "700", color: "var(--sidebar-text-main)" }}>{connectionStatus}</span>
               </div>
-              <p style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "10px", lineHeight: "1.3" }}>
+              <p style={{ color: "var(--sidebar-text-muted)", fontSize: "10px", lineHeight: "1.3" }}>
                 {hasError 
                   ? "Jira API server offline. Check logs."
                   : "Live tracking active. Background auto-polling enabled."}
@@ -3427,20 +4730,20 @@ function App() {
             alignItems: "center",
             justifyContent: "space-between",
             paddingTop: "16px",
-            borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+            borderTop: "1px solid var(--sidebar-border)",
             marginRight: "16px"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", overflow: "hidden" }}>
               <img
                 src={currentUser?.avatarUrls?.["48x48"] || "https://i.pravatar.cc/100?img=64"}
                 alt="Logged user profile"
-                style={{ width: "36px", height: "36px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)" }}
+                style={{ width: "36px", height: "36px", borderRadius: "50%", border: "2px solid var(--sidebar-border)" }}
               />
               <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                <span style={{ fontWeight: "600", fontSize: "13px", color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span style={{ fontWeight: "600", fontSize: "13px", color: "var(--sidebar-text-main)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {sessionUser?.displayName || currentUser?.displayName || "Jira Administrator"}
                 </span>
-                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "10px" }}>
+                <span style={{ color: "var(--sidebar-text-muted)", fontSize: "10px" }}>
                   {sessionUser?.role || "Active Session"}
                 </span>
               </div>
@@ -3449,9 +4752,9 @@ function App() {
               onClick={handleLogout}
               title="Log Out"
               style={{
-                background: "rgba(255, 255, 255, 0.08)",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-                color: "#ffffff",
+                background: "var(--sidebar-btn-bg)",
+                border: "1px solid var(--sidebar-btn-border)",
+                color: "var(--sidebar-btn-color)",
                 cursor: "pointer",
                 padding: "6px",
                 borderRadius: "6px",
@@ -3460,8 +4763,8 @@ function App() {
                 justifyContent: "center",
                 transition: "all 0.2s"
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)"}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--sidebar-hover-bg)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "var(--sidebar-btn-bg)"}
             >
               <FaTimes size={12} />
             </button>
@@ -3483,14 +4786,14 @@ function App() {
           <div>
             <h1 style={{ fontSize: "28px", fontWeight: "800", letterSpacing: "-0.5px", margin: "0" }}>
               {activeWorkspace === "hub"
-                ? "ApniLeap Executive HUB Portfolio"
+                ? "ApniLeap Executive Portfolio Hub"
                 : activeWorkspace === "moderator"
-                ? "Moderator Project Assignment"
+                ? "Central Moderation Portal"
                 : activeWorkspace === "meetings"
-                ? "FIP Sync Meetings & Collaboration"
+                ? "Collaboration & Sync Meetings"
                 : activeView === "dashboard"
-                ? `${activeWorkspace === "playground" ? "Playground" : SPOKES[currentBoardId]?.name || "Spoke"} Analytics Dashboard`
-                : `${activeWorkspace === "playground" ? "Playground" : SPOKES[currentBoardId]?.name || "Spoke"} Active Sprint Kanban`}
+                ? `${activeWorkspace === "playground" ? "Playground" : SPOKES[currentBoardId]?.name || "Spoke"} Analytics Console`
+                : `${activeWorkspace === "playground" ? "Playground" : SPOKES[currentBoardId]?.name || "Spoke"} Sprint Kanban Board`}
             </h1>
             <p style={{ color: "var(--text-muted)", fontSize: "14px", marginTop: "4px" }}>
               {activeWorkspace === "hub"
@@ -4092,15 +5395,11 @@ function App() {
                             padding: "8px 16px",
                             fontSize: "12px",
                             borderRadius: "8px",
-                            background: hasConflict
-                              ? "linear-gradient(135deg, #ef4444, var(--accent))"
-                              : "linear-gradient(135deg, var(--primary), var(--secondary))",
+                            background: "#ef4444",
                             color: "var(--text-primary-btn)",
                             textDecoration: "none",
                             fontWeight: "750",
-                            boxShadow: hasConflict
-                              ? "0 4px 12px rgba(239, 68, 68, 0.2)"
-                              : "0 4px 12px rgba(45, 212, 191, 0.15)"
+                            boxShadow: "0 4px 12px rgba(239, 68, 68, 0.25)"
                           }}
                         >
                           <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>Join Meeting <FaPaperPlane /></span>
@@ -8065,7 +9364,7 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 // 📌 SIDEBAR NAV ITEM HELPER
-function SidebarNavItem({ active, icon, label, collapsed, onClick }) {
+function SidebarNavItem({ active, icon, label, collapsed, onClick, variant = "primary" }) {
   return (
     <div
       onClick={onClick}
@@ -8076,8 +9375,8 @@ function SidebarNavItem({ active, icon, label, collapsed, onClick }) {
         padding: "14px 18px",
         borderRadius: active ? "6px 0 0 6px" : "6px",
         cursor: "pointer",
-        background: active ? "var(--sidebar-active-bg)" : "transparent",
-        color: active ? "var(--sidebar-text-active)" : "var(--sidebar-text)",
+        background: active ? (variant === "accent" ? "#ef4444" : "var(--sidebar-active-bg)") : "transparent",
+        color: active ? (variant === "accent" ? "#ffffff" : "var(--sidebar-text-active)") : "var(--sidebar-text)",
         border: "none",
         transition: "var(--transition-smooth)",
         justifyContent: collapsed ? "center" : "flex-start",

@@ -3,12 +3,12 @@
 
 :root {
   /* Smart Premium Reference Dashboard Palette */
-  --bg-main: linear-gradient(135deg, #1e293b 0%, #3b529a 50%, #6366f1 100%);  /* Brand Canvas Gradient */
-  --bg-sidebar-rail: linear-gradient(180deg, #778fed 0%, #5c74e2 100%);     /* Vertical Rail Gradient */
-  --bg-sidebar: linear-gradient(180deg, #3b529a 0%, #283a75 100%);          /* Vertical Navigation Gradient */
-  --bg-content: linear-gradient(135deg, #f8fafc 0%, #eef2f6 100%);          /* Crisp Off-White Light Gradient */
-  --bg-card: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);             /* Neat Card Gradient */
-  --bg-card-hover: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);       /* Dynamic Hover Card Gradient */
+  --bg-main: #f1f5f9;  /* Brand Canvas Solid Slate */
+  --bg-sidebar-rail: #ffffff;     /* Solid white rail */
+  --bg-sidebar: #f8fafc;          /* Solid navigation sidebar */
+  --bg-content: #f8fafc;          /* Crisp Off-White Light Background */
+  --bg-card: #ffffff;             /* Neat Solid White Card */
+  --bg-card-hover: #f1f5f9;       /* Dynamic Solid Gray Hover Card */
   
   --border-glass: rgba(255, 255, 255, 0.15); /* Sleek white borders for sidebar */
   --border-card: rgba(0, 0, 0, 0.03);        /* Ultra-fine gray borders for main content cards */
@@ -24,12 +24,20 @@
   --text-muted: #475569;          /* Slate-600 Muted text */
   --text-dim: #94a3b8;            /* Slate-400 Dim text */
 
-  /* Sidebar Specific Text Colors (Dark Blue background) */
-  --sidebar-text: rgba(255, 255, 255, 0.7);    /* Off-white inactive text */
-  --sidebar-text-active: #3b529a;              /* Royal Blue active text */
-  --sidebar-text-hover: #ffffff;               /* Pure white text on hover */
-  --sidebar-active-bg: #ffffff;                /* Pure white pill background */
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  /* Sidebar Specific Text Colors */
+  --sidebar-text: rgba(59, 82, 154, 0.75);    /* Muted brand blue inactive text */
+  --sidebar-text-active: #ffffff;              /* Pure white active text */
+  --sidebar-text-hover: #ef4444;               /* Orange-red text on hover */
+  --sidebar-active-bg: #3b529a;                /* Brand blue background on active */
+  --sidebar-hover-bg: rgba(239, 68, 68, 0.08); /* Muted orange on hover */
+  --sidebar-border: rgba(0, 0, 0, 0.06);
+  --sidebar-text-main: #0f172a;
+  --sidebar-text-muted: #475569;
+  --sidebar-text-dim: #94a3b8;
+  --sidebar-card-bg: rgba(0, 0, 0, 0.02);
+  --sidebar-btn-bg: rgba(0, 0, 0, 0.03);
+  --sidebar-btn-border: rgba(0, 0, 0, 0.08);
+  --sidebar-btn-color: #3b529a;
 
   /* Status Colors (Subtle and Neat) */
   --status-backlog-bg: #f1f5f9;
@@ -75,9 +83,10 @@
 }
 
 [data-theme="light"] {
-  --bg-content: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  --bg-card: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
-  --bg-card-hover: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  --bg-main: #f1f5f9;
+  --bg-content: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
   --text-main: #0f172a;
   --text-muted: #475569;
   --text-dim: #94a3b8;
@@ -90,9 +99,25 @@
 }
 
 [data-theme="dark"] {
-  --bg-content: linear-gradient(135deg, #090d16 0%, #0f172a 100%);
-  --bg-card: linear-gradient(135deg, #1e293b 0%, #151f32 100%);
-  --bg-card-hover: linear-gradient(135deg, #1e293b 0%, #0b0f19 100%);
+  --bg-main: #0b0f19;
+  --bg-content: #0b0f19;
+  --bg-card: #1e293b;
+  --bg-card-hover: #0f172a;
+  --bg-sidebar-rail: #0b0f19;
+  --bg-sidebar: #1e293b;
+  --sidebar-text: rgba(255, 255, 255, 0.7);
+  --sidebar-text-active: #6366f1;
+  --sidebar-text-hover: #ffffff;
+  --sidebar-active-bg: #ffffff;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-text-main: #ffffff;
+  --sidebar-text-muted: rgba(255, 255, 255, 0.6);
+  --sidebar-text-dim: rgba(255, 255, 255, 0.4);
+  --sidebar-card-bg: rgba(255, 255, 255, 0.04);
+  --sidebar-btn-bg: rgba(255, 255, 255, 0.08);
+  --sidebar-btn-border: rgba(255, 255, 255, 0.15);
+  --sidebar-btn-color: #ffffff;
   --text-main: #f8fafc;
   --text-muted: #cbd5e1;
   --text-dim: #64748b;
@@ -104,7 +129,6 @@
   --bg-input: #0f172a;
   --primary: #6366f1;
   --primary-glow: rgba(99, 102, 241, 0.12);
-  --sidebar-text-active: #6366f1;
 }
 
 /* Global Transition to Smooth out Theme Changes */
@@ -182,7 +206,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Button Styling */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: #ef4444;
   color: var(--text-primary-btn);
   border: none;
   padding: 10px 20px;
@@ -194,12 +218,12 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: 8px;
   transition: var(--transition-smooth);
-  box-shadow: 0 4px 15px rgba(59, 82, 154, 0.22);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.22);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(59, 82, 154, 0.35);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
   opacity: 0.95;
 }
 
@@ -374,4 +398,28 @@ h1, h2, h3, h4, h5, h6 {
 .calendar-day-btn:hover {
   background: var(--bg-card-hover) !important;
   border-color: var(--border-subtle) !important;
+}
+
+/* Classy theme rail icon controls */
+.sidebar-rail-icon {
+  color: var(--sidebar-text);
+  opacity: 0.85;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 12px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-smooth);
+}
+.sidebar-rail-icon:hover {
+  opacity: 1;
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-text-hover);
+}
+.sidebar-rail-icon.active {
+  opacity: 1;
+  background: var(--sidebar-active-bg) !important;
+  color: var(--sidebar-text-active) !important;
 }
