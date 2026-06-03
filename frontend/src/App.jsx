@@ -20,64 +20,118 @@ axios.interceptors.request.use(
   }
 );
 
-// Modern Lucide-style Icon setup using React Icons Fa
+// Modern Lucide Icon setup
 import {
-  FaTasks,
-  FaChartPie,
-  FaBell,
-  FaSearch,
-  FaFilter,
-  FaPlus,
-  FaTimes,
-  FaCheck,
-  FaTrashAlt,
-  FaSyncAlt,
-  FaChevronLeft,
-  FaChevronRight,
-  FaInfoCircle,
-  FaRegLightbulb,
-  FaEnvelope,
-  FaPaperPlane,
-  FaExclamationTriangle,
-  FaSun,
-  FaMoon,
-  FaBriefcase,
-  FaLock,
-  FaUser,
-  FaUsers,
-  FaHome,
-  FaBook,
-  FaCalendarAlt,
-  FaComments,
-  FaGraduationCap,
-  FaCog,
-  FaCrown,
-  FaBug,
-  FaClipboardList,
-  FaInbox,
-  FaHourglassHalf,
-  FaCheckCircle,
-  FaLink,
-  FaCommentAlt,
-  FaFolderOpen,
-  FaMedal,
-  FaBuilding,
-  FaGlobe,
-  FaWrench,
-  FaTools,
-  FaBolt,
-  FaStar,
-  FaDollarSign,
-  FaClock,
-  FaTags,
-  FaExclamationCircle,
-  FaListUl,
-  FaDesktop,
-  FaSchool,
-  FaUniversity,
-  FaPaperclip,
-  FaFlag
-} from "react-icons/fa";
+  ListTodo,
+  PieChart as LucidePieChart,
+  Bell,
+  Search,
+  Filter,
+  Plus,
+  X,
+  Check,
+  Trash2,
+  RotateCw,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  Lightbulb,
+  Mail,
+  Send,
+  AlertTriangle,
+  Sun,
+  Moon,
+  Briefcase,
+  Lock,
+  User,
+  Users,
+  Home,
+  Book,
+  Calendar,
+  MessageSquare,
+  GraduationCap,
+  Settings,
+  Crown,
+  Bug,
+  ClipboardList,
+  Inbox,
+  Hourglass,
+  CheckCircle,
+  Link as LucideLink,
+  FolderOpen,
+  Medal,
+  Building2,
+  Globe,
+  Wrench,
+  Zap,
+  Star,
+  DollarSign,
+  Clock,
+  Tag,
+  AlertCircle,
+  List,
+  Monitor,
+  School,
+  Paperclip,
+  Flag
+} from "lucide-react";
+
+// Alias mapping for FontAwesome to Lucide components
+const FaTasks = ListTodo;
+const FaChartPie = LucidePieChart;
+const FaBell = Bell;
+const FaSearch = Search;
+const FaFilter = Filter;
+const FaPlus = Plus;
+const FaTimes = X;
+const FaCheck = Check;
+const FaTrashAlt = Trash2;
+const FaSyncAlt = RotateCw;
+const FaChevronLeft = ChevronLeft;
+const FaChevronRight = ChevronRight;
+const FaInfoCircle = Info;
+const FaRegLightbulb = Lightbulb;
+const FaEnvelope = Mail;
+const FaPaperPlane = Send;
+const FaExclamationTriangle = AlertTriangle;
+const FaSun = Sun;
+const FaMoon = Moon;
+const FaBriefcase = Briefcase;
+const FaLock = Lock;
+const FaUser = User;
+const FaUsers = Users;
+const FaHome = Home;
+const FaBook = Book;
+const FaCalendarAlt = Calendar;
+const FaComments = MessageSquare;
+const FaGraduationCap = GraduationCap;
+const FaCog = Settings;
+const FaCrown = Crown;
+const FaBug = Bug;
+const FaClipboardList = ClipboardList;
+const FaInbox = Inbox;
+const FaHourglassHalf = Hourglass;
+const FaCheckCircle = CheckCircle;
+const FaLink = LucideLink;
+const FaCommentAlt = MessageSquare;
+const FaFolderOpen = FolderOpen;
+const FaMedal = Medal;
+const FaBuilding = Building2;
+const FaGlobe = Globe;
+const FaWrench = Wrench;
+const FaTools = Wrench;
+const FaBolt = Zap;
+const FaStar = Star;
+const FaDollarSign = DollarSign;
+const FaClock = Clock;
+const FaTags = Tag;
+const FaExclamationCircle = AlertCircle;
+const FaListUl = List;
+const FaDesktop = Monitor;
+const FaSchool = School;
+const FaUniversity = School;
+const FaPaperclip = Paperclip;
+const FaFlag = Flag;
 
 let toastIdCounter = 0;
 
@@ -157,7 +211,7 @@ const CompanyLogo = ({ company, size = 38 }) => {
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: "8px",
-        background: "linear-gradient(135deg, #162402, #0d1601)",
+        background: "#162402",
         border: "1.5px solid #76b900",
         display: "flex",
         alignItems: "center",
@@ -178,7 +232,7 @@ const CompanyLogo = ({ company, size = 38 }) => {
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: "8px",
-        background: "linear-gradient(135deg, #011528, #010a14)",
+        background: "#011528",
         border: "1.5px solid #0068b5",
         display: "flex",
         alignItems: "center",
@@ -199,7 +253,7 @@ const CompanyLogo = ({ company, size = 38 }) => {
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: "8px",
-        background: "linear-gradient(135deg, #1e293b, #0f172a)",
+        background: "#1e293b",
         border: "1.5px solid rgba(255, 255, 255, 0.08)",
         display: "flex",
         alignItems: "center",
@@ -222,7 +276,7 @@ const CompanyLogo = ({ company, size = 38 }) => {
       width: `${size}px`,
       height: `${size}px`,
       borderRadius: "8px",
-      background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+      background: "var(--primary)",
       color: "white",
       display: "flex",
       alignItems: "center",
@@ -317,6 +371,7 @@ function App() {
   const [newTeamName, setNewTeamName] = useState("");
   const [selectedTeamMembers, setSelectedTeamMembers] = useState([]);
   const [selectedTeamMentor, setSelectedTeamMentor] = useState("");
+  const [selectedTeamLeader, setSelectedTeamLeader] = useState("");
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
 
   const [theme, setTheme] = useState(() => localStorage.getItem("app-theme") || "dark");
@@ -336,7 +391,7 @@ function App() {
     return localStorage.getItem("apnileap-persona") || "moderator";
   });
   const [currentUser, setCurrentUser] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState("Connecting to Jira...");
+  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
   const [hasError, setHasError] = useState(false);
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -859,11 +914,20 @@ function App() {
         avatarUrl: foundMentor.avatarUrl
       } : null;
 
+      const foundLeader = spokeMembers.find(m => m.accountId === selectedTeamLeader);
+      const teamLeaderData = foundLeader ? {
+        accountId: selectedTeamLeader,
+        displayName: foundLeader.displayName.replace(/ \((Student Developer)\)/g, ""),
+        emailAddress: foundLeader.emailAddress || foundLeader.email || "",
+        avatarUrl: foundLeader.avatarUrl
+      } : null;
+
       const res = await axios.post("http://localhost:5000/api/teams", {
         name: newTeamName.trim(),
         boardId: currentBoardId,
         members: selectedMembersData,
-        mentor: mentorData
+        mentor: mentorData,
+        teamLeader: teamLeaderData
       });
 
       if (res.data && res.data.success) {
@@ -871,6 +935,7 @@ function App() {
         setNewTeamName("");
         setSelectedTeamMembers([]);
         setSelectedTeamMentor("");
+        setSelectedTeamLeader("");
         fetchSpokeTeams(currentBoardId);
       }
     } catch (err) {
@@ -968,7 +1033,7 @@ function App() {
           }
         }));
         setTasks(normalized);
-        setConnectionStatus(currentBoardId === "3" ? "Connected to Jira Cloud" : `Connected to Spoke (${currentBoardId})`);
+        setConnectionStatus("Connected");
         if (!silent) {
           triggerToast("Successfully synchronized with Live Jira API!");
         }
@@ -978,7 +1043,7 @@ function App() {
       }
     } catch (error) {
       console.error("API Fetch Error:", error);
-      setConnectionStatus("Offline - Connection Failed");
+      setConnectionStatus("Offline");
       setHasError(true);
       if (!silent) {
         triggerToast("Failed to connect to Jira backend. Make sure server is started.", "error");
@@ -995,10 +1060,10 @@ function App() {
     try {
       const response = await axios.get("http://localhost:5000/hub/metrics");
       setHubMetrics(response.data);
-      setConnectionStatus("Connected to Jira Cloud (HUB)");
+      setConnectionStatus("Connected");
     } catch (error) {
       console.error("Hub Fetch Error:", error);
-      setConnectionStatus("Offline - Connection Failed");
+      setConnectionStatus("Offline");
       setHasError(true);
       if (!silent) {
         triggerToast("Failed to aggregate Hub portfolio analytics. Make sure server is started.", "error");
@@ -1015,10 +1080,10 @@ function App() {
     try {
       const response = await axios.get("http://localhost:5000/moderator/projects");
       setModeratorProjects(response.data);
-      setConnectionStatus("Connected to Ingestion Portal");
+      setConnectionStatus("Connected");
     } catch (error) {
       console.error("Moderator Projects Fetch Error:", error);
-      setConnectionStatus("Offline - Connection Failed");
+      setConnectionStatus("Offline");
       setHasError(true);
       if (!silent) {
         triggerToast("Failed to fetch moderator projects. Make sure server is started.", "error");
@@ -1706,6 +1771,22 @@ function App() {
     } catch (err) {
       console.error("Failed to update submission status:", err);
       triggerToast("Failed to update submission review status.", "error");
+    }
+  };
+
+  // Handle deleting a student submission persistently
+  const handleDeleteSubmission = async (subId) => {
+    try {
+      const res = await axios.delete(`http://localhost:5000/submissions/${subId}`);
+      if (res.data && res.data.success) {
+        triggerToast("Submission history deleted successfully!");
+        fetchAllSubmissions(); // Refresh global queue
+        fetchJiraTasks(true); // Refresh tasks
+        fetchHubMetrics(true); // Refresh hub metrics
+      }
+    } catch (err) {
+      console.error("Failed to delete submission:", err);
+      triggerToast("Failed to delete student submission.", "error");
     }
   };
 
@@ -2411,231 +2492,609 @@ function App() {
           alignItems: "center",
           width: "100%",
           background: theme === "dark" ? "#0b0f19" : "#ffffff",
-          padding: "60px 20px",
           transition: "var(--transition-smooth)"
         }}>
-          {/* Page Heading */}
-          <h2 style={{
-            fontFamily: "var(--font-sans)",
-            fontWeight: "850",
-            fontSize: "36px",
-            color: theme === "dark" ? "#60a5fa" : "#1e3a8a",
-            marginBottom: "40px",
-            letterSpacing: "-0.5px"
-          }}>
-            ApniLeap Ecosystem Partners
-          </h2>
-          
-          {/* Main Triple-Column Card */}
+          {/* SECTION 1: OVERVIEW */}
           <div style={{
-            background: theme === "dark" ? "#1e293b" : "#ffffff",
-            border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.04)",
-            borderRadius: "32px",
-            boxShadow: theme === "dark" ? "0 10px 30px rgba(0,0,0,0.3)" : "0 15px 45px rgba(0,0,0,0.05)",
             width: "100%",
-            maxWidth: "1150px",
-            padding: "50px 40px",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: "40px",
-            transition: "var(--transition-smooth)"
+            padding: "60px 20px",
+            background: theme === "dark" ? "#0f172a" : "#ffffff",
+            display: "flex",
+            justifyContent: "center"
           }}>
-            {/* Column 1: Academia */}
             <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center"
+              width: "100%",
+              maxWidth: "1150px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "40px",
+              alignItems: "center"
             }}>
-              <div style={{ marginBottom: "20px" }}>
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
-                </svg>
+              <div>
+                <h2 style={{
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: "850",
+                  fontSize: "30px",
+                  color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                  marginBottom: "24px",
+                  letterSpacing: "-0.5px"
+                }}>
+                  Overview
+                </h2>
+                <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {[
+                    "Netra Accelerator Foundation is a Non-Profit organization founded in year 2020 in the city of Hubballi in Karnataka State.",
+                    "Objective of Netra has been to transform engineering campuses into Product Innovation Centers (EPIC) through industry partnerships.",
+                    "To drive this aim, Netra has created a thoughtful, proven execution model under “A Product Nation Innovation Leap” which has been branded as APNILeap.",
+                    "APNILeap helps build an ecosystem of academia, startups, and industries on campus using the APNILeap Playbook.",
+                    "Under APNILeap, there is another foundational program called VidyaLeap that helps establish initial engagements with engineering colleges and drive product/project activities on campus.",
+                    "APNILeap has been innovating this model continuously for several years and has now become an implementable and scalable model, gaining acceptance from academia and support from many industries."
+                  ].map((pt, idx) => (
+                    <li key={idx} style={{
+                      position: "relative",
+                      paddingLeft: "24px",
+                      fontSize: "14.5px",
+                      lineHeight: "1.6",
+                      color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                      fontWeight: "500"
+                    }}>
+                      <span style={{
+                        position: "absolute",
+                        left: "4px",
+                        top: "9px",
+                        width: "6px",
+                        height: "6px",
+                        borderRadius: "50%",
+                        background: "#ef4444"
+                      }} />
+                      {pt}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Academia</h3>
-              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Student & Faculty Development</p>
               
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
-                <button 
-                  onClick={() => setPortalModal("academia")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Ecosystem & Product Incubation
-                </button>
-                <button 
-                  onClick={() => setPortalModal("academia")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Placement & Entrepreneurship
-                </button>
-              </div>
-            </div>
-            
-            {/* Column 2: Industries */}
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center"
-            }}>
-              <div style={{ marginBottom: "20px" }}>
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-              </div>
-              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Industries</h3>
-              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Enterprise Collaborations</p>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
-                <button 
-                  onClick={() => setPortalModal("industries")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Product Design & Development
-                </button>
-                <button 
-                  onClick={() => setPortalModal("industries")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Joint Research & IP Creation
-                </button>
-              </div>
-            </div>
-            
-            {/* Column 3: Startups */}
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center"
-            }}>
-              <div style={{ marginBottom: "20px" }}>
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4.5 16.5c-1.5 1.25-2.5 3.5-2.5 3.5s2.25-1 3.5-2.5M12 2C6 2 2 6 2 12c0 2.5 1 4.5 2.5 6h11c1.5-1.5 2.5-3.5 2.5-6 0-6-4-10-10-10z"/>
-                  <path d="M9 15l6-6M11.5 6.5A1.5 1.5 0 1 0 10 5a1.5 1.5 0 0 0 1.5 1.5z"/>
-                </svg>
-              </div>
-              <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Startups</h3>
-              <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Venture & Startup Ecosystem</p>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
-                <button 
-                  onClick={() => setPortalModal("startups")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Acceleration & Mentorship
-                </button>
-                <button 
-                  onClick={() => setPortalModal("startups")}
-                  style={{
-                    background: "#0048ba",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "12px 16px",
-                    borderRadius: "8px",
-                    fontWeight: "750",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "var(--transition-smooth)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
-                >
-                  Capital & Venture Funding
-                </button>
+              {/* Flowchart Diagram */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "20px",
+                background: theme === "dark" ? "#1e293b" : "#f8fafc",
+                borderRadius: "24px",
+                border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                boxShadow: theme === "dark" ? "none" : "0 8px 24px rgba(0,0,0,0.02)"
+              }}>
+                <div style={{
+                  width: "100%",
+                  maxWidth: "280px",
+                  padding: "16px 20px",
+                  background: theme === "dark" ? "#0f172a" : "#ffffff",
+                  border: "2px solid #3b529a",
+                  borderRadius: "14px",
+                  textAlign: "center",
+                  fontWeight: "800",
+                  fontSize: "14px",
+                  color: "#3b529a",
+                  boxShadow: "0 4px 10px rgba(59, 82, 154, 0.08)"
+                }}>
+                  Netra Accelerator Foundation
+                </div>
+                <div style={{ margin: "8px 0", color: "#3b529a", fontSize: "20px", fontWeight: "900" }}>↓</div>
+                
+                <div style={{
+                  width: "100%",
+                  maxWidth: "280px",
+                  padding: "16px 20px",
+                  background: theme === "dark" ? "#0f172a" : "#ffffff",
+                  border: "2px solid #3b529a",
+                  borderRadius: "14px",
+                  textAlign: "center",
+                  fontWeight: "800",
+                  fontSize: "14px",
+                  color: "#3b529a",
+                  boxShadow: "0 4px 10px rgba(59, 82, 154, 0.08)"
+                }}>
+                  APNILeap
+                </div>
+                <div style={{ margin: "8px 0", color: "#3b529a", fontSize: "20px", fontWeight: "900" }}>↓</div>
+                
+                <div style={{
+                  width: "100%",
+                  maxWidth: "280px",
+                  padding: "16px 20px",
+                  background: theme === "dark" ? "#0f172a" : "#ffffff",
+                  border: "2px solid #3b529a",
+                  borderRadius: "14px",
+                  textAlign: "center",
+                  fontWeight: "800",
+                  fontSize: "14px",
+                  color: "#3b529a",
+                  boxShadow: "0 4px 10px rgba(59, 82, 154, 0.08)"
+                }}>
+                  VidyaLeap
+                </div>
               </div>
             </div>
           </div>
-          
-          {/* Bottom Call to Action */}
-          <button 
-            onClick={() => setLandingTab("contact")}
-            style={{
-              marginTop: "40px",
-              background: "#0048ba",
-              color: "#ffffff",
-              border: "none",
-              padding: "14px 28px",
-              borderRadius: "8px",
-              fontWeight: "750",
-              fontSize: "15px",
-              cursor: "pointer",
-              boxShadow: "0 4px 15px rgba(0, 72, 186, 0.2)",
-              transition: "var(--transition-smooth)"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 72, 186, 0.35)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 72, 186, 0.2)";
-            }}
-          >
-            Inquire for Partnership
-          </button>
+
+          {/* SECTION 2: BENEFICIARIES / STAKEHOLDERS */}
+          <div style={{
+            width: "100%",
+            padding: "60px 20px",
+            background: theme === "dark" ? "#111827" : "#f8fafc",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
+            <h2 style={{
+              fontFamily: "var(--font-sans)",
+              fontWeight: "850",
+              fontSize: "30px",
+              color: theme === "dark" ? "#60a5fa" : "#0048ba",
+              marginBottom: "32px",
+              letterSpacing: "-0.5px"
+            }}>
+              Beneficiaries / Stakeholders
+            </h2>
+            
+            {/* Main Triple-Column Card */}
+            <div style={{
+              background: theme === "dark" ? "#1e293b" : "#ffffff",
+              border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.04)",
+              borderRadius: "32px",
+              boxShadow: theme === "dark" ? "0 10px 30px rgba(0,0,0,0.3)" : "0 15px 45px rgba(0,0,0,0.04)",
+              width: "100%",
+              maxWidth: "1150px",
+              padding: "50px 40px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "40px",
+              transition: "var(--transition-smooth)",
+              marginBottom: "40px"
+            }}>
+              {/* Column 1: Academia */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center"
+              }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Academia</h3>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Students + Faculties</p>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                  <button 
+                    onClick={() => setPortalModal("academia")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Product Based Ecosystem
+                  </button>
+                  <button 
+                    onClick={() => setPortalModal("academia")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Quality Placements/ Startups Creation
+                  </button>
+                </div>
+              </div>
+              
+              {/* Column 2: Industries */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center"
+              }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Industries</h3>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Product Base</p>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                  <button 
+                    onClick={() => setPortalModal("industries")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Product Development
+                  </button>
+                  <button 
+                    onClick={() => setPortalModal("industries")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Research Collaboration
+                  </button>
+                </div>
+              </div>
+              
+              {/* Column 3: Startups */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center"
+              }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4.5 16.5c-1.5 1.25-2.5 3.5-2.5 3.5s2.25-1 3.5-2.5M12 2C6 2 2 6 2 12c0 2.5 1 4.5 2.5 6h11c1.5-1.5 2.5-3.5 2.5-6 0-6-4-10-10-10z"/>
+                    <path d="M9 15l6-6M11.5 6.5A1.5 1.5 0 1 0 10 5a1.5 1.5 0 0 0 1.5 1.5z"/>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: "24px", fontWeight: "800", color: "#ef4444", marginBottom: "4px" }}>Startups</h3>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: theme === "dark" ? "#94a3b8" : "#475569", marginBottom: "24px" }}>Business</p>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "260px" }}>
+                  <button 
+                    onClick={() => setPortalModal("startups")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Business Support
+                  </button>
+                  <button 
+                    onClick={() => setPortalModal("startups")}
+                    style={{
+                      background: "#0048ba",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "750",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#00368c"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#0048ba"}
+                  >
+                    Funding Support
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Bottom Call to Action */}
+            <button 
+              onClick={() => setLandingTab("contact")}
+              style={{
+                background: "#0048ba",
+                color: "#ffffff",
+                border: "none",
+                padding: "14px 28px",
+                borderRadius: "8px",
+                fontWeight: "750",
+                fontSize: "15px",
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(0, 72, 186, 0.2)",
+                transition: "var(--transition-smooth)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 72, 186, 0.35)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 72, 186, 0.2)";
+              }}
+            >
+              To Know More, Contact us
+            </button>
+          </div>
+
+          {/* SECTION 3: CHALLENGES IN INDIA IAC ECOSYSTEM MODEL */}
+          <div style={{
+            width: "100%",
+            padding: "60px 20px",
+            background: theme === "dark" ? "#0f172a" : "#ffffff",
+            display: "flex",
+            justifyContent: "center"
+          }}>
+            <div style={{
+              width: "100%",
+              maxWidth: "1150px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "50px",
+              alignItems: "center"
+            }}>
+              {/* Left Column: Venn Diagram */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <h2 style={{
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: "850",
+                  fontSize: "26px",
+                  color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                  marginBottom: "24px",
+                  letterSpacing: "-0.5px",
+                  textAlign: "center",
+                  alignSelf: "stretch"
+                }}>
+                  Challenges in India IAC Ecosystem Model
+                </h2>
+                
+                <svg width="340" height="320" viewBox="0 0 340 320" style={{ maxWidth: "100%", height: "auto" }}>
+                  <circle cx="170" cy="120" r="80" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" />
+                  <circle cx="120" cy="200" r="75" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" />
+                  <circle cx="220" cy="200" r="75" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" />
+                  
+                  <text x="170" y="70" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="10.5">Academic Institution</text>
+                  <text x="90" y="195" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Learning</text>
+                  <text x="90" y="208" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                  <text x="90" y="221" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="8.5">(Students)</text>
+                  
+                  <text x="250" y="195" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Research</text>
+                  <text x="250" y="208" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                  <text x="250" y="221" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="8.5">(Faculty)</text>
+                  
+                  <text x="170" y="155" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Industry and</text>
+                  <text x="170" y="167" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Startup Ecosystem</text>
+                  
+                  <text x="170" y="300" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="13">IAC Ecosystem Model</text>
+                </svg>
+                
+                <div style={{
+                  fontSize: "12px",
+                  color: theme === "dark" ? "#64748b" : "#475569",
+                  fontWeight: "600",
+                  marginTop: "16px",
+                  textAlign: "center",
+                  lineHeight: "1.4",
+                  maxWidth: "400px"
+                }}>
+                  Note: In India there are very few role models for IAC – with some exceptions like leading Medical Colleges, IITM, IITB, KLE Tech
+                </div>
+              </div>
+              
+              {/* Right Column: Challenges List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "800", color: theme === "dark" ? "#60a5fa" : "#3b529a", marginBottom: "4px" }}>
+                  Challenges and Impact
+                </h3>
+                
+                {[
+                  "Systemic Issues: Lack of alignment, lack of knowledge transfer and <strong>Poor collaboration</strong>",
+                  "Creating a <strong>Valley of Death</strong> of failed joint-research projects that hinder the nation’s goal to become a product-driven economy.",
+                  "Impacting innovation output: India ranks <strong>86th globally</strong> in Industry-Academia collaboration."
+                ].map((item, idx) => (
+                  <div key={idx} style={{
+                    padding: "20px",
+                    background: theme === "dark" ? "#1e293b" : "#f8fafc",
+                    border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                    borderLeft: "4px solid #ef4444",
+                    borderRadius: "0 12px 12px 0",
+                    boxShadow: theme === "dark" ? "none" : "0 4px 12px rgba(0,0,0,0.01)",
+                    fontSize: "14px",
+                    lineHeight: "1.6",
+                    color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                    fontWeight: "500"
+                  }} dangerouslySetInnerHTML={{ __html: item }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: THE VALLEY OF DEATH */}
+          <div style={{
+            width: "100%",
+            padding: "60px 20px",
+            background: theme === "dark" ? "#111827" : "#f8fafc",
+            display: "flex",
+            justifyContent: "center"
+          }}>
+            <div style={{
+              width: "100%",
+              maxWidth: "1150px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "40px",
+              alignItems: "center"
+            }}>
+              {/* Left Column: Points */}
+              <div>
+                <h2 style={{
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: "850",
+                  fontSize: "30px",
+                  color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                  marginBottom: "24px",
+                  letterSpacing: "-0.5px"
+                }}>
+                  The Valley of Death
+                </h2>
+                <div style={{
+                  padding: "24px",
+                  background: theme === "dark" ? "#1e293b" : "#ffffff",
+                  border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                  borderRadius: "16px",
+                  boxShadow: theme === "dark" ? "none" : "0 10px 30px rgba(0,0,0,0.02)"
+                }}>
+                  <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {[
+                      "The missing link isn't talent or ideas",
+                      "It's the culture and ability to collaborate within the ecosystem",
+                      "Without it, academic innovations stall before reaching industry or consumers"
+                    ].map((pt, idx) => (
+                      <li key={idx} style={{
+                        position: "relative",
+                        paddingLeft: "24px",
+                        fontSize: "15px",
+                        lineHeight: "1.6",
+                        color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                        fontWeight: "600"
+                      }}>
+                        <span style={{
+                          position: "absolute",
+                          left: "4px",
+                          top: "9px",
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          background: "#ef4444"
+                        }} />
+                        {pt}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              
+              {/* Right Column: Valley of Death SVG Diagram */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "24px",
+                background: theme === "dark" ? "#1e293b" : "#ffffff",
+                border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                borderRadius: "24px",
+                boxShadow: theme === "dark" ? "none" : "0 8px 30px rgba(0,0,0,0.02)"
+              }}>
+                <svg width="550" height="280" viewBox="0 0 550 280" style={{ maxWidth: "100%", height: "auto" }}>
+                  <path d="M 50 210 C 100 100, 150 90, 220 200 L 220 210 Z" fill={theme === "dark" ? "rgba(99, 102, 241, 0.15)" : "rgba(219, 234, 254, 0.6)"} />
+                  <path d="M 330 210 C 370 200, 420 100, 500 130 L 500 210 Z" fill={theme === "dark" ? "rgba(239, 68, 68, 0.1)" : "rgba(254, 226, 226, 0.6)"} />
+
+                  <line x1="40" y1="210" x2="520" y2="210" stroke={theme === "dark" ? "#475569" : "#cbd5e1"} strokeWidth="2" />
+
+                  <text x="135" y="145" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="10.5">Academic Research</text>
+
+                  <text x="445" y="145" textAnchor="middle" fill="#dc2626" fontWeight="800" fontSize="10.5">Industry Application</text>
+
+                  <text x="275" y="195" textAnchor="middle" fill="#ef4444" fontWeight="850" fontSize="12">Valley of Death</text>
+
+                  <text x="70" y="80" fill="gray" fontSize="8" fontWeight="600">Public Funding /</text>
+                  <text x="70" y="90" fill="gray" fontSize="8" fontWeight="600">Private Investment</text>
+                  <line x1="120" y1="95" x2="120" y2="120" stroke="gray" strokeWidth="1" strokeDasharray="3" />
+
+                  <text x="390" y="80" fill="gray" fontSize="8" fontWeight="600">Private</text>
+                  <text x="390" y="90" fill="gray" fontSize="8" fontWeight="600">Investment</text>
+                  <line x1="410" y1="95" x2="430" y2="115" stroke="gray" strokeWidth="1" strokeDasharray="3" />
+
+                  <path d="M 50 210 C 100 100, 150 90, 220 200 C 275 220, 275 220, 330 210 C 370 200, 420 100, 500 130" fill="none" stroke="#2563eb" strokeWidth="3" />
+                  <path d="M 310 212 C 340 205, 380 140, 500 130" fill="none" stroke="#ef4444" strokeWidth="3" />
+
+                  <circle cx="60" cy="210" r="4" fill="#ef4444" />
+                  <line x1="60" y1="210" x2="60" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="60" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="600">Discovery</text>
+
+                  <circle cx="120" cy="210" r="4" fill="#ef4444" />
+                  <line x1="120" y1="210" x2="120" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="120" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Fundamental</text>
+                  <text x="120" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Research</text>
+
+                  <circle cx="180" cy="210" r="4" fill="#ef4444" />
+                  <line x1="180" y1="210" x2="180" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="180" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Concept &</text>
+                  <text x="180" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Applied</text>
+                  <text x="180" y="275" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Research</text>
+
+                  <circle cx="240" cy="210" r="4" fill="#ef4444" />
+                  <line x1="240" y1="210" x2="240" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="240" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Technology</text>
+                  <text x="240" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Transfer</text>
+
+                  <circle cx="300" cy="210" r="4" fill="#ef4444" />
+                  <line x1="300" y1="210" x2="300" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="300" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Development</text>
+
+                  <circle cx="360" cy="210" r="4" fill="#ef4444" />
+                  <line x1="360" y1="210" x2="360" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="360" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Product</text>
+                  <text x="360" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Launch</text>
+
+                  <circle cx="430" cy="210" r="4" fill="#ef4444" />
+                  <line x1="430" y1="210" x2="430" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="430" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Success</text>
+                  <text x="430" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">as a new</text>
+                  <text x="430" y="275" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Product</text>
+
+                  <circle cx="490" cy="210" r="4" fill="#ef4444" />
+                  <line x1="490" y1="210" x2="490" y2="245" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                  <text x="490" y="255" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Success as</text>
+                  <text x="490" y="265" textAnchor="middle" fill="gray" fontSize="7.5" fontWeight="500">Business</text>
+                </svg>
+                
+                <div style={{
+                  fontSize: "10px",
+                  color: "gray",
+                  marginTop: "12px",
+                  textAlign: "center",
+                  lineHeight: "1.4"
+                }}>
+                  Valley of death reprinted and adapted from Chirazi, Wanieck, Fayemi, Zollfrank, & Jacobs, 2019, under CC By 4.0 license
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       );
     } else if (landingTab === "about") {
@@ -2644,6 +3103,7 @@ function App() {
           name: "Vivek Pawar",
           region: "India",
           initials: "VP",
+          img: "/images/vivek_pawar.png",
           bulletPoints: [
             "Vivek's previous role was the CEO of the Deshpande Foundation and continues to serve as an Advisor on the Academic council of BVB KLE Tech University",
             "Prior, Vivek was the Founder and Executive Chairman of Sankalp Semiconductors which he incubated at BVBKLE Tech. Acquired by HCL in 2019."
@@ -2653,6 +3113,7 @@ function App() {
           name: "Prof. Dr. Ashok Shettar",
           region: "India",
           initials: "AS",
+          img: "/images/ashok_shettar.png",
           bulletPoints: [
             "Professor Shettar is Pro-Chancellor of KLE Tech University and previously served as the Principal of BVB College of Engineering",
             "Nationally recognized thought leader in engineering education and industry collaboration, he has led KLE Tech for past 20 years."
@@ -2662,6 +3123,7 @@ function App() {
           name: "Mahesh Jadhav",
           region: "USA",
           initials: "MJ",
+          img: "/images/mahesh_jadhav.png",
           bulletPoints: [
             "Mahesh was one of the Founding Investors and Board Members of Sankalp Semiconductors and serves as a Board Member of BVB KLE Tech Incubation Center",
             "Mahesh is a Private Equity Investor (Mubadala Capital). Prior, he worked in R&D, Finance & Strategic Leadership roles (Tata, Siemens, PwC, Accenture, Cognizant)."
@@ -2705,35 +3167,53 @@ function App() {
               }}>
                 {/* Left Profile Panel */}
                 <div style={{
-                  flex: "1 1 200px",
-                  background: "linear-gradient(135deg, #ffeef0, #ffd3d6)",
+                  flex: "1 1 320px",
+                  background: theme === "dark" ? "#1e293b" : "#ffeef0",
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: "row",
                   alignItems: "center",
-                  justifyContent: "center",
-                  padding: "30px 20px",
-                  textAlign: "center"
+                  padding: "24px",
+                  gap: "20px",
+                  transition: "var(--transition-smooth)"
                 }}>
-                  {/* Styled Avatar Placeholder */}
+                  {/* Styled Avatar/Photo Container */}
                   <div style={{
-                    width: "100px",
-                    height: "100px",
-                    borderRadius: "50%",
+                    width: "120px",
+                    height: "120px",
+                    borderRadius: "14px",
                     background: "#ffffff",
-                    border: "3px solid #3b529a",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontWeight: "900",
-                    fontSize: "32px",
-                    color: "#3b529a",
-                    marginBottom: "16px",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    boxShadow: "0 4px 15px rgba(0,0,0,0.06)",
+                    border: "1.5px solid rgba(0,0,0,0.02)"
                   }}>
-                    {founder.initials}
+                    <img 
+                      src={founder.img} 
+                      alt={founder.name} 
+                      style={{ 
+                        width: "100%", 
+                        height: "100%", 
+                        objectFit: "cover",
+                        display: "block"
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        e.currentTarget.parentElement.innerHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:900; color:${theme === "dark" ? "#60a5fa" : "#3b529a"}; background:${theme === "dark" ? "#1e293b" : "#ffeef0"};">${founder.initials}</div>`;
+                      }}
+                    />
                   </div>
-                  <h4 style={{ fontSize: "18px", fontWeight: "850", color: "#3b529a", margin: "0" }}>{founder.name}</h4>
-                  <span style={{ fontSize: "12px", fontWeight: "750", color: "#3b529a", textTransform: "uppercase", opacity: 0.8 }}>-{founder.region}</span>
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    textAlign: "left"
+                  }}>
+                    <h4 style={{ fontSize: "20px", fontWeight: "800", color: theme === "dark" ? "#60a5fa" : "#0048ba", margin: "0", lineHeight: "1.2" }}>{founder.name}</h4>
+                    <span style={{ fontSize: "14px", fontWeight: "750", color: theme === "dark" ? "#cbd5e1" : "#475569", marginTop: "6px" }}>-{founder.region}</span>
+                  </div>
                 </div>
                 
                 {/* Right Content Panel */}
@@ -2782,162 +3262,259 @@ function App() {
           alignItems: "center",
           width: "100%",
           background: theme === "dark" ? "#0b0f19" : "#ffffff",
-          padding: "60px 20px",
           transition: "var(--transition-smooth)"
         }}>
-          <h2 style={{
-            fontFamily: "var(--font-sans)",
-            fontWeight: "850",
-            fontSize: "36px",
-            color: theme === "dark" ? "#60a5fa" : "#1e3a8a",
-            textAlign: "center",
-            margin: "0 0 10px 0",
-            letterSpacing: "-0.5px"
-          }}>
-            ApniLeap Operating Model and Governance
-          </h2>
-          <p style={{
-            fontSize: "16px",
-            color: theme === "dark" ? "#94a3b8" : "#475569",
-            fontWeight: "600",
-            textAlign: "center",
-            marginBottom: "50px",
-            maxWidth: "800px"
-          }}>
-            Build shared goals, strategy and research collaboration through a Hub-and-Spoke operating model
-          </p>
-          
+          {/* SECTION 1: IAC COLLABORATION CHALLENGES (DETAIL) */}
           <div style={{
-            display: "flex",
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: "50px",
             width: "100%",
-            maxWidth: "1150px",
-            alignItems: "center",
-            justifyContent: "center"
+            padding: "60px 20px",
+            background: theme === "dark" ? "#0f172a" : "#ffffff",
+            display: "flex",
+            justifyContent: "center",
+            borderBottom: theme === "dark" ? "1px solid #1e293b" : "1px solid #e2e8f0"
           }}>
-            {/* Venn Diagram Column */}
             <div style={{
-              flex: "1 1 450px",
-              maxWidth: "500px",
+              width: "100%",
+              maxWidth: "1150px",
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center"
+              alignItems: "center"
             }}>
-              {/* Venn Diagram SVG Vector */}
-              <svg width="450" height="420" viewBox="0 0 450 420" style={{ maxWidth: "100%", height: "auto" }}>
-                <defs>
-                  <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                    <feDropShadow dx="0" dy="8" stdDeviation="6" floodOpacity="0.08" />
-                  </filter>
-                </defs>
-                
-                {/* Academic Institution Circle */}
-                <circle cx="180" cy="180" r="110" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" filter="url(#shadow)" />
-                {/* Learning Ecosystem Circle */}
-                <circle cx="170" cy="270" r="100" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" filter="url(#shadow)" />
-                {/* Research Ecosystem Circle */}
-                <circle cx="280" cy="250" r="100" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" filter="url(#shadow)" />
-                
-                {/* Overlaps and details */}
-                <text x="180" y="110" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="12.5">Academic Institution</text>
-                <text x="120" y="270" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="12">Learning</text>
-                <text x="120" y="286" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="12">Ecosystem</text>
-                <text x="120" y="302" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="11">(Students)</text>
-                
-                <text x="330" y="250" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="12">Research</text>
-                <text x="330" y="266" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="12">Ecosystem</text>
-                <text x="330" y="282" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="11">(Faculty)</text>
-                
-                <text x="250" y="190" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="11.5">Industry and</text>
-                <text x="250" y="206" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="11.5">Startup Ecosystem</text>
-                
-                {/* Center ApniLeap white circle */}
-                <circle cx="225" cy="225" r="46" fill="#ffffff" stroke="#10b981" strokeWidth="3" filter="url(#shadow)" />
-                <text x="225" y="222" textAnchor="middle" fill="#ef4444" fontWeight="900" fontSize="11">Apni<tspan fill="#3b529a">Leap</tspan></text>
-                <text x="225" y="238" textAnchor="middle" fill="#10b981" fontWeight="950" fontSize="16">↗</text>
-                
-                {/* Title and notes at the bottom */}
-                <text x="225" y="390" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="15">IAC Ecosystem Model</text>
-              </svg>
-              <div style={{
-                fontSize: "12px",
-                color: theme === "dark" ? "#64748b" : "#475569",
-                fontWeight: "600",
-                marginTop: "10px",
-                textAlign: "center",
-                lineHeight: "1.4",
-                maxWidth: "360px"
+              <h2 style={{
+                fontFamily: "var(--font-sans)",
+                fontWeight: "850",
+                fontSize: "30px",
+                color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                marginBottom: "12px",
+                letterSpacing: "-0.5px",
+                textAlign: "center"
               }}>
-                Note: Off-campus Central Hub (not shown) managed by Netra Accelerator Foundation
+                IAC Collaboration Challenges (detail)
+              </h2>
+              <p style={{
+                fontSize: "14.5px",
+                color: theme === "dark" ? "#cbd5e1" : "#475569",
+                fontWeight: "600",
+                textAlign: "center",
+                marginBottom: "40px",
+                maxWidth: "850px",
+                lineHeight: "1.6"
+              }}>
+                Lot of piece-meal solutions and ideas exist today but there is a major gap and lack of comprehensive framework to address these multi-dimensional collaboration challenges
+              </p>
+              
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                gap: "50px",
+                width: "100%",
+                alignItems: "start"
+              }}>
+                {/* Left side: Venn Diagram */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <svg width="340" height="320" viewBox="0 0 340 320" style={{ maxWidth: "100%", height: "auto" }}>
+                    <circle cx="170" cy="120" r="80" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" />
+                    <circle cx="120" cy="200" r="75" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" />
+                    <circle cx="220" cy="200" r="75" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" />
+                    
+                    <text x="170" y="70" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="10.5">Academic Institution</text>
+                    <text x="90" y="195" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Learning</text>
+                    <text x="90" y="208" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                    <text x="90" y="221" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="8.5">(Students)</text>
+                    
+                    <text x="250" y="195" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Research</text>
+                    <text x="250" y="208" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                    <text x="250" y="221" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="8.5">(Faculty)</text>
+                    
+                    <text x="170" y="155" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Industry and</text>
+                    <text x="170" y="167" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Startup Ecosystem</text>
+                    
+                    <text x="170" y="300" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="13">IAC Ecosystem Model</text>
+                  </svg>
+                </div>
+                
+                {/* Right side: 5 groups of challenges */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                  {[
+                    [
+                      "Lack of IAC Strategy and Roadmap",
+                      "Lack for Formal Org or Owners responsible for driving joint research thru IAC",
+                      "Lack of Success Models and experience in IAC"
+                    ],
+                    [
+                      "Unrealistic expectations from Academia and Students",
+                      "Institutions pulled in multiple directions by varying demands by multiple Industry players",
+                      "Lack of crawl-walk-run segmentation in Project complexity for joint research projects"
+                    ],
+                    [
+                      "Lack of support and enablement for Faculty to manage additional projects load",
+                      "Lack of opportunities for faculty to deepen understanding of Industry and startups",
+                      "Lack of incentive, career prospects, funding to balance publishing v/s applied research"
+                    ],
+                    [
+                      "Lack of excitement and mindset among Students re product innovation roles",
+                      "Curriculum not practical oriented or overly focused on IT",
+                      "Lack of Student internships or employment opportunities in Innovation versus IT"
+                    ],
+                    [
+                      "Lack of clear Collaboration processes, systems or tools",
+                      "Lack of Collaboration experience and best practices",
+                      "Lack of Leading and Logging indicators to measure IAC progress"
+                    ]
+                  ].map((group, gIdx) => (
+                    <div key={gIdx} style={{
+                      padding: "20px",
+                      background: theme === "dark" ? "#1e293b" : "#f8fafc",
+                      border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                      borderLeft: "4px solid #ef4444",
+                      borderRadius: "0 12px 12px 0",
+                      boxShadow: theme === "dark" ? "none" : "0 4px 12px rgba(0,0,0,0.01)"
+                    }}>
+                      <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {group.map((pt, ptIdx) => (
+                          <li key={ptIdx} style={{
+                            position: "relative",
+                            paddingLeft: "20px",
+                            fontSize: "13.5px",
+                            lineHeight: "1.5",
+                            color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
+                            fontWeight: "600"
+                          }}>
+                            <span style={{
+                              position: "absolute",
+                              left: "2px",
+                              top: "7px",
+                              width: "5px",
+                              height: "5px",
+                              borderRadius: "50%",
+                              background: "#ef4444"
+                            }} />
+                            {pt}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            
-            {/* Detail Cards Column */}
+          </div>
+
+          {/* SECTION 2: OUR THEORY OF CHANGE - STAKEHOLDER VIEW */}
+          <div style={{
+            width: "100%",
+            padding: "60px 20px",
+            background: theme === "dark" ? "#111827" : "#f8fafc",
+            display: "flex",
+            justifyContent: "center"
+          }}>
             <div style={{
-              flex: "1 1 450px",
+              width: "100%",
+              maxWidth: "1150px",
               display: "flex",
               flexDirection: "column",
-              gap: "24px"
+              alignItems: "center"
             }}>
-              {[
-                {
-                  points: [
-                    "Support applied research and development by",
-                    "Fostering an innovation mindset in students",
-                    "While enabling scalable collaboration between academia & industry"
-                  ]
-                },
-                {
-                  points: [
-                    "Align institutional strategy & goals with industry and startups",
-                    "Academic institutions, faculty, students, startups and industry partners have defined roles",
-                    "ApniLeap Campus Center governance by a Board comprising representatives from the Institution, Industry, Academia and ApniLeap"
-                  ]
-                },
-                {
-                  points: [
-                    "Drive change from within – ApniLeap Centers on campuses",
-                    "Managed by PoPs: Professor of Practice and Students",
-                    "Supported by the ApniLeap Central-Hub providing IP, frameworks, and engagement models for effective collaboration"
-                  ]
-                }
-              ].map((card, idx) => (
-                <div key={idx} style={{
-                  background: theme === "dark" ? "#1e293b" : "#f8fafc",
-                  borderLeft: "5px solid #3b529a",
-                  borderRadius: "0 12px 12px 0",
-                  padding: "24px",
-                  boxShadow: theme === "dark" ? "0 4px 15px rgba(0,0,0,0.15)" : "0 4px 12px rgba(0,0,0,0.02)",
-                  transition: "var(--transition-smooth)"
-                }}>
-                  <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {card.points.map((pt, ptIdx) => (
-                      <li key={ptIdx} style={{
-                        position: "relative",
-                        paddingLeft: "20px",
-                        fontSize: "14px",
-                        lineHeight: "1.6",
-                        color: theme === "dark" ? "#cbd5e1" : "#1e3a8a",
-                        fontWeight: "600"
-                      }}>
-                        <span style={{
-                          position: "absolute",
-                          left: "2px",
-                          top: "7px",
-                          width: "5px",
-                          height: "5px",
-                          borderRadius: "50%",
-                          background: "#ef4444"
-                        }} />
-                        {pt}
-                      </li>
-                    ))}
-                  </ul>
+              <h2 style={{
+                fontFamily: "var(--font-sans)",
+                fontWeight: "850",
+                fontSize: "30px",
+                color: theme === "dark" ? "#60a5fa" : "#0048ba",
+                marginBottom: "12px",
+                letterSpacing: "-0.5px",
+                textAlign: "center"
+              }}>
+                Our Theory of Change – Stakeholder View
+              </h2>
+              <p style={{
+                fontSize: "14.5px",
+                color: theme === "dark" ? "#cbd5e1" : "#475569",
+                fontWeight: "600",
+                textAlign: "center",
+                marginBottom: "40px",
+                maxWidth: "850px",
+                lineHeight: "1.6"
+              }}>
+                Operate within the institutional framework, align shared goals and enable ecosystems to collaborate better
+              </p>
+              
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                gap: "50px",
+                width: "100%",
+                alignItems: "start"
+              }}>
+                {/* Left side: Venn Diagram with ApniLeap Center */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <svg width="340" height="320" viewBox="0 0 340 320" style={{ maxWidth: "100%", height: "auto" }}>
+                    <circle cx="170" cy="120" r="80" fill={theme === "dark" ? "rgba(99, 102, 241, 0.08)" : "rgba(224, 231, 255, 0.55)"} stroke="#3b529a" strokeWidth="2.5" />
+                    <circle cx="120" cy="200" r="75" fill={theme === "dark" ? "rgba(239, 68, 68, 0.05)" : "rgba(254, 242, 242, 0.6)"} stroke="#ef4444" strokeWidth="2" />
+                    <circle cx="220" cy="200" r="75" fill={theme === "dark" ? "rgba(16, 185, 129, 0.05)" : "rgba(236, 253, 245, 0.6)"} stroke="#10b981" strokeWidth="2" />
+                    
+                    <text x="170" y="70" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="10.5">Academic Institution</text>
+                    <text x="90" y="195" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Learning</text>
+                    <text x="90" y="208" textAnchor="middle" fill="#ef4444" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                    <text x="90" y="221" textAnchor="middle" fill="#ef4444" fontWeight="600" fontSize="8.5">(Students)</text>
+                    
+                    <text x="250" y="195" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Research</text>
+                    <text x="250" y="208" textAnchor="middle" fill="#10b981" fontWeight="800" fontSize="9.5">Ecosystem</text>
+                    <text x="250" y="221" textAnchor="middle" fill="#10b981" fontWeight="600" fontSize="8.5">(Faculty)</text>
+                    
+                    <text x="170" y="145" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Industry and</text>
+                    <text x="170" y="157" textAnchor="middle" fill="#3b529a" fontWeight="800" fontSize="9.5">Startup Ecosystem</text>
+                    
+                    {/* Center ApniLeap white circle */}
+                    <circle cx="170" cy="180" r="42" fill="#ffffff" stroke="#10b981" strokeWidth="3" />
+                    <text x="170" y="177" textAnchor="middle" fill="#ef4444" fontWeight="900" fontSize="9">Apni<tspan fill="#3b529a">Leap</tspan></text>
+                    <text x="170" y="191" textAnchor="middle" fill="#3b529a" fontWeight="950" fontSize="7.5">Campus</text>
+                    <text x="170" y="200" textAnchor="middle" fill="#3b529a" fontWeight="950" fontSize="7.5">Center*</text>
+                    
+                    <text x="170" y="300" textAnchor="middle" fill={theme === "dark" ? "#cbd5e1" : "#1e3a8a"} fontWeight="850" fontSize="13">IAC Ecosystem Model</text>
+                  </svg>
                 </div>
-              ))}
+                
+                {/* Right side: Theory of Change Details */}
+                <div style={{
+                  background: theme === "dark" ? "#1e293b" : "#ffffff",
+                  border: theme === "dark" ? "1px solid #334155" : "1.5px solid rgba(0,0,0,0.03)",
+                  borderRadius: "16px",
+                  padding: "24px",
+                  boxShadow: theme === "dark" ? "none" : "0 8px 24px rgba(0,0,0,0.02)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "14px"
+                }}>
+                  {[
+                    { title: "Strategy", desc: "Well defined Strategy, Positioning, Roadmap, Metrics for IAC" },
+                    { title: "Structure", desc: "ApniLeap Center (run by PoPs, Students) responsible for IAC success" },
+                    { title: "Success Models", desc: "BVB KLE Tech, IITM, IITB, Medical Colleges, Business Schools" },
+                    { title: "Expectations", desc: "Clear expectation management through joint roadmap, SOWs" },
+                    { title: "Engagement", desc: "Industry/Startup involvement in curriculum, Exec PhD, research projects" },
+                    { title: "Complexity", desc: "Gradually increase complexity and project duration, 3/6/18 month projects" },
+                    { title: "Support", desc: "Leadership and change workshops, research proposal, project mgmt. support" },
+                    { title: "Engagement (Faculty)", desc: "Faculty Industry internships and post-doc opportunities" },
+                    { title: "Motivation", desc: "Financial incentives, career prospects, funding for joint research projects" },
+                    { title: "Programs & Courses", desc: "VidyaLeap, Engg. exploration etc. to develop innovation mindset" },
+                    { title: "Curriculum", desc: "Upgrade curriculum with Startup/Industry inputs and make it market ready" },
+                    { title: "Opportunities", desc: "Internship and Final Placement as well as Entrepreneurial opportunities" },
+                    { title: "Process, systems, tools", desc: "Develop research project mgmt. processes, SOW templates etc." },
+                    { title: "Best Practices", desc: "Develop best practices playbook based on BVB KLE Tech and other exp." },
+                    { title: "Leading and Logging Indicators", desc: "Select appropriate from ApniLeap Repository" }
+                  ].map((item, idx) => (
+                    <div key={idx} style={{
+                      display: "flex",
+                      alignItems: "start",
+                      fontSize: "13.5px",
+                      lineHeight: "1.4",
+                      color: theme === "dark" ? "#cbd5e1" : "#1e3a8a"
+                    }}>
+                      <strong style={{ width: "160px", flexShrink: 0, color: "#ef4444" }}>{item.title}</strong>
+                      <span style={{ fontWeight: "500" }}>: {item.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3266,7 +3843,7 @@ function App() {
                 gap: "6px",
                 padding: "6px 14px",
                 borderRadius: "99px",
-                background: theme === t.name ? "linear-gradient(135deg, var(--primary), var(--secondary))" : "transparent",
+                background: theme === t.name ? "var(--primary)" : "transparent",
                 color: theme === t.name ? "var(--text-primary-btn)" : "var(--text-muted)",
                 border: "none",
                 cursor: "pointer",
@@ -3294,9 +3871,7 @@ function App() {
           <div style={{
             flex: "1 1 60%",
             maxWidth: "60%",
-            background: theme === "dark" 
-              ? "linear-gradient(135deg, #090d16 0%, #1e293b 100%)" 
-              : "linear-gradient(135deg, #3b529a 0%, #6366f1 100%)",
+            background: theme === "dark" ? "#090d16" : "#3b529a",
             position: "relative",
             overflow: "hidden",
             display: "flex",
@@ -4249,7 +4824,7 @@ function App() {
         <div style={{
           display: "flex",
           flexDirection: "column",
-          minHeight: "100vh",
+          height: "100vh",
           width: "100vw",
           background: theme === "dark" ? "#0b0f19" : "#ffffff",
           fontFamily: "var(--font-sans)",
@@ -4530,7 +5105,7 @@ function App() {
             }}
           >
             <span style={{ color: "#ef4444" }}>Apni</span>
-            <span style={{ color: "var(--sidebar-text-main)", display: "inline-flex", alignItems: "center" }}>
+            <span style={{ color: "#3b529a", display: "inline-flex", alignItems: "center" }}>
               Leap
               <span style={{ color: "#10b981", marginLeft: "4px", fontSize: "18px", fontWeight: "900" }}>↗</span>
             </span>
@@ -4559,7 +5134,7 @@ function App() {
                   letterSpacing: "0.8px",
                   marginBottom: "8px"
                 }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUser /> Select Active Role</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUser /> Active Role</span>
                 </label>
                 <select
                   value={currentPersona}
@@ -4583,11 +5158,11 @@ function App() {
                     fontFamily: "var(--font-sans)"
                   }}
                 >
-                  <option value="moderator" style={{ background: "var(--bg-sidebar)" }}>Central Portfolio Moderator</option>
-                  <option value="spoke-kle" style={{ background: "var(--bg-sidebar)" }}>KLE Campus Space Coordinator</option>
-                  <option value="spoke-coep" style={{ background: "var(--bg-sidebar)" }}>COEP Campus Space Coordinator</option>
-                  <option value="spoke-mmcoep" style={{ background: "var(--bg-sidebar)" }}>MMCOEP Campus Space Coordinator</option>
-                  <option value="spoke-rit" style={{ background: "var(--bg-sidebar)" }}>RIT Campus Space Coordinator</option>
+                  <option value="moderator" style={{ background: "var(--bg-sidebar)" }}>Moderator</option>
+                  <option value="spoke-kle" style={{ background: "var(--bg-sidebar)" }}>KLE Coordinator</option>
+                  <option value="spoke-coep" style={{ background: "var(--bg-sidebar)" }}>COEP Coordinator</option>
+                  <option value="spoke-mmcoep" style={{ background: "var(--bg-sidebar)" }}>MMCOEP Coordinator</option>
+                  <option value="spoke-rit" style={{ background: "var(--bg-sidebar)" }}>RIT Coordinator</option>
                 </select>
               </div>
             )}
@@ -4596,12 +5171,12 @@ function App() {
             {activeWorkspace !== "hub" && activeWorkspace !== "moderator" && activeWorkspace !== "meetings" && sessionUser?.role !== "Corporate Partner" && (
               <>
                 <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--sidebar-text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "8px", marginBottom: "4px" }}>
-                  Workspace View
+                  Views
                 </div>
                 <SidebarNavItem
                   active={activeView === "dashboard"}
                   icon={<FaChartPie size={16} />}
-                  label="Analytics Console"
+                  label="Overview"
                   collapsed={false}
                   onClick={() => setActiveView("dashboard")}
                   variant="accent"
@@ -4618,16 +5193,16 @@ function App() {
               </>
             )}
 
-            {/* Section 3: APNILEAP SUITE */}
+            {/* Section 3: Campuses & Roles */}
             <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--sidebar-text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "4px", marginBottom: "4px" }}>
-              ApniLeap Suite
+              Campuses & Roles
             </div>
             
             {isCentralAdmin && (
               <SidebarNavItem
                 active={activeWorkspace === "hub"}
                 icon={<FaGlobe style={{ fontSize: "16px" }} />}
-                label="Executive Portfolio Hub"
+                label="Main Dashboard"
                 collapsed={false}
                 onClick={() => setActiveWorkspace("hub")}
               />
@@ -4645,7 +5220,7 @@ function App() {
                 <SidebarNavItem
                   active={activeWorkspace === "meetings"}
                   icon={<FaCalendarAlt style={{ fontSize: "16px" }} />}
-                  label="Collaboration & Sync Meetings"
+                  label="Meetings"
                   collapsed={false}
                   onClick={() => setActiveWorkspace("meetings")}
                 />
@@ -4657,7 +5232,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-kle"}
                 icon={<FaBuilding />}
-                label="KLE Campus Space"
+                label="KLE Campus"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-kle");
@@ -4669,7 +5244,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-coep"}
                 icon={<FaBuilding />}
-                label="COEP Campus Space"
+                label="COEP Campus"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-coep");
@@ -4681,7 +5256,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-mmcoep"}
                 icon={<FaBuilding />}
-                label="MMCOEP Campus Space"
+                label="MMCOEP Campus"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-mmcoep");
@@ -4693,7 +5268,7 @@ function App() {
               <SidebarNavItem
                 active={activeWorkspace === "spoke-rit"}
                 icon={<FaBuilding />}
-                label="RIT Campus Space"
+                label="RIT Campus"
                 collapsed={false}
                 onClick={() => {
                   setActiveWorkspace("spoke-rit");
@@ -4719,7 +5294,7 @@ function App() {
               <p style={{ color: "var(--sidebar-text-muted)", fontSize: "10px", lineHeight: "1.3" }}>
                 {hasError 
                   ? "Jira API server offline. Check logs."
-                  : "Live tracking active. Background auto-polling enabled."}
+                  : "Live tracking active. Auto-refreshing."}
               </p>
             </div>
           </nav>
@@ -5152,8 +5727,8 @@ function App() {
             {sessionUser?.role !== "Student Developer" && proposedProjectsForSpoke.map((proj) => (
               <div key={proj.id} className="glass-panel pulse-glow" style={{
                 background: theme === "dark"
-                  ? "linear-gradient(135deg, rgba(45, 212, 191, 0.1), rgba(249, 115, 22, 0.1))"
-                  : "linear-gradient(135deg, rgba(13, 148, 136, 0.05), rgba(249, 115, 22, 0.05))",
+                  ? "rgba(45, 212, 191, 0.08)"
+                  : "rgba(13, 148, 136, 0.04)",
                 border: "1.5px dashed var(--border-glow)",
                 padding: "22px 26px",
                 borderRadius: "16px",
@@ -5252,8 +5827,8 @@ function App() {
                         padding: "8px 18px",
                         fontSize: "13px",
                         borderRadius: "8px",
-                        background: "linear-gradient(135deg, var(--primary), var(--secondary))",
-                        boxShadow: "0 4px 12px rgba(45, 212, 191, 0.2)",
+                        background: "#ef4444",
+                        boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)",
                         cursor: "pointer"
                       }}
                     >
@@ -5268,11 +5843,11 @@ function App() {
               <div className="glass-panel" style={{
                 background: todayConflictsForSpoke.length > 0
                   ? (theme === "dark"
-                    ? "linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(251, 146, 60, 0.12))"
-                    : "linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(251, 146, 60, 0.05))")
+                    ? "rgba(239, 68, 68, 0.1)"
+                    : "rgba(239, 68, 68, 0.04)")
                   : (theme === "dark"
-                    ? "linear-gradient(135deg, rgba(13, 148, 136, 0.15), rgba(8, 145, 178, 0.15))"
-                    : "linear-gradient(135deg, rgba(13, 148, 136, 0.06), rgba(8, 145, 178, 0.06))"),
+                    ? "rgba(13, 148, 136, 0.1)"
+                    : "rgba(13, 148, 136, 0.04)"),
                 border: todayConflictsForSpoke.length > 0
                   ? "1.5px solid rgba(239, 68, 68, 0.35)"
                   : "1.5px solid var(--border-glass)",
@@ -5423,7 +5998,7 @@ function App() {
                     {/* Student Persona Header */}
                     <div className="glass-panel" style={{
                       padding: "20px 24px",
-                      background: "linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.02))",
+                      background: "var(--bg-card)",
                       border: "1px solid var(--border-glass)",
                       borderRadius: "16px",
                       display: "flex",
@@ -5639,14 +6214,14 @@ function App() {
                                               }}
                                               style={{
                                                 padding: "6px 12px",
-                                                background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                                                background: "#ef4444",
                                                 border: "none",
                                                 borderRadius: "6px",
                                                 color: "white",
                                                 fontSize: "11px",
                                                 fontWeight: "800",
                                                 cursor: "pointer",
-                                                boxShadow: "0 4px 10px rgba(99, 102, 241, 0.25)"
+                                                boxShadow: "0 4px 10px rgba(239, 68, 68, 0.2)"
                                               }}
                                             >
                                               <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>Submit Work <FaPaperPlane /></span>
@@ -5805,8 +6380,8 @@ function App() {
                                       width: `${pct}%`,
                                       height: "100%",
                                       background: idx === 0 
-                                        ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
-                                        : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
+                                        ? "#f59e0b" 
+                                        : (idx === 1 ? "#9ca3af" : "var(--primary)"),
                                       borderRadius: "2px"
                                     }}></div>
                                   </div>
@@ -5846,22 +6421,40 @@ function App() {
                                     }}>
                                       <strong style={{ fontSize: "13px", color: "var(--text-main)" }}>{team.name}</strong>
                                       
-                                      {team.mentor && (
-                                        <div style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          background: "rgba(168, 85, 247, 0.05)",
-                                          border: "1px solid rgba(168, 85, 247, 0.15)",
-                                          borderRadius: "6px",
-                                          padding: "4px 8px"
-                                        }}>
-                                          <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
-                                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                                            Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong>
-                                          </span>
-                                        </div>
-                                      )}
+                                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                                        {team.mentor && (
+                                          <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                            background: "rgba(168, 85, 247, 0.05)",
+                                            border: "1px solid rgba(168, 85, 247, 0.15)",
+                                            borderRadius: "6px",
+                                            padding: "4px 8px"
+                                          }}>
+                                            <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
+                                            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                                              Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong>
+                                            </span>
+                                          </div>
+                                        )}
+                                        {team.teamLeader && (
+                                          <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                            background: "rgba(16, 185, 129, 0.05)",
+                                            border: "1px solid rgba(16, 185, 129, 0.15)",
+                                            borderRadius: "6px",
+                                            padding: "4px 8px"
+                                          }}>
+                                            <img src={team.teamLeader.avatarUrl} alt={team.teamLeader.displayName} style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
+                                            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                                              Leader: <strong style={{ color: "var(--text-main)" }}>{team.teamLeader.displayName}</strong>
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
 
                                       <div>
                                         <div style={{ fontSize: "10px", color: "var(--text-dim)", fontWeight: "700", textTransform: "uppercase", marginBottom: "6px" }}>Team Members</div>
@@ -6034,13 +6627,13 @@ function App() {
                           gap: "20px"
                         }}>
                           <DashboardCard
-                            title="Total Scoped Issues"
+                            title="Total Tasks"
                             value={metrics.total}
                             subtitle="Matching active Spoke sprint"
                             glow={true}
                           />
                           <DashboardCard
-                            title="Active Overdue Breaches"
+                            title="Overdue Tasks"
                             value={metrics.overdue}
                             subtitle="Late sprint deadline tasks"
                             themeColor="var(--status-backlog-text)"
@@ -6048,7 +6641,7 @@ function App() {
                             alert={metrics.overdue > 0}
                           />
                           <DashboardCard
-                            title="Awaiting Verification"
+                            title="Need Review"
                             value={allSubmissions.filter(sub => {
                               const userPersona = currentPersona.replace("spoke-", "");
                               const subSpoke = sub.studentName && sub.studentName.toLowerCase();
@@ -6067,7 +6660,7 @@ function App() {
                             }).length > 0}
                           />
                           <DashboardCard
-                            title="Campus Agile Velocity"
+                            title="Completed Tasks"
                             value={metrics.done}
                             subtitle="Tasks marked Done"
                             themeColor="#a855f7"
@@ -6082,13 +6675,13 @@ function App() {
                           
                           const spokeSubmissions = allSubmissions.filter(sub => {
                             const subSpoke = sub.studentName && sub.studentName.toLowerCase();
-                            const isMatch = subSpoke && (subSpoke.includes(targetSpoke) || subSpoke.includes("student"));
+                            const isMatch = subSpoke && subSpoke.includes(targetSpoke);
                             return isMatch || currentPersona === "moderator" || currentPersona === "executive";
                           });
 
                           return (
                             <div className="glass-panel" style={{
-                              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(168, 85, 247, 0.02))",
+                              background: "var(--bg-card)",
                               border: "1px solid var(--border-glass)",
                               padding: "24px",
                               borderRadius: "16px",
@@ -6100,11 +6693,11 @@ function App() {
                                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                   <span style={{ fontSize: "20px", display: "inline-flex", alignItems: "center" }}><FaExclamationTriangle style={{ color: "var(--accent)" }} /></span>
                                   <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "850", color: "var(--text-main)" }}>
-                                    Student Deliverables Verification Queue
+                                    Student Tasks Review
                                   </h3>
                                 </div>
                                 <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                                  Review and approve code/documents uploaded by student developers
+                                  Review and approve tasks submitted by students
                                 </span>
                               </div>
 
@@ -6231,17 +6824,44 @@ function App() {
                                                   </button>
                                                 </div>
                                               ) : (
-                                                <span style={{
-                                                  fontSize: "11px", 
-                                                  color: "#2dd4bf", 
-                                                  fontWeight: "600",
-                                                  display: "inline-flex",
-                                                  alignItems: "center",
-                                                  gap: "6px"
-                                                }}>
-                                                  <FaCheck size={11} />
-                                                  <span>Verified Shipped</span>
-                                                </span>
+                                                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+                                                  <span style={{
+                                                    fontSize: "11px", 
+                                                    color: "#2dd4bf", 
+                                                    fontWeight: "600",
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: "6px"
+                                                  }}>
+                                                    <FaCheck size={11} />
+                                                    <span>Verified Shipped</span>
+                                                  </span>
+                                                  <button
+                                                    onClick={() => handleDeleteSubmission(sub._id)}
+                                                    style={{
+                                                      padding: "4px 6px",
+                                                      background: "rgba(239, 68, 68, 0.08)",
+                                                      border: "1px solid rgba(239, 68, 68, 0.2)",
+                                                      borderRadius: "4px",
+                                                      color: "#ef4444",
+                                                      cursor: "pointer",
+                                                      display: "inline-flex",
+                                                      alignItems: "center",
+                                                      verticalAlign: "middle",
+                                                      transition: "var(--transition-smooth)",
+                                                      marginLeft: "8px"
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                                                    }}
+                                                    title="Delete old submission history"
+                                                  >
+                                                    <FaTrashAlt size={10} />
+                                                  </button>
+                                                </div>
                                               )}
                                             </td>
                                           </tr>
@@ -6397,8 +7017,8 @@ function App() {
                                         width: `${pct}%`,
                                         height: "100%",
                                         background: idx === 0 
-                                          ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
-                                          : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
+                                          ? "#f59e0b" 
+                                          : (idx === 1 ? "#9ca3af" : "var(--primary)"),
                                         borderRadius: "3px"
                                       }}></div>
                                     </div>
@@ -6605,7 +7225,7 @@ function App() {
                           {/* Add team member form */}
                           <div className="glass-panel" style={{
                             padding: "24px",
-                            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(168, 85, 247, 0.01))"
+                            background: "var(--bg-card)"
                           }}>
                             <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "16px", marginTop: 0 }}>
                               <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Add Student Team Member</span>
@@ -6762,27 +7382,45 @@ function App() {
                                     </div>
                                     
                                     {/* Faculty Mentor Display */}
-                                    {team.mentor ? (
-                                      <div style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "8px",
-                                        background: "rgba(168, 85, 247, 0.05)",
-                                        border: "1px solid rgba(168, 85, 247, 0.15)",
-                                        borderRadius: "8px",
-                                        padding: "6px 10px",
-                                        alignSelf: "flex-start"
-                                      }}>
-                                        <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
-                                        <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
-                                          <span>Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong></span>
+                                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignSelf: "flex-start" }}>
+                                      {team.mentor && (
+                                        <div style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          background: "rgba(168, 85, 247, 0.05)",
+                                          border: "1px solid rgba(168, 85, 247, 0.15)",
+                                          borderRadius: "8px",
+                                          padding: "6px 10px"
+                                        }}>
+                                          <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
+                                          <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
+                                            <span>Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong></span>
+                                          </span>
+                                        </div>
+                                      )}
+                                      {team.teamLeader && (
+                                        <div style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          background: "rgba(16, 185, 129, 0.05)",
+                                          border: "1px solid rgba(16, 185, 129, 0.15)",
+                                          borderRadius: "8px",
+                                          padding: "6px 10px"
+                                        }}>
+                                          <img src={team.teamLeader.avatarUrl} alt={team.teamLeader.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
+                                          <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
+                                            <span>Leader: <strong style={{ color: "var(--text-main)" }}>{team.teamLeader.displayName}</strong></span>
+                                          </span>
+                                        </div>
+                                      )}
+                                      {!team.mentor && !team.teamLeader && (
+                                        <span style={{ fontSize: "11px", color: "var(--text-dim)", fontStyle: "italic" }}>
+                                          No Faculty Coordinator assigned
                                         </span>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: "11px", color: "var(--text-dim)", fontStyle: "italic" }}>
-                                        No Faculty Coordinator assigned
-                                      </span>
-                                    )}
+                                      )}
+                                    </div>
 
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
                                       {team.members.map((m) => (
@@ -6827,7 +7465,7 @@ function App() {
                           {/* <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span> checkbox builder form */}
                           <div className="glass-panel" style={{
                             padding: "24px",
-                            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(45, 212, 191, 0.01))"
+                            background: "var(--bg-card)"
                           }}>
                             <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "12px", marginTop: 0 }}>
                               <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span>
@@ -6861,6 +7499,22 @@ function App() {
                                   <option value="">-- Choose Faculty Coordinator --</option>
                                   {spokeMembers.filter(m => m.displayName.includes("Mentor") || m.displayName.includes("Coordinator")).map(m => (
                                     <option key={m.accountId} value={m.accountId}>{m.displayName.replace(/ \((Faculty Mentor|Coordinator)\)/g, "")}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TEAM LEADER</label>
+                                <select
+                                  className="form-input"
+                                  value={selectedTeamLeader}
+                                  onChange={(e) => setSelectedTeamLeader(e.target.value)}
+                                  disabled={isCreatingTeam}
+                                  style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white", marginBottom: "14px" }}
+                                >
+                                  <option value="">-- Choose Team Leader --</option>
+                                  {spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).map(m => (
+                                    <option key={m.accountId} value={m.accountId}>{m.displayName.replace(/ \((Student Developer)\)/g, "")}</option>
                                   ))}
                                 </select>
                               </div>
@@ -6998,7 +7652,7 @@ function App() {
                                       <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{progressPct}% ({doneT}/{totalT} Phases)</strong>
                                     </div>
                                     <div style={{ height: "6px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
-                                      <div style={{ width: `${progressPct}%`, height: "100%", background: "linear-gradient(90deg, var(--primary), var(--secondary))", borderRadius: "3px" }}></div>
+                                      <div style={{ width: `${progressPct}%`, height: "100%", background: "var(--primary)", borderRadius: "3px" }}></div>
                                     </div>
                                   </div>
                                 </div>
@@ -7014,7 +7668,7 @@ function App() {
                         {/* Sprint task assignment form */}
                         <div className="glass-panel" style={{
                           padding: "24px",
-                          background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(45, 212, 191, 0.01))"
+                          background: "var(--bg-card)"
                         }}>
                           <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "16px", marginTop: 0 }}>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Assign Sprint Task under B2B Project</span>
@@ -7866,12 +8520,12 @@ function App() {
                         disabled={!selectedTask.fields.assignee || isCentralAdmin}
                         style={{
                           height: "36px",
-                          background: "linear-gradient(135deg, var(--accent), var(--secondary))",
-                          boxShadow: "0 4px 15px rgba(251, 146, 60, 0.2)",
+                          background: "#ef4444",
+                          boxShadow: "0 4px 15px rgba(239, 68, 68, 0.2)",
                           opacity: (selectedTask.fields.assignee && !isCentralAdmin) ? 1 : 0.5,
                           cursor: (selectedTask.fields.assignee && !isCentralAdmin) ? "pointer" : "not-allowed",
-                          color: "#020609",
-                          fontWeight: "700"
+                          color: "white",
+                          fontWeight: "750"
                         }}
                         onClick={() => handleOpenEmailComposer(selectedTask)}
                         title={isCentralAdmin ? "Central Administrators cannot send email alerts from spoke boards" : selectedTask.fields.assignee ? "Send alert email to assignee" : "Assign task to a team member to trigger alerts"}
@@ -8530,7 +9184,7 @@ function App() {
                 <button
                   type="submit"
                   className="btn-primary"
-                  style={{ background: "linear-gradient(135deg, var(--accent), var(--secondary))" }}
+                  style={{ background: "#ef4444", color: "white" }}
                 >
                   <FaPaperPlane size={12} />
                   <span>Dispatch Email</span>
@@ -8819,9 +9473,10 @@ function App() {
                   className="btn-primary"
                   style={{
                     padding: "8px 20px",
-                    background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                    background: "#ef4444",
                     borderColor: "transparent",
-                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)"
+                    color: "white",
+                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
                   }}
                   disabled={isIngesting}
                 >
@@ -8960,9 +9615,10 @@ function App() {
                   className="btn-primary"
                   style={{
                     padding: "8px 20px",
-                    background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                    background: "#ef4444",
                     borderColor: "transparent",
-                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)"
+                    color: "white",
+                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
                   }}
                   disabled={isUpdatingProject}
                 >
@@ -9074,7 +9730,7 @@ function App() {
                     }}
                     className="btn-primary"
                     style={{
-                      background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+                      background: "#dc2626",
                       border: "none",
                       padding: "8px 14px",
                       fontSize: "12px",
@@ -9173,7 +9829,7 @@ function App() {
                   <div style={{
                     padding: "10px 14px",
                     borderRadius: isMe ? "12px 12px 0 12px" : "12px 12px 12px 0",
-                    background: isMe ? "linear-gradient(135deg, var(--primary), var(--secondary))" : "var(--bg-subtle)",
+                    background: isMe ? "var(--primary)" : "var(--bg-subtle)",
                     border: isMe ? "none" : "1px solid var(--border-subtle)",
                     color: isMe ? "#ffffff" : "var(--text-main)",
                     fontSize: "12.5px",
@@ -9496,7 +10152,7 @@ function DashboardCard({ title, value, subtitle, themeColor, pulse, glow, progre
             <div style={{
               height: "100%",
               width: `${progress}%`,
-              background: "linear-gradient(90deg, var(--primary), var(--secondary))",
+              background: "var(--primary)",
               borderRadius: "3px",
               transition: "width 0.5s ease-out"
             }}></div>
@@ -9718,7 +10374,7 @@ function DraggableCard({ task, index, onClick }) {
                 <div style={{
                   height: "100%",
                   width: `${Math.min(100, Math.round((task.fields.timetracking.timeSpentSeconds / task.fields.timetracking.originalEstimateSeconds) * 100))}%`,
-                  background: "linear-gradient(90deg, var(--primary), var(--secondary))",
+                  background: "var(--primary)",
                   borderRadius: "2px"
                 }}></div>
               </div>
@@ -10262,7 +10918,7 @@ function HubDashboardView({ metrics, loading, onRefresh, onIngestClick, triggerT
                 <button
                   onClick={onIngestClick}
                   className="btn-primary"
-                  style={{ padding: "6px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "linear-gradient(135deg, var(--primary), var(--secondary))", cursor: "pointer" }}
+                  style={{ padding: "6px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "#ef4444", color: "white", cursor: "pointer" }}
                 >
                   <FaPlus size={10} />
                   <span>Ingest New Project</span>
@@ -10397,7 +11053,7 @@ function HubDashboardView({ metrics, loading, onRefresh, onIngestClick, triggerT
                                       <div style={{
                                         width: `${alloc.progressPercent || 0}%`,
                                         height: "100%",
-                                        background: "linear-gradient(90deg, var(--primary), var(--secondary))",
+                                        background: "var(--primary)",
                                         borderRadius: "3px",
                                         boxShadow: "0 0 8px var(--primary)",
                                         transition: "width 0.5s cubic-bezier(0.1, 0.8, 0.1, 1)"
@@ -10544,7 +11200,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
         <button
           onClick={() => setActiveTab("proposals")}
           style={{
-            background: activeTab === "proposals" ? "linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))" : "transparent",
+            background: activeTab === "proposals" ? "rgba(99, 102, 241, 0.08)" : "transparent",
             border: "1px solid " + (activeTab === "proposals" ? "var(--primary)" : "var(--border-glass)"),
             color: activeTab === "proposals" ? "var(--text-main)" : "var(--text-muted)",
             padding: "8px 16px",
@@ -10563,7 +11219,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
         <button
           onClick={() => setActiveTab("deadlines")}
           style={{
-            background: activeTab === "deadlines" ? "linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(249, 115, 22, 0.08))" : "transparent",
+            background: activeTab === "deadlines" ? "rgba(239, 68, 68, 0.08)" : "transparent",
             border: "1px solid " + (activeTab === "deadlines" ? "#ef4444" : "var(--border-glass)"),
             color: activeTab === "deadlines" ? "var(--text-main)" : "var(--text-muted)",
             padding: "8px 16px",
@@ -10593,7 +11249,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
               <button
                 onClick={onIngestClick}
                 className="btn-primary"
-                style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "linear-gradient(135deg, var(--primary), var(--secondary))", cursor: "pointer" }}
+                style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "#ef4444", color: "white", cursor: "pointer" }}
               >
                 <FaPlus size={10} />
                 <span>Ingest New Proposal</span>
@@ -10827,7 +11483,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                 disabled={auditLoading}
                 className="btn-primary"
                 style={{
-                  background: "linear-gradient(135deg, #ef4444, #f97316)",
+                  background: "#ef4444",
                   borderColor: "transparent",
                   color: "white",
                   padding: "10px 24px",
@@ -11183,11 +11839,12 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
               padding: "8px 16px",
               fontSize: "12.5px",
               borderRadius: "8px",
-              background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+              background: "#ef4444",
               borderColor: "transparent",
+              color: "white",
               cursor: "pointer",
               fontWeight: "800",
-              boxShadow: "0 4px 12px rgba(249, 115, 22, 0.2)"
+              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
             }}
           >
             Propose B2B Project
@@ -11406,7 +12063,7 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                               <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{progressPct}%</strong>
                             </div>
                             <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden", border: "1px solid var(--border-glass)" }}>
-                              <div style={{ width: `${progressPct}%`, height: "100%", background: "linear-gradient(90deg, var(--primary), var(--secondary))", borderRadius: "3px" }} />
+                              <div style={{ width: `${progressPct}%`, height: "100%", background: "var(--primary)", borderRadius: "3px" }} />
                             </div>
                           </div>
                         ) : (
@@ -11449,11 +12106,12 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                             padding: "10px 20px",
                             fontSize: "12.5px",
                             borderRadius: "8px",
-                            background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                            background: "#ef4444",
                             borderColor: "transparent",
+                            color: "white",
                             cursor: "pointer",
                             fontWeight: "800",
-                            boxShadow: "0 4px 15px rgba(249, 115, 22, 0.25)"
+                            boxShadow: "0 4px 15px rgba(239, 68, 68, 0.25)"
                           }}
                         >
                           Propose Your First Project
@@ -11604,10 +12262,11 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                 padding: "12px",
                 fontSize: "13px",
                 borderRadius: "8px",
-                background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                background: "#ef4444",
                 border: "none",
+                color: "white",
                 fontWeight: "800",
-                boxShadow: "0 4px 15px rgba(249, 115, 22, 0.25)",
+                boxShadow: "0 4px 15px rgba(239, 68, 68, 0.25)",
                 cursor: "pointer",
                 marginTop: "10px"
               }}
@@ -11660,8 +12319,8 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                         width: `${pct}%`,
                         height: "100%",
                         background: idx === 0 
-                          ? "linear-gradient(90deg, #fbbf24, #f59e0b)" 
-                          : (idx === 1 ? "linear-gradient(90deg, #9ca3af, #6b7280)" : "linear-gradient(90deg, var(--primary), var(--secondary))"),
+                          ? "#f59e0b" 
+                          : (idx === 1 ? "#9ca3af" : "var(--primary)"),
                         borderRadius: "2px"
                       }}></div>
                     </div>
@@ -11967,7 +12626,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                     minHeight: "38px",
                     borderRadius: "8px",
                     background: isSelected 
-                      ? "linear-gradient(135deg, var(--primary), var(--secondary))"
+                      ? "#ef4444"
                       : "transparent",
                     border: "1px solid transparent",
                     color: isSelected ? "white" : "var(--text-main)",
@@ -12169,9 +12828,10 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                         padding: "6px 14px",
                         fontSize: "11.5px",
                         borderRadius: "6px",
-                        background: "linear-gradient(135deg, var(--accent), var(--secondary))",
+                        background: "#ef4444",
                         border: "none",
-                        boxShadow: "0 4px 12px rgba(249, 115, 22, 0.15)",
+                        color: "white",
+                        boxShadow: "0 4px 12px rgba(239, 68, 68, 0.15)",
                         cursor: "pointer"
                       }}
                     >
@@ -12305,8 +12965,9 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
               marginTop: "8px",
               fontWeight: "700",
               fontSize: "13px",
-              background: "linear-gradient(135deg, var(--primary), var(--secondary))",
-              boxShadow: "0 4px 15px rgba(99, 102, 241, 0.2)",
+              background: "#ef4444",
+              color: "white",
+              boxShadow: "0 4px 15px rgba(239, 68, 68, 0.2)",
               cursor: "pointer"
             }}
           >
@@ -12371,8 +13032,9 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
                 className="btn-primary"
                 style={{
                   padding: "8px 16px",
-                  background: "linear-gradient(135deg, #ef4444, #b91c1c)",
+                  background: "#ef4444",
                   border: "none",
+                  color: "white",
                   cursor: "pointer",
                   fontSize: "12.5px",
                   fontWeight: "700",

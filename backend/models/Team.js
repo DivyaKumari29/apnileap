@@ -34,6 +34,10 @@ const TeamSchema = new mongoose.Schema({
     type: TeamMemberSchema,
     default: null
   },
+  teamLeader: {
+    type: TeamMemberSchema,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

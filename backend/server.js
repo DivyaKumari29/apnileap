@@ -3829,7 +3829,7 @@ app.get("/api/teams", async (req, res) => {
 // POST /api/teams - Create a new Spoke Sprints Team persistently in MongoDB Atlas
 app.post("/api/teams", authenticateToken, async (req, res) => {
   try {
-    const { name, boardId, members, mentor } = req.body;
+    const { name, boardId, members, mentor, teamLeader } = req.body;
     if (!name || !boardId || !Array.isArray(members) || members.length === 0) {
       return res.status(400).json({ error: "Team name, boardId, and a non-empty members array are required." });
     }
@@ -3838,7 +3838,8 @@ app.post("/api/teams", authenticateToken, async (req, res) => {
       name,
       boardId,
       members,
-      mentor: mentor || null
+      mentor: mentor || null,
+      teamLeader: teamLeader || null
     });
 
     await newTeam.save();
@@ -4023,6 +4024,23 @@ app.put("/submissions/:id/status", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Failed to update submission status:", error);
     res.status(500).json({ error: "Failed to update submission status" });
+  }
+});
+
+// DELETE /submissions/:id - Delete a student submission persistently
+app.delete("/submissions/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const submission = await Submission.findByIdAndDelete(id);
+    if (!submission) {
+      return res.status(404).json({ error: "Submission not found." });
+    }
+    console.log(`[SUBMISSION AUDIT] Deleted submission ${id} for task ${submission.taskId}`);
+    invalidateCache();
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete student submission:", error);
+    res.status(500).json({ error: "Failed to delete student submission" });
   }
 });
 
