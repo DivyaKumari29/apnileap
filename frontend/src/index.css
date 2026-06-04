@@ -206,7 +206,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Button Styling */
 .btn-primary {
-  background: #ef4444;
+  background: #f97316;
   color: var(--text-primary-btn);
   border: none;
   padding: 10px 20px;
@@ -218,12 +218,12 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: 8px;
   transition: var(--transition-smooth);
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.22);
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.22);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.35);
   opacity: 0.95;
 }
 

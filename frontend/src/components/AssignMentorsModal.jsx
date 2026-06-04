@@ -28,7 +28,7 @@ export default function AssignMentorsModal({
   const fetchMentors = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/mentors/${campusId}`);
+      const res = await axios.get(`http://localhost:5001/mentors/${campusId}`);
       setMentors(res.data);
     } catch (err) {
       console.error("Failed to fetch mentors", err);
@@ -49,7 +49,7 @@ export default function AssignMentorsModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.post(`http://localhost:5000/allocations/${allocationId}/assign`, {
+      await axios.post(`http://localhost:5001/allocations/${allocationId}/assign`, {
         mentorIds: selectedMentors
       });
       triggerToast("Mentors assigned successfully!");

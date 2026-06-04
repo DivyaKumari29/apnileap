@@ -22,7 +22,7 @@ export const ManageTeamsModal = ({ allocation, onClose, onRefresh }) => {
     if (!newTeamName.trim()) return;
     setLoading(true);
     try {
-      const res = await axios.post(`http://localhost:5000/allocations/${allocation.id}/teams`, {
+      const res = await axios.post(`http://localhost:5001/allocations/${allocation.id}/teams`, {
         name: newTeamName
       });
       if (res.data.success) {
@@ -47,7 +47,7 @@ export const ManageTeamsModal = ({ allocation, onClose, onRefresh }) => {
     setActiveTeamId(team.id);
     setFetchingStudents(true);
     try {
-      const res = await axios.get(`http://localhost:5000/students/${allocation.targetCampusId}`);
+      const res = await axios.get(`http://localhost:5001/students/${allocation.targetCampusId}`);
       setStudents(res.data);
       
       const existingIds = team.studentAssignments?.map(sa => sa.studentId) || [];
@@ -70,7 +70,7 @@ export const ManageTeamsModal = ({ allocation, onClose, onRefresh }) => {
   const handleSaveAssignments = async (teamId) => {
     setAssigning(true);
     try {
-      const res = await axios.post(`http://localhost:5000/teams/${teamId}/assign-students`, {
+      const res = await axios.post(`http://localhost:5001/teams/${teamId}/assign-students`, {
         studentIds: selectedStudentIds
       });
       if (res.data.success) {

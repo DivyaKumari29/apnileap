@@ -20,7 +20,7 @@ const FIPProgressModal = ({ isOpen, onClose }) => {
   const fetchLiveMetrics = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("http://localhost:5000/hub/metrics");
+      const response = await axios.get("http://localhost:5001/hub/metrics");
       setMetrics(response.data);
     } catch (error) {
       console.error("Failed to fetch FIP cohort metrics", error);

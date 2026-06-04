@@ -14,7 +14,7 @@ const StudentDashboardView = ({ campusId, currentUser }) => {
 
   const fetchCampusAllocations = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/students/${currentUser.id}/projects`);
+      const res = await axios.get(`http://localhost:5001/students/${currentUser.id}/projects`);
       setAllocations(res.data);
     } catch (error) {
       console.error("Failed to fetch student allocations:", error);

@@ -72,6 +72,9 @@ let lastOfflineCheck = 0;
 
 // Helper to determine if we should contact Jira or bypass to mock data immediately
 function shouldCheckJira() {
+  if (!process.env.JIRA_DOMAIN || process.env.JIRA_DOMAIN === "undefined" || !process.env.JIRA_DOMAIN.startsWith("http")) {
+    return false;
+  }
   if (!isJiraOffline) return true;
   // If offline, retry contacting live JIRA only after 2 minutes
   if (Date.now() - lastOfflineCheck > 2 * 60 * 1000) {
@@ -85,10 +88,10 @@ function shouldCheckJira() {
 // Helper to handle and cache live JIRA network connectivity failures
 function handleJiraNetworkError(err) {
   const code = err.code || (err.response && err.response.code) || "";
-  const isTerminal = code === 'ENOTFOUND' || code === 'ECONNREFUSED' || code === 'EHOSTUNREACH' || code === 'ETIMEDOUT' || err.message.includes('timeout') || err.message.includes('ENOTFOUND');
+  const isTerminal = code === 'ENOTFOUND' || code === 'ECONNREFUSED' || code === 'EHOSTUNREACH' || code === 'ETIMEDOUT' || code === 'ERR_INVALID_URL' || err.message.includes('timeout') || err.message.includes('ENOTFOUND') || err.message.includes('Invalid URL');
   if (isTerminal) {
     if (!isJiraOffline) {
-      console.warn("⚠️ [OFFLINE DETECTED] JIRA is unreachable. Activating circuit breaker (bypassing live fetches to prevent timeouts).");
+      console.warn("⚠️ [OFFLINE DETECTED] JIRA is unreachable or misconfigured. Activating circuit breaker (bypassing live fetches to prevent timeouts).");
     }
     isJiraOffline = true;
     lastOfflineCheck = Date.now();
@@ -145,19 +148,33 @@ const CAMPUS_TEAM_MEMBERS = {
   "3": [ // KLE Spoke
     { accountId: "mock-kle-1", displayName: "Rahul Sharma (Student Developer)", emailAddress: "rahul@kle.edu", email: "rahul@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=12" } },
     { accountId: "mock-kle-2", displayName: "Priya Patel (Student Developer)", emailAddress: "priya@kle.edu", email: "priya@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=47" } },
-    { accountId: "mock-kle-3", displayName: "Prof. Deshpande (Faculty Mentor)", emailAddress: "mentor@kle.edu", email: "mentor@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=63" } }
+    { accountId: "mock-kle-4", displayName: "Rohit Verma (Student Developer)", emailAddress: "rohit@kle.edu", email: "rohit@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=13" } },
+    { accountId: "mock-kle-5", displayName: "Swati Mishra (Student Developer)", emailAddress: "swati@kle.edu", email: "swati@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=48" } },
+    { accountId: "mock-kle-3", displayName: "Prof. Deshpande (Faculty Mentor)", emailAddress: "mentor@kle.edu", email: "mentor@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=63" } },
+    { accountId: "mock-kle-mentor-2", displayName: "Prof. Rajesh Kumar (Faculty Mentor)", emailAddress: "mentor2@kle.edu", email: "mentor2@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=61" } },
+    { accountId: "mock-kle-mentor-3", displayName: "Prof. Sunita Rao (Faculty Mentor)", emailAddress: "mentor3@kle.edu", email: "mentor3@kle.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=62" } }
   ],
   "101": [ // COEP Spoke
     { accountId: "mock-coep-1", displayName: "Sneha Joshi (Student Developer)", emailAddress: "sneha@coep.edu", email: "sneha@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=35" } },
-    { accountId: "mock-coep-2", displayName: "Amit Waghmare (Student Developer)", emailAddress: "amit@coep.edu", email: "amit@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=11" } }
+    { accountId: "mock-coep-2", displayName: "Amit Waghmare (Student Developer)", emailAddress: "amit@coep.edu", email: "amit@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=11" } },
+    { accountId: "mock-coep-3", displayName: "Ananya Deshpande (Student Developer)", emailAddress: "ananya@coep.edu", email: "ananya@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=36" } },
+    { accountId: "mock-coep-4", displayName: "Rohan Kulkarni (Student Developer)", emailAddress: "rohan@coep.edu", email: "rohan@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=14" } },
+    { accountId: "mock-coep-mentor-2", displayName: "Dr. Vinayak Shinde (Faculty Mentor)", emailAddress: "mentor2@coep.edu", email: "mentor2@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=60" } },
+    { accountId: "mock-coep-mentor-3", displayName: "Dr. Shalini Patil (Faculty Mentor)", emailAddress: "mentor3@coep.edu", email: "mentor3@coep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=59" } }
   ],
   "102": [ // MMCOEP Spoke
     { accountId: "mock-mmcoep-1", displayName: "Nikhil Rane (Student Developer)", emailAddress: "nikhil@mmcoep.edu", email: "nikhil@mmcoep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=33" } },
-    { accountId: "mock-mmcoep-2", displayName: "Sayali Deshmukh (Student Developer)", emailAddress: "sayali@mmcoep.edu", email: "sayali@mmcoep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=49" } }
+    { accountId: "mock-mmcoep-2", displayName: "Sayali Deshmukh (Student Developer)", emailAddress: "sayali@mmcoep.edu", email: "sayali@mmcoep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=49" } },
+    { accountId: "mock-mmcoep-3", displayName: "Tanmay Joshi (Student Developer)", emailAddress: "tanmay@mmcoep.edu", email: "tanmay@mmcoep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=38" } },
+    { accountId: "mock-mmcoep-4", displayName: "Pooja Mehta (Student Developer)", emailAddress: "pooja@mmcoep.edu", email: "pooja@mmcoep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=46" } },
+    { accountId: "mock-mmcoep-mentor-2", displayName: "Prof. Anil Sawant (Faculty Mentor)", emailAddress: "mentor2@mmcoep.edu", email: "mentor2@mmcoep.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=58" } }
   ],
   "103": [ // RIT Spoke
     { accountId: "mock-rit-1", displayName: "Tejas Shinde (Student Developer)", emailAddress: "tejas@rit.edu", email: "tejas@rit.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=15" } },
-    { accountId: "mock-rit-2", displayName: "Priti Patil (Student Developer)", emailAddress: "priti@rit.edu", email: "priti@rit.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=45" } }
+    { accountId: "mock-rit-2", displayName: "Priti Patil (Student Developer)", emailAddress: "priti@rit.edu", email: "priti@rit.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=45" } },
+    { accountId: "mock-rit-3", displayName: "Aditya Shinde (Student Developer)", emailAddress: "aditya@rit.edu", email: "aditya@rit.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=16" } },
+    { accountId: "mock-rit-4", displayName: "Snehal Pawar (Student Developer)", emailAddress: "snehal@rit.edu", email: "snehal@rit.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=44" } },
+    { accountId: "mock-rit-mentor-2", displayName: "Dr. Mahesh Patel (Faculty Mentor)", emailAddress: "mentor2@rit.edu", email: "mentor2@rit.edu", avatarUrls: { "48x48": "https://i.pravatar.cc/150?img=57" } }
   ]
 };
 
@@ -397,42 +414,67 @@ app.get("/spokes/:boardId/members", async (req, res) => {
       "103": "spoke-rit"
     };
     const targetPersona = personaMap[boardId] || "spoke-kle";
-    const dbUsers = await User.find({ persona: targetPersona });
+    const dbUsers = await User.find({
+      $or: [
+        { persona: targetPersona },
+        { spokeId: boardId }
+      ]
+    });
     dbMembers = dbUsers.map(u => ({
       accountId: u._id.toString(),
       displayName: `${u.displayName} (${u.role})`,
       emailAddress: u.email,
       avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName)}&background=6366f1&color=fff`,
-      isPersistent: true
+      isPersistent: true,
+      role: u.role
     }));
+    console.log(`[MEMBERS-API] boardId: ${boardId}, found ${dbUsers.length} DB users, emails: ${dbUsers.map(u => u.email).join(', ')}`);
   } catch (err) {
     console.error("Failed to load persistent users from MongoDB:", err.message);
   }
 
   // 3. Load campus-specific simulated members
   const simulated = CAMPUS_TEAM_MEMBERS[boardId] || [];
-  const normalizedSimulated = simulated.map(u => ({
-    accountId: u.accountId,
-    displayName: u.displayName,
-    emailAddress: u.emailAddress || u.email || "",
-    avatarUrl: u.avatarUrls?.["48x48"] || "https://i.pravatar.cc/150",
-    isSimulated: true
-  }));
+  const normalizedSimulated = simulated.map(u => {
+    let role = undefined;
+    if (u.displayName.includes("(Student Developer)")) role = "Student Developer";
+    else if (u.displayName.includes("(Faculty Mentor)")) role = "Faculty Mentor";
+    else if (u.displayName.includes("(Coordinator)")) role = "Coordinator";
+    
+    return {
+      accountId: u.accountId,
+      displayName: u.displayName,
+      emailAddress: u.emailAddress || u.email || "",
+      avatarUrl: u.avatarUrls?.["48x48"] || "https://i.pravatar.cc/150",
+      isSimulated: true,
+      role: role
+    };
+  });
 
   // 4. Combine and deduplicate members by email to prevent duplicate listings
   const result = [];
-  const seenEmails = new Set();
+  const emailMap = new Map();
   
   const allMembers = [...members, ...dbMembers, ...normalizedSimulated];
   for (const m of allMembers) {
     const email = (m.emailAddress || "").toLowerCase().trim();
-    if (email && seenEmails.has(email)) {
+    if (!email) {
+      result.push(m);
       continue;
     }
-    if (email) {
-      seenEmails.add(email);
+    if (emailMap.has(email)) {
+      const existing = emailMap.get(email);
+      existing.role = existing.role || m.role;
+      existing.isPersistent = existing.isPersistent || m.isPersistent;
+      existing.isSimulated = existing.isSimulated || m.isSimulated;
+      if (m.displayName && (!existing.displayName || existing.displayName.length < m.displayName.length)) {
+        existing.displayName = m.displayName;
+      }
+    } else {
+      const copy = { ...m };
+      emailMap.set(email, copy);
+      result.push(copy);
     }
-    result.push(m);
   }
 
   apiCache.members[boardId] = {
@@ -3508,82 +3550,305 @@ const CREDENTIALS_STORE = {
     password: "kle123",
     displayName: "KLE Coordinator",
     role: "KLE Spoke Coordinator",
-    persona: "spoke-kle"
+    persona: "spoke-kle",
+    spokeId: "3"
   },
   "coordinator@coep.edu": {
     password: "coep123",
     displayName: "COEP Coordinator",
     role: "COEP Spoke Coordinator",
-    persona: "spoke-coep"
+    persona: "spoke-coep",
+    spokeId: "101"
   },
   "coordinator@mmcoep.edu": {
     password: "mmcoep123",
     displayName: "MMCOEP Coordinator",
     role: "MMCOEP Spoke Coordinator",
-    persona: "spoke-mmcoep"
+    persona: "spoke-mmcoep",
+    spokeId: "102"
   },
   "coordinator@rit.edu": {
     password: "rit123",
     displayName: "RIT Coordinator",
     role: "RIT Spoke Coordinator",
-    persona: "spoke-rit"
+    persona: "spoke-rit",
+    spokeId: "103"
   },
   "student@kle.edu": {
     password: "student123",
     displayName: "KLE Student Developer",
     role: "Student Developer",
-    persona: "spoke-kle"
+    persona: "spoke-kle",
+    spokeId: "3"
+  },
+  "rahul@kle.edu": {
+    password: "student123",
+    displayName: "Rahul Sharma",
+    role: "Student Developer",
+    persona: "spoke-kle",
+    spokeId: "3"
+  },
+  "priya@kle.edu": {
+    password: "student123",
+    displayName: "Priya Patel",
+    role: "Student Developer",
+    persona: "spoke-kle",
+    spokeId: "3"
+  },
+  "rohit@kle.edu": {
+    password: "student123",
+    displayName: "Rohit Verma",
+    role: "Student Developer",
+    persona: "spoke-kle",
+    spokeId: "3"
+  },
+  "swati@kle.edu": {
+    password: "student123",
+    displayName: "Swati Mishra",
+    role: "Student Developer",
+    persona: "spoke-kle",
+    spokeId: "3"
   },
   "student@coep.edu": {
     password: "student123",
     displayName: "COEP Student Developer",
     role: "Student Developer",
-    persona: "spoke-coep"
+    persona: "spoke-coep",
+    spokeId: "101"
+  },
+  "sneha@coep.edu": {
+    password: "student123",
+    displayName: "Sneha Joshi",
+    role: "Student Developer",
+    persona: "spoke-coep",
+    spokeId: "101"
+  },
+  "amit@coep.edu": {
+    password: "student123",
+    displayName: "Amit Waghmare",
+    role: "Student Developer",
+    persona: "spoke-coep",
+    spokeId: "101"
+  },
+  "ananya@coep.edu": {
+    password: "student123",
+    displayName: "Ananya Deshpande",
+    role: "Student Developer",
+    persona: "spoke-coep",
+    spokeId: "101"
+  },
+  "rohan@coep.edu": {
+    password: "student123",
+    displayName: "Rohan Kulkarni",
+    role: "Student Developer",
+    persona: "spoke-coep",
+    spokeId: "101"
+  },
+  "nikhil@mmcoep.edu": {
+    password: "student123",
+    displayName: "Nikhil Rane",
+    role: "Student Developer",
+    persona: "spoke-mmcoep",
+    spokeId: "102"
+  },
+  "sayali@mmcoep.edu": {
+    password: "student123",
+    displayName: "Sayali Deshmukh",
+    role: "Student Developer",
+    persona: "spoke-mmcoep",
+    spokeId: "102"
+  },
+  "tanmay@mmcoep.edu": {
+    password: "student123",
+    displayName: "Tanmay Joshi",
+    role: "Student Developer",
+    persona: "spoke-mmcoep",
+    spokeId: "102"
+  },
+  "pooja@mmcoep.edu": {
+    password: "student123",
+    displayName: "Pooja Mehta",
+    role: "Student Developer",
+    persona: "spoke-mmcoep",
+    spokeId: "102"
   },
   "student@rit.edu": {
     password: "student123",
     displayName: "RIT Student Developer",
     role: "Student Developer",
-    persona: "spoke-rit"
+    persona: "spoke-rit",
+    spokeId: "103"
+  },
+  "tejas@rit.edu": {
+    password: "student123",
+    displayName: "Tejas Shinde",
+    role: "Student Developer",
+    persona: "spoke-rit",
+    spokeId: "103"
+  },
+  "priti@rit.edu": {
+    password: "student123",
+    displayName: "Priti Patil",
+    role: "Student Developer",
+    persona: "spoke-rit",
+    spokeId: "103"
+  },
+  "aditya@rit.edu": {
+    password: "student123",
+    displayName: "Aditya Shinde",
+    role: "Student Developer",
+    persona: "spoke-rit",
+    spokeId: "103"
+  },
+  "snehal@rit.edu": {
+    password: "student123",
+    displayName: "Snehal Pawar",
+    role: "Student Developer",
+    persona: "spoke-rit",
+    spokeId: "103"
   },
   "sponsor@nvidia.com": {
     password: "nvidia123",
     displayName: "NVIDIA Sponsor",
     role: "Corporate Partner",
     persona: "sponsor-nvidia"
+  },
+  "pm@apnileap.com": {
+    password: "pm123",
+    displayName: "Project Manager",
+    role: "Project Manager",
+    persona: "project-manager"
+  },
+  "mentor@kle.edu": {
+    password: "mentor123",
+    displayName: "Prof. Deshpande",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "3"
+  },
+  "mentor2@kle.edu": {
+    password: "mentor123",
+    displayName: "Prof. Rajesh Kumar",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "3"
+  },
+  "mentor3@kle.edu": {
+    password: "mentor123",
+    displayName: "Prof. Sunita Rao",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "3"
+  },
+  "mentor@coep.edu": {
+    password: "mentor123",
+    displayName: "Dr. Meena Deshmukh",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "101"
+  },
+  "mentor2@coep.edu": {
+    password: "mentor123",
+    displayName: "Dr. Vinayak Shinde",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "101"
+  },
+  "mentor3@coep.edu": {
+    password: "mentor123",
+    displayName: "Dr. Shalini Patil",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "101"
+  },
+  "mentor@mmcoep.edu": {
+    password: "mentor123",
+    displayName: "Dr. Kavita Joshi",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "102"
+  },
+  "mentor2@mmcoep.edu": {
+    password: "mentor123",
+    displayName: "Prof. Anil Sawant",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "102"
+  },
+  "mentor@rit.edu": {
+    password: "mentor123",
+    displayName: "Dr. Suresh Desai",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "103"
+  },
+  "mentor2@rit.edu": {
+    password: "mentor123",
+    displayName: "Dr. Mahesh Patel",
+    role: "Faculty Mentor",
+    persona: "faculty-mentor",
+    spokeId: "103"
+  },
+  "project_mentor@nvidia.com": {
+    password: "nvidia123",
+    displayName: "NVIDIA Mentor",
+    role: "Project Mentor",
+    persona: "project-mentor"
   }
 };
 
 // Seeding function to initialize the default users in MongoDB Atlas
 async function seedDefaultUsers() {
   try {
-    await User.deleteMany({});
-    console.log("🌱 [SEEDING] MongoDB User collection dropped and re-seeding default credentials...");
-    const usersToSeed = Object.keys(CREDENTIALS_STORE).map(email => ({
-      email: email.toLowerCase().trim(),
-      password: CREDENTIALS_STORE[email].password,
-      displayName: CREDENTIALS_STORE[email].displayName,
-      role: CREDENTIALS_STORE[email].role,
-      persona: CREDENTIALS_STORE[email].persona
-    }));
-    await User.insertMany(usersToSeed, { ordered: false });
-    console.log(`🌱 [SEEDING SUCCESS] Seeded ${usersToSeed.length} default users into MongoDB Atlas!`);
-  } catch (err) {
-    if (err.code === 11000) {
-      console.log("🌱 [SEEDING] Duplicate keys skipped gracefully during user seeding.");
-    } else {
-      console.error("❌ [SEEDING ERROR] Failed to seed default users:", err.message);
+    console.log("🌱 [SEEDING] Upserting default users into MongoDB Atlas...");
+    let seededCount = 0;
+    for (const email of Object.keys(CREDENTIALS_STORE)) {
+      const u = CREDENTIALS_STORE[email];
+      await User.findOneAndUpdate(
+        { email: email.toLowerCase().trim() },
+        {
+          password: u.password,
+          displayName: u.displayName,
+          role: u.role,
+          persona: u.persona,
+          spokeId: u.spokeId || null
+        },
+        { upsert: true, new: true }
+      );
+      seededCount++;
     }
+    console.log(`🌱 [SEEDING SUCCESS] Seeded ${seededCount} default users into MongoDB Atlas!`);
+  } catch (err) {
+    console.error("❌ [SEEDING ERROR] Failed to seed default users:", err.message);
   }
 }
 
 // Seeding function to initialize B2B Corporate Projects in MongoDB Atlas
 async function seedDefaultProjects() {
   try {
-    await CorporateProject.deleteMany({});
-    console.log("🌱 [SEEDING] CorporateProject collection dropped and re-seeding default B2B projects...");
-    await CorporateProject.insertMany(companyProjectsIntake);
-    console.log(`🌱 [SEEDING SUCCESS] Seeded ${companyProjectsIntake.length} default projects into MongoDB Atlas!`);
+    console.log("🌱 [SEEDING] Upserting default corporate projects into MongoDB Atlas...");
+    let seededCount = 0;
+    for (const proj of companyProjectsIntake) {
+      await CorporateProject.findOneAndUpdate(
+        { title: proj.title, company: proj.company },
+        {
+          logoUrl: proj.logoUrl || "",
+          description: proj.description,
+          budget: proj.budget,
+          duration: proj.duration,
+          status: proj.status || "Pending Assignment",
+          assignedTo: proj.assignedTo || null,
+          targetCampusId: proj.targetCampusId || null,
+          proposedDueDate: proj.proposedDueDate,
+          assignedKey: proj.assignedKey || null,
+          problemStatementUrl: proj.problemStatementUrl || "",
+          allocations: proj.allocations || []
+        },
+        { upsert: true, new: true }
+      );
+      seededCount++;
+    }
+    console.log(`🌱 [SEEDING SUCCESS] Seeded ${seededCount} default projects into MongoDB Atlas!`);
   } catch (err) {
     console.error("❌ [SEEDING ERROR] Failed to seed default projects:", err.message);
   }
@@ -3669,23 +3934,24 @@ mongoose.connect(process.env.MONGODB_URI)
     await seedDefaultTasks();
     await seedDefaultMeetings();
     
-    // Start listening on port 5000 only after database connection is fully established and seeded!
-    app.listen(5000, () => {
-      console.log("Server running on port 5000");
+    const PORT = process.env.PORT || 5001;
+    // Start listening on port 5001 only after database connection is fully established and seeded!
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
       syncAcceptedProjectsWithJira().then(() => {
         // Proactively warm up local caches in the background to make subsequent dashboard loads instant
         setTimeout(async () => {
           console.log("[CACHE] Warming up local endpoint caches...");
           try {
             await Promise.all([
-              axios.get("http://localhost:5000/tasks?boardId=3"),
-              axios.get("http://localhost:5000/tasks?boardId=101"),
-              axios.get("http://localhost:5000/tasks?boardId=102"),
-              axios.get("http://localhost:5000/tasks?boardId=103")
+              axios.get(`http://localhost:${PORT}/tasks?boardId=3`),
+              axios.get(`http://localhost:${PORT}/tasks?boardId=101`),
+              axios.get(`http://localhost:${PORT}/tasks?boardId=102`),
+              axios.get(`http://localhost:${PORT}/tasks?boardId=103`)
             ]);
             await Promise.all([
-              axios.get("http://localhost:5000/hub/metrics"),
-              axios.get("http://localhost:5000/moderator/projects")
+              axios.get(`http://localhost:${PORT}/hub/metrics`),
+              axios.get(`http://localhost:${PORT}/moderator/projects`)
             ]);
             console.log("[CACHE] Warm-up successful! Caches are fully populated.");
           } catch (err) {
@@ -3740,10 +4006,12 @@ app.post("/api/login", async (req, res) => {
       success: true,
       token,
       user: {
+        _id: user._id.toString(),
         email: user.email,
         displayName: user.displayName,
         role: user.role,
-        persona: user.persona
+        persona: user.persona,
+        spokeId: user.spokeId
       }
     });
   } catch (error) {
@@ -3799,10 +4067,12 @@ app.post("/api/register", async (req, res) => {
       success: true,
       token,
       user: {
+        _id: newUser._id.toString(),
         email: newUser.email,
         displayName: newUser.displayName,
         role: newUser.role,
-        persona: newUser.persona
+        persona: newUser.persona,
+        spokeId: newUser.spokeId
       }
     });
   } catch (error) {
@@ -3814,11 +4084,17 @@ app.post("/api/register", async (req, res) => {
 // GET /api/teams - Get all Spoke custom Sprints Teams
 app.get("/api/teams", async (req, res) => {
   try {
-    const { boardId } = req.query;
-    if (!boardId) {
-      return res.status(400).json({ error: "boardId query parameter is required." });
+    const { boardId, mentorId, projectId } = req.query;
+    const filter = {};
+    if (boardId) filter.boardId = boardId;
+    if (mentorId) {
+      filter.$or = [
+        { "mentor.accountId": mentorId },
+        { "subMentor.accountId": mentorId }
+      ];
     }
-    const teams = await Team.find({ boardId });
+    if (projectId) filter.projectId = projectId;
+    const teams = await Team.find(filter);
     res.json(teams);
   } catch (error) {
     console.error("Fetch teams error:", error);
@@ -3829,7 +4105,7 @@ app.get("/api/teams", async (req, res) => {
 // POST /api/teams - Create a new Spoke Sprints Team persistently in MongoDB Atlas
 app.post("/api/teams", authenticateToken, async (req, res) => {
   try {
-    const { name, boardId, members, mentor, teamLeader } = req.body;
+    const { name, boardId, members, mentor, teamLeader, projectId, subMentor } = req.body;
     if (!name || !boardId || !Array.isArray(members) || members.length === 0) {
       return res.status(400).json({ error: "Team name, boardId, and a non-empty members array are required." });
     }
@@ -3839,7 +4115,9 @@ app.post("/api/teams", authenticateToken, async (req, res) => {
       boardId,
       members,
       mentor: mentor || null,
-      teamLeader: teamLeader || null
+      teamLeader: teamLeader || null,
+      projectId: projectId || null,
+      subMentor: subMentor || null
     });
 
     await newTeam.save();
@@ -3863,6 +4141,72 @@ app.delete("/api/teams/:id", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Failed to disband Spoke team." });
   }
 });
+
+// PUT /api/teams/:id/final-progress - Faculty Mentor submits final work progress
+app.put("/api/teams/:id/final-progress", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reportUrl, facultyComments } = req.body;
+    
+    if (!reportUrl) {
+      return res.status(400).json({ error: "Report URL is required." });
+    }
+
+    const team = await Team.findById(id);
+    if (!team) {
+      return res.status(404).json({ error: "Team not found." });
+    }
+
+    team.finalProgress = {
+      reportUrl,
+      facultyComments: facultyComments || "",
+      submittedAt: new Date(),
+      status: "Submitted",
+      rating: 0,
+      companyFeedback: "",
+      evaluatedAt: null,
+      evaluatedBy: ""
+    };
+
+    await team.save();
+    console.log(`[TEAM EVALUATION] Final progress submitted for team ${team.name} (${id})`);
+    res.json({ success: true, team });
+  } catch (error) {
+    console.error("Submit final progress error:", error);
+    res.status(500).json({ error: "Failed to submit final progress." });
+  }
+});
+
+// PUT /api/teams/:id/evaluate - Company Mentor submits rating and feedback
+app.put("/api/teams/:id/evaluate", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating, companyFeedback, evaluatedBy } = req.body;
+
+    if (rating === undefined || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "Valid rating (1-5) is required." });
+    }
+
+    const team = await Team.findById(id);
+    if (!team) {
+      return res.status(404).json({ error: "Team not found." });
+    }
+
+    team.finalProgress.rating = rating;
+    team.finalProgress.companyFeedback = companyFeedback || "";
+    team.finalProgress.evaluatedAt = new Date();
+    team.finalProgress.evaluatedBy = evaluatedBy || "Company Mentor";
+    team.finalProgress.status = "Evaluated";
+
+    await team.save();
+    console.log(`[TEAM EVALUATION] Team ${team.name} evaluated by ${evaluatedBy} with rating: ${rating}`);
+    res.json({ success: true, team });
+  } catch (error) {
+    console.error("Evaluate team error:", error);
+    res.status(500).json({ error: "Failed to submit evaluation." });
+  }
+});
+
 
 // POST /tasks/:taskId/submit - Create a new student deliverable submission in MongoDB
 app.post("/tasks/:taskId/submit", authenticateToken, async (req, res) => {
@@ -3914,7 +4258,7 @@ app.get("/submissions", async (req, res) => {
 app.put("/submissions/:id/status", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, feedback } = req.body;
+    const { status, feedback, grade } = req.body;
     
     if (!status || !["Approved", "Re-work Requested"].includes(status)) {
       return res.status(400).json({ error: "Valid status ('Approved' or 'Re-work Requested') is required." });
@@ -3927,6 +4271,9 @@ app.put("/submissions/:id/status", authenticateToken, async (req, res) => {
 
     submission.status = status;
     submission.feedback = feedback || "";
+    if (grade !== undefined) {
+      submission.grade = grade || "";
+    }
     await submission.save();
 
     console.log(`[SUBMISSION AUDIT] Updated submission ${id} for task ${submission.taskId} to status: ${status}`);
@@ -4041,6 +4388,212 @@ app.delete("/submissions/:id", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Failed to delete student submission:", error);
     res.status(500).json({ error: "Failed to delete student submission" });
+  }
+});
+
+// ==========================================
+// B2B PROJECT ASSIGNMENT & MENTOR FLOWS
+// ==========================================
+
+// GET /api/spokes/:boardId/mentors - Get all mentors belonging to a college spoke
+app.get("/api/spokes/:boardId/mentors", async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    const personaMap = {
+      "3": "spoke-kle",
+      "101": "spoke-coep",
+      "102": "spoke-mmcoep",
+      "103": "spoke-rit"
+    };
+    const targetPersona = personaMap[boardId] || "spoke-kle";
+    
+    const mentors = await User.find({
+      $or: [
+        { spokeId: boardId, role: /mentor/i },
+        { persona: targetPersona, role: /mentor/i },
+        { persona: "faculty-mentor", spokeId: boardId }
+      ]
+    }).lean();
+
+    const result = mentors.map(m => ({
+      accountId: m._id.toString(),
+      displayName: m.displayName,
+      emailAddress: m.email,
+      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(m.displayName)}&background=10b981&color=fff`,
+      role: m.role
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("Failed to fetch spoke mentors:", err);
+    res.status(500).json({ error: "Failed to fetch spoke mentors." });
+  }
+});
+
+// GET /api/spokes/:boardId/students - Get all student developers belonging to a college spoke
+app.get("/api/spokes/:boardId/students", async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    const personaMap = {
+      "3": "spoke-kle",
+      "101": "spoke-coep",
+      "102": "spoke-mmcoep",
+      "103": "spoke-rit"
+    };
+    const targetPersona = personaMap[boardId] || "spoke-kle";
+
+    const students = await User.find({
+      $or: [
+        { spokeId: boardId, role: /student/i },
+        { persona: targetPersona, role: /student/i }
+      ]
+    }).lean();
+
+    const result = students.map(s => ({
+      accountId: s._id.toString(),
+      displayName: s.displayName,
+      emailAddress: s.email,
+      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.displayName)}&background=6366f1&color=fff`,
+      role: s.role
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("Failed to fetch spoke students:", err);
+    res.status(500).json({ error: "Failed to fetch spoke students." });
+  }
+});
+
+// GET /api/companies/:companyName/mentors - Get all company/project mentors for a sponsor company
+app.get("/api/companies/:companyName/mentors", async (req, res) => {
+  try {
+    const { companyName } = req.params;
+    const mentors = await User.find({
+      role: /Project Mentor|Corporate Partner/i,
+      $or: [
+        { email: new RegExp(companyName, "i") },
+        { displayName: new RegExp(companyName, "i") }
+      ]
+    }).lean();
+
+    // Fallback if none seeded yet
+    if (mentors.length === 0) {
+      const pm = await User.findOne({ email: "project_mentor@nvidia.com" }).lean();
+      if (pm) mentors.push(pm);
+    }
+
+    const result = mentors.map(m => ({
+      accountId: m._id.toString(),
+      displayName: m.displayName,
+      emailAddress: m.email,
+      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(m.displayName)}&background=f97316&color=fff`,
+      role: m.role
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("Failed to fetch company mentors:", err);
+    res.status(500).json({ error: "Failed to fetch company mentors." });
+  }
+});
+
+// POST /api/project/:projectId/spoke/:spokeId/faculty-mentor - Assign a College Faculty Mentor
+app.post("/api/project/:projectId/spoke/:spokeId/faculty-mentor", authenticateToken, async (req, res) => {
+  try {
+    const { projectId, spokeId } = req.params;
+    const { mentorId } = req.body;
+
+    const project = await CorporateProject.findById(projectId);
+    if (!project) return res.status(404).json({ error: "Corporate project not found." });
+
+    const mentorUser = await User.findById(mentorId);
+    if (!mentorUser) return res.status(404).json({ error: "Faculty mentor user not found." });
+
+    // Update inside allocations
+    let allocation = (project.allocations || []).find(a => a.targetCampusId === spokeId);
+    if (!allocation) {
+      return res.status(400).json({ error: "Allocation for this college was not found." });
+    }
+
+    const mentorObj = {
+      accountId: mentorUser._id.toString(),
+      displayName: mentorUser.displayName,
+      emailAddress: mentorUser.email,
+      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(mentorUser.displayName)}&background=10b981&color=fff`
+    };
+
+    allocation.facultyMentor = mentorObj;
+
+    if (project.targetCampusId === spokeId) {
+      project.facultyMentor = mentorObj;
+    }
+
+    await project.save();
+    invalidateCache();
+
+    res.json({ success: true, message: "College Faculty Mentor assigned successfully.", project });
+  } catch (err) {
+    console.error("Failed to assign faculty mentor:", err);
+    res.status(500).json({ error: "Failed to assign Faculty Mentor." });
+  }
+});
+
+// POST /api/project/:projectId/spoke/:spokeId/project-mentor - Assign a Company Project Mentor
+app.post("/api/project/:projectId/spoke/:spokeId/project-mentor", authenticateToken, async (req, res) => {
+  try {
+    const { projectId, spokeId } = req.params;
+    const { mentorId } = req.body;
+
+    const project = await CorporateProject.findById(projectId);
+    if (!project) return res.status(404).json({ error: "Corporate project not found." });
+
+    const mentorUser = await User.findById(mentorId);
+    if (!mentorUser) return res.status(404).json({ error: "Project mentor user not found." });
+
+    // Update inside allocations
+    let allocation = (project.allocations || []).find(a => a.targetCampusId === spokeId);
+    if (!allocation) {
+      return res.status(400).json({ error: "Allocation for this college was not found." });
+    }
+
+    const mentorObj = {
+      accountId: mentorUser._id.toString(),
+      displayName: mentorUser.displayName,
+      emailAddress: mentorUser.email,
+      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(mentorUser.displayName)}&background=f97316&color=fff`
+    };
+
+    allocation.projectMentor = mentorObj;
+
+    if (project.targetCampusId === spokeId) {
+      project.projectMentor = mentorObj;
+    }
+
+    await project.save();
+    invalidateCache();
+
+    res.json({ success: true, message: "Company Project Mentor assigned successfully.", project });
+  } catch (err) {
+    console.error("Failed to assign project mentor:", err);
+    res.status(500).json({ error: "Failed to assign Project Mentor." });
+  }
+});
+
+// GET /api/mentors/:mentorId/projects - Get projects assigned to a specific College Faculty Mentor
+app.get("/api/mentors/:mentorId/projects", async (req, res) => {
+  try {
+    const { mentorId } = req.params;
+    const projects = await CorporateProject.find({
+      $or: [
+        { "facultyMentor.accountId": mentorId },
+        { "allocations.facultyMentor.accountId": mentorId }
+      ]
+    }).lean();
+
+    res.json(projects);
+  } catch (err) {
+    console.error("Failed to fetch mentor projects:", err);
+    res.status(500).json({ error: "Failed to fetch mentor projects." });
   }
 });
 

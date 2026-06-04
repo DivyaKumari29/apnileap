@@ -620,7 +620,7 @@ function App() {
 
     setIsLoggingIn(true);
     try {
-      const response = await axios.post("http://localhost:5000/api/login", {
+      const response = await axios.post("http://localhost:5001/api/login", {
         email: loginEmail,
         password: loginPassword
       });
@@ -673,7 +673,7 @@ function App() {
       const campusPrefix = signupCampus === "3" ? "KLE" : signupCampus === "101" ? "COEP" : signupCampus === "102" ? "MMCOEP" : "RIT";
       const selectedRole = signupRole === "Faculty Mentor" ? `${campusPrefix} Spoke Coordinator` : "Student Developer";
 
-      const response = await axios.post("http://localhost:5000/api/register", {
+      const response = await axios.post("http://localhost:5001/api/register", {
         email: signupEmail,
         password: signupPassword,
         displayName: signupName,
@@ -714,21 +714,23 @@ function App() {
 
   const handleQuickConnect = async (email) => {
     setLoginEmail(email);
-    // Select the correct password for each demo account
     let password = "moderator123";
-    if (email.includes("student")) password = "student123";
-    else if (email.includes("sponsor") || email.includes("nvidia")) password = "nvidia123";
-    else if (email.includes("kle")) password = "kle123";
-    else if (email.includes("coep") && !email.includes("mmcoep")) password = "coep123";
-    else if (email.includes("mmcoep")) password = "mmcoep123";
-    else if (email.includes("rit")) password = "rit123";
+    if (email === "pm@apnileap.com") password = "pm123";
+    else if (email.startsWith("mentor@")) password = "mentor123";
+    else if (email.startsWith("student@")) password = "student123";
+    else if (email === "executive@apnileap.com") password = "executive123";
+    else if (email === "sponsor@nvidia.com" || email === "project_mentor@nvidia.com") password = "nvidia123";
+    else if (email === "coordinator@kle.edu") password = "kle123";
+    else if (email === "coordinator@coep.edu") password = "coep123";
+    else if (email === "coordinator@mmcoep.edu") password = "mmcoep123";
+    else if (email === "coordinator@rit.edu") password = "rit123";
 
     setLoginPassword(password);
     setLoginError("");
     setIsLoggingIn(true);
 
     try {
-      const response = await axios.post("http://localhost:5000/api/login", {
+      const response = await axios.post("http://localhost:5001/api/login", {
         email: email,
         password: password
       });
@@ -784,7 +786,7 @@ function App() {
 
     setIsIngesting(true);
     try {
-      const response = await axios.post("http://localhost:5000/moderator/projects", {
+      const response = await axios.post("http://localhost:5001/moderator/projects", {
         company: ingestCompany,
         title: ingestTitle,
         description: ingestDescription,
@@ -824,7 +826,7 @@ function App() {
 
     setIsUpdatingProject(true);
     try {
-      const response = await axios.put(`http://localhost:5000/moderator/projects/${editingProject.id}`, {
+      const response = await axios.put(`http://localhost:5001/moderator/projects/${editingProject.id}`, {
         company: editCompany,
         title: editTitle.trim(),
         description: editDescription.trim(),
@@ -851,7 +853,7 @@ function App() {
       return;
     }
     try {
-      const response = await axios.delete(`http://localhost:5000/moderator/projects/${projectId}`);
+      const response = await axios.delete(`http://localhost:5001/moderator/projects/${projectId}`);
       if (response.data && response.data.success) {
         triggerToast(" Corporate B2B project successfully deleted.");
         fetchModeratorProjects(true);
@@ -864,7 +866,7 @@ function App() {
 
   const fetchSpokeMembers = async (boardId) => {
     try {
-      const res = await axios.get(`http://localhost:5000/spokes/${boardId}/members`);
+      const res = await axios.get(`http://localhost:5001/spokes/${boardId}/members`);
       setSpokeMembers(res.data);
     } catch (err) {
       console.error("Failed to retrieve campus team members:", err);
@@ -874,7 +876,7 @@ function App() {
   const fetchSpokeTeams = async (boardId) => {
     setIsTeamsLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/teams?boardId=${boardId}`);
+      const res = await axios.get(`http://localhost:5001/api/teams?boardId=${boardId}`);
       setSpokeTeams(res.data || []);
     } catch (err) {
       console.error("Failed to retrieve campus teams:", err);
@@ -922,7 +924,7 @@ function App() {
         avatarUrl: foundLeader.avatarUrl
       } : null;
 
-      const res = await axios.post("http://localhost:5000/api/teams", {
+      const res = await axios.post("http://localhost:5001/api/teams", {
         name: newTeamName.trim(),
         boardId: currentBoardId,
         members: selectedMembersData,
@@ -951,7 +953,7 @@ function App() {
       return;
     }
     try {
-      const res = await axios.delete(`http://localhost:5000/api/teams/${teamId}`);
+      const res = await axios.delete(`http://localhost:5001/api/teams/${teamId}`);
       if (res.data && res.data.success) {
         triggerToast("Spoke Team successfully disbanded.");
         fetchSpokeTeams(currentBoardId);
@@ -968,7 +970,7 @@ function App() {
     setHasError(false);
     try {
       const boardIdToFetch = customBoardId || currentBoardId;
-      const response = await axios.get(`http://localhost:5000/tasks?boardId=${boardIdToFetch}`);
+      const response = await axios.get(`http://localhost:5001/tasks?boardId=${boardIdToFetch}`);
       if (Array.isArray(response.data)) {
         // Adapt Jira issues dynamically - pulls exact assignee, reporter, and due date
         const normalized = response.data.map((item) => ({
@@ -1058,7 +1060,7 @@ function App() {
     if (!silent) setIsHubLoading(true);
     setHasError(false);
     try {
-      const response = await axios.get("http://localhost:5000/hub/metrics");
+      const response = await axios.get("http://localhost:5001/hub/metrics");
       setHubMetrics(response.data);
       setConnectionStatus("Connected");
     } catch (error) {
@@ -1078,7 +1080,7 @@ function App() {
     if (!silent) setIsModeratorLoading(true);
     setHasError(false);
     try {
-      const response = await axios.get("http://localhost:5000/moderator/projects");
+      const response = await axios.get("http://localhost:5001/moderator/projects");
       setModeratorProjects(response.data);
       setConnectionStatus("Connected");
     } catch (error) {
@@ -1097,7 +1099,7 @@ function App() {
   const fetchMeetings = async (silent = false) => {
     if (!silent) setIsMeetingsLoading(true);
     try {
-      const response = await axios.get("http://localhost:5000/meetings");
+      const response = await axios.get("http://localhost:5001/meetings");
       setMeetings(response.data);
     } catch (error) {
       console.error("Meetings Fetch Error:", error);
@@ -1112,7 +1114,7 @@ function App() {
   // Retrieve all student deliverables in the system
   const fetchAllSubmissions = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/submissions");
+      const res = await axios.get("http://localhost:5001/submissions");
       setAllSubmissions(res.data || []);
     } catch (err) {
       console.error("Failed to fetch all submissions:", err);
@@ -1126,7 +1128,7 @@ function App() {
 
     setIsProvisioning(true);
     try {
-      const response = await axios.post("http://localhost:5000/moderator/assign", {
+      const response = await axios.post("http://localhost:5001/moderator/assign", {
         projectId: selectedAssignProject.id,
         targetBoardId: assignTargetCampus,
         dueDate: assignDueDate
@@ -1149,7 +1151,7 @@ function App() {
   const handleAcceptProject = async (projectId) => {
     setIsRespondingToProject(true);
     try {
-      const res = await axios.post(`http://localhost:5000/spoke/project/${projectId}/accept`, { targetBoardId: currentBoardId });
+      const res = await axios.post(`http://localhost:5001/spoke/project/${projectId}/accept`, { targetBoardId: currentBoardId });
       if (res.data && res.data.success) {
         triggerToast(" Project accepted! Jira workspace successfully provisioned with 3 standard Phase tasks!");
         fetchModeratorProjects(false);
@@ -1167,7 +1169,7 @@ function App() {
   const handleDeclineProject = async (projectId) => {
     setIsRespondingToProject(true);
     try {
-      const res = await axios.post(`http://localhost:5000/spoke/project/${projectId}/decline`, { targetBoardId: currentBoardId });
+      const res = await axios.post(`http://localhost:5001/spoke/project/${projectId}/decline`, { targetBoardId: currentBoardId });
       if (res.data && res.data.success) {
         triggerToast("Proposal declined. Project returned to the Moderator assignment pool.");
         fetchModeratorProjects(false);
@@ -1206,7 +1208,7 @@ function App() {
   useEffect(() => {
     const fetchMyself = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/myself");
+        const res = await axios.get("http://localhost:5001/myself");
         setCurrentUser(res.data);
       } catch (err) {
         console.error("Failed to retrieve myself context:", err);
@@ -1522,7 +1524,7 @@ function App() {
     triggerToast(`Transitioning ${taskKey} to ${newStatus} in Jira...`);
     
     // 2. Perform live API status transition
-    axios.post(`http://localhost:5000/tasks/${taskKey}/transition`, { statusName: newStatus })
+    axios.post(`http://localhost:5001/tasks/${taskKey}/transition`, { statusName: newStatus })
       .then(() => {
         triggerToast(`Successfully transitioned ${taskKey} to ${newStatus} in Jira!`);
       })
@@ -1558,7 +1560,7 @@ function App() {
 
     setIsLoading(true);
     try {
-      const res = await axios.post("http://localhost:5000/tasks", payload);
+      const res = await axios.post("http://localhost:5001/tasks", payload);
       triggerToast(`Created task ${res.data.key} in Jira successfully!`);
       
       // Reset Form
@@ -1591,7 +1593,7 @@ function App() {
     try {
       if (changedField === "status") {
         triggerToast(`Transitioning ${updatedTask.key} to ${updatedTask.fields.status.name} in Jira...`);
-        await axios.post(`http://localhost:5000/tasks/${updatedTask.key}/transition`, { statusName: updatedTask.fields.status.name });
+        await axios.post(`http://localhost:5001/tasks/${updatedTask.key}/transition`, { statusName: updatedTask.fields.status.name });
         triggerToast(`Successfully transitioned ${updatedTask.key} to ${updatedTask.fields.status.name} in Jira!`);
       } else {
         const payload = {};
@@ -1603,7 +1605,7 @@ function App() {
         if (changedField === "priority") payload.priority = updatedTask.fields.priority?.name || null;
 
         triggerToast(`Saving ${changedField} updates for ${updatedTask.key} in Jira...`);
-        await axios.put(`http://localhost:5000/tasks/${updatedTask.key}`, payload);
+        await axios.put(`http://localhost:5001/tasks/${updatedTask.key}`, payload);
         triggerToast(`Successfully saved ${changedField} for ${updatedTask.key} in Jira!`);
       }
     } catch (err) {
@@ -1643,7 +1645,7 @@ function App() {
 
     try {
       triggerToast(nextFlagged ? `Flagging issue ${task.key} as BLOCKED...` : `Clearing blocker flag for ${task.key}...`, "warning");
-      await axios.put(`http://localhost:5000/tasks/${task.key}/flag`, { flagged: nextFlagged });
+      await axios.put(`http://localhost:5001/tasks/${task.key}/flag`, { flagged: nextFlagged });
       triggerToast(nextFlagged ? `Issue ${task.key} is now flagged as blocked!` : `Successfully cleared blocker flag for ${task.key}!`);
       await fetchJiraTasks(true);
     } catch (err) {
@@ -1663,14 +1665,14 @@ function App() {
     setIsLoading(true);
     try {
       triggerToast(`Logging ${timeSpentString} spent time to issue ${taskKey} in Jira...`);
-      await axios.post(`http://localhost:5000/tasks/${taskKey}/worklog`, { timeSpent: timeSpentString, comment: logComment });
+      await axios.post(`http://localhost:5001/tasks/${taskKey}/worklog`, { timeSpent: timeSpentString, comment: logComment });
       triggerToast(`Successfully logged ${timeSpentString} to issue ${taskKey}!`);
       
       setWorklogTimeSpent("");
       setWorklogComment("");
       
       // Refetch worklogs immediately for the modal history
-      const logsRes = await axios.get(`http://localhost:5000/tasks/${taskKey}/worklog`);
+      const logsRes = await axios.get(`http://localhost:5001/tasks/${taskKey}/worklog`);
       setWorklogHistory(logsRes.data || []);
       
       await fetchJiraTasks(true);
@@ -1692,7 +1694,7 @@ function App() {
   const fetchWorklogHistory = async (taskKey) => {
     setIsHistoryLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/tasks/${taskKey}/worklog`);
+      const res = await axios.get(`http://localhost:5001/tasks/${taskKey}/worklog`);
       setWorklogHistory(res.data || []);
     } catch (err) {
       console.error("Fetch worklogs error:", err);
@@ -1705,7 +1707,7 @@ function App() {
   const fetchSubmissions = async (taskId) => {
     setIsSubmissionsLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/tasks/${taskId}/submissions`);
+      const res = await axios.get(`http://localhost:5001/tasks/${taskId}/submissions`);
       setSubmissions(res.data || []);
     } catch (err) {
       console.error("Failed to fetch submissions:", err);
@@ -1732,7 +1734,7 @@ function App() {
 
     setIsSubmittingDeliverable(true);
     try {
-      const res = await axios.post(`http://localhost:5000/tasks/${selectedTask.id}/submit`, {
+      const res = await axios.post(`http://localhost:5001/tasks/${selectedTask.id}/submit`, {
         studentName: sessionUser?.displayName || sessionUser?.email || currentUser?.displayName || currentUser?.email || "Student Developer",
         fileName: submitFileName,
         fileUrl: submitFileUrl,
@@ -1755,11 +1757,12 @@ function App() {
   };
 
   // Handle coordinator approving or requesting re-work on a student submission
-  const handleUpdateSubmissionStatus = async (subId, newStatus, coordinatorFeedback) => {
+  const handleUpdateSubmissionStatus = async (subId, newStatus, coordinatorFeedback, grade = "") => {
     try {
-      const res = await axios.put(`http://localhost:5000/submissions/${subId}/status`, {
+      const res = await axios.put(`http://localhost:5001/submissions/${subId}/status`, {
         status: newStatus,
-        feedback: coordinatorFeedback
+        feedback: coordinatorFeedback,
+        grade
       });
 
       if (res.data && res.data.success) {
@@ -1777,7 +1780,7 @@ function App() {
   // Handle deleting a student submission persistently
   const handleDeleteSubmission = async (subId) => {
     try {
-      const res = await axios.delete(`http://localhost:5000/submissions/${subId}`);
+      const res = await axios.delete(`http://localhost:5001/submissions/${subId}`);
       if (res.data && res.data.success) {
         triggerToast("Submission history deleted successfully!");
         fetchAllSubmissions(); // Refresh global queue
@@ -1803,7 +1806,7 @@ function App() {
       const label = isEpic ? "child task" : "child subtask";
       triggerToast(`Creating ${label} under ${parentKey} in Jira...`);
       
-      await axios.post(`http://localhost:5000/tasks/${parentKey}/subtask`, {
+      await axios.post(`http://localhost:5001/tasks/${parentKey}/subtask`, {
         summary: subtaskSummary,
         assigneeId: assigneeId || null,
         parentIssueType: parentIssueType || null
@@ -1841,7 +1844,7 @@ function App() {
     setIsLoading(true);
     try {
       triggerToast(`Linking issue ${sourceKey} to ${targetKey} in Jira...`);
-      await axios.post(`http://localhost:5000/tasks/links`, { linkType: relationType, sourceKey, targetKey });
+      await axios.post(`http://localhost:5001/tasks/links`, { linkType: relationType, sourceKey, targetKey });
       triggerToast(`Issues successfully linked in Jira!`);
       
       setLinkTargetKey("");
@@ -1879,7 +1882,7 @@ function App() {
         }));
       }
 
-      await axios.put(`http://localhost:5000/tasks/${taskKey}/labels`, { labels: newLabelsArray });
+      await axios.put(`http://localhost:5001/tasks/${taskKey}/labels`, { labels: newLabelsArray });
       triggerToast(`Saved tags for ${taskKey} in Jira!`);
     } catch (err) {
       console.error(err);
@@ -1893,7 +1896,7 @@ function App() {
     setIsLoading(true);
     try {
       triggerToast(`Deleting issue ${taskKey} from Jira...`, "warning");
-      await axios.delete(`http://localhost:5000/tasks/${taskKey}`);
+      await axios.delete(`http://localhost:5001/tasks/${taskKey}`);
       triggerToast(`Permanently deleted issue ${taskKey} from Jira!`, "warning");
       setSelectedTask(null);
       await fetchJiraTasks(true);
@@ -1946,7 +1949,7 @@ function App() {
 
     // Duration of envelope flight animation: 2.2 seconds
     setTimeout(() => {
-      axios.post("http://localhost:5000/tasks/send-reminder", payload)
+      axios.post("http://localhost:5001/tasks/send-reminder", payload)
         .then(res => {
           triggerToast(res.data.message || `Dispatched alert successfully to ${emailRecipient}!`);
           if (res.data.previewUrl) {
@@ -4003,6 +4006,44 @@ function App() {
 
                   <button
                     type="button"
+                    onClick={() => handleQuickConnect("pm@apnileap.com")}
+                    style={{
+                      padding: "8px",
+                      borderRadius: "6px",
+                      background: "rgba(99, 102, 241, 0.15)",
+                      border: "1px solid rgba(99, 102, 241, 0.3)",
+                      color: "white",
+                      fontWeight: "700",
+                      fontSize: "11px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    title="Connect as Project Manager"
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaClipboardList style={{ color: "#6366f1" }} /> Project Manager</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickConnect("mentor@kle.edu")}
+                    style={{
+                      padding: "8px",
+                      borderRadius: "6px",
+                      background: "rgba(16, 185, 129, 0.15)",
+                      border: "1px solid rgba(16, 185, 129, 0.3)",
+                      color: "white",
+                      fontWeight: "700",
+                      fontSize: "11px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    title="Connect as KLE Faculty Mentor"
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaGraduationCap style={{ color: "#10b981" }} /> KLE Faculty Mentor</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => handleQuickConnect("coordinator@kle.edu")}
                     style={{
                       padding: "7px 8px",
@@ -4092,7 +4133,7 @@ function App() {
                 {/* Corporate Partners Grid */}
                 <div style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr",
+                  gridTemplateColumns: "repeat(2, 1fr)",
                   gap: "6px",
                   marginBottom: "12px"
                 }}>
@@ -4118,7 +4159,33 @@ function App() {
                       e.currentTarget.style.background = "rgba(118, 185, 0, 0.2)";
                     }}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaDesktop /> NVIDIA Sponsor Quick Connect</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaDesktop /> NVIDIA Sponsor</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickConnect("project_mentor@nvidia.com")}
+                    style={{
+                      padding: "8px",
+                      borderRadius: "6px",
+                      background: "rgba(249, 115, 22, 0.15)",
+                      border: "1px solid rgba(249, 115, 22, 0.3)",
+                      color: "white",
+                      fontWeight: "750",
+                      fontSize: "11px",
+                      cursor: "pointer",
+                      transition: "var(--transition-smooth)"
+                    }}
+                    title="Connect as NVIDIA Project Mentor"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(249, 115, 22, 0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(249, 115, 2橙, 0.15)";
+                      e.currentTarget.style.background = "rgba(249, 115, 22, 0.15)";
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUser style={{ color: "#f97316" }} /> NVIDIA Mentor</span>
                   </button>
                 </div>
 
@@ -4419,13 +4486,13 @@ function App() {
                         marginTop: "10px",
                         padding: "13px 20px",
                         borderRadius: "10px",
-                        background: "#ef4444",
+                        background: "#f97316",
                         color: "#ffffff",
                         border: "none",
                         fontWeight: "800",
                         fontSize: "14.5px",
                         cursor: isLoggingIn ? "not-allowed" : "pointer",
-                        boxShadow: "0 6px 15px rgba(239, 68, 68, 0.22)",
+                        boxShadow: "0 6px 15px rgba(249, 115, 22, 0.22)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -5141,7 +5208,13 @@ function App() {
                   onChange={(e) => {
                     const newPersona = e.target.value;
                     setCurrentPersona(newPersona);
-                    const name = newPersona === "moderator" ? "Central Moderator" : SPOKES[newPersona.replace("spoke-", "")]?.name;
+                    const name = newPersona === "moderator" 
+                      ? "Central Moderator" 
+                      : newPersona === "project-manager" 
+                        ? "Project Manager" 
+                        : newPersona === "faculty-mentor" 
+                          ? "Faculty Mentor" 
+                          : SPOKES[newPersona.replace("spoke-", "")]?.name || newPersona;
                     triggerToast(`Switched Profile: Active permissions set to ${name}`);
                   }}
                   style={{
@@ -5159,6 +5232,8 @@ function App() {
                   }}
                 >
                   <option value="moderator" style={{ background: "var(--bg-sidebar)" }}>Moderator</option>
+                  <option value="project-manager" style={{ background: "var(--bg-sidebar)" }}>Project Manager</option>
+                  <option value="faculty-mentor" style={{ background: "var(--bg-sidebar)" }}>Faculty Mentor</option>
                   <option value="spoke-kle" style={{ background: "var(--bg-sidebar)" }}>KLE Coordinator</option>
                   <option value="spoke-coep" style={{ background: "var(--bg-sidebar)" }}>COEP Coordinator</option>
                   <option value="spoke-mmcoep" style={{ background: "var(--bg-sidebar)" }}>MMCOEP Coordinator</option>
@@ -5197,6 +5272,32 @@ function App() {
             <div style={{ fontSize: "9px", fontWeight: "850", textTransform: "uppercase", color: "var(--sidebar-text-dim)", letterSpacing: "1px", paddingLeft: "12px", marginTop: "4px", marginBottom: "4px" }}>
               Campuses & Roles
             </div>
+
+            {(isCentralAdmin || currentPersona === "project-manager") && (
+              <SidebarNavItem
+                active={activeWorkspace === "project-manager"}
+                icon={<FaClipboardList style={{ fontSize: "16px" }} />}
+                label="Project Manager Portal"
+                collapsed={false}
+                onClick={() => {
+                  setActiveWorkspace("project-manager");
+                  setActiveView("dashboard");
+                }}
+              />
+            )}
+
+            {(isCentralAdmin || currentPersona === "faculty-mentor") && (
+              <SidebarNavItem
+                active={activeWorkspace === "faculty-mentor"}
+                icon={<FaGraduationCap style={{ fontSize: "16px" }} />}
+                label="Faculty Mentor Portal"
+                collapsed={false}
+                onClick={() => {
+                  setActiveWorkspace("faculty-mentor");
+                  setActiveView("dashboard");
+                }}
+              />
+            )}
             
             {isCentralAdmin && (
               <SidebarNavItem
@@ -5687,14 +5788,14 @@ function App() {
             }}
             onDeleteClick={(proj) => handleDeleteProject(proj.id)}
           />
-        ) : sessionUser?.role === "Corporate Partner" ? (
+        ) : sessionUser?.role === "Corporate Partner" || activeWorkspace === "sponsor-nvidia" ? (
           <CorporateSponsorDashboardView
             projects={moderatorProjects}
             loading={isModeratorLoading}
             onRefresh={() => fetchModeratorProjects(false)}
             onSubmitProposal={async (payload) => {
               try {
-                const res = await axios.post("http://localhost:5000/moderator/projects", {
+                const res = await axios.post("http://localhost:5001/moderator/projects", {
                   company: sessionUser?.displayName?.replace(" Sponsor", "") || "NVIDIA",
                   ...payload
                 });
@@ -5711,6 +5812,24 @@ function App() {
             sessionUser={sessionUser}
             spokes={Object.entries(SPOKES).map(([id, spoke]) => ({ id, ...spoke }))}
             tasks={tasks}
+          />
+        ) : activeWorkspace === "project-manager" ? (
+          <ProjectManagerDashboardView
+            projects={moderatorProjects}
+            loading={isModeratorLoading}
+            onRefresh={() => fetchModeratorProjects(false)}
+            triggerToast={triggerToast}
+            spokes={Object.entries(SPOKES).map(([id, spoke]) => ({ id, ...spoke }))}
+          />
+        ) : activeWorkspace === "faculty-mentor" ? (
+          <FacultyMentorDashboardView
+            sessionUser={sessionUser}
+            triggerToast={triggerToast}
+            spokes={Object.entries(SPOKES).map(([id, spoke]) => ({ id, ...spoke }))}
+            allSubmissions={allSubmissions}
+            handleUpdateSubmissionStatus={handleUpdateSubmissionStatus}
+            handleDeleteSubmission={handleDeleteSubmission}
+            fetchAllSubmissions={fetchAllSubmissions}
           />
         ) : activeWorkspace === "meetings" ? (
           <MeetingsPortalView
@@ -6312,6 +6431,28 @@ function App() {
                                           )}
                                         </div>
 
+                                        {sub.grade && (
+                                          <div style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "6px",
+                                            fontSize: "12px",
+                                            marginTop: "4px",
+                                            marginBottom: "4px"
+                                          }}>
+                                            <span style={{ color: "var(--text-muted)" }}>Awarded Grade:</span>
+                                            <span style={{
+                                              fontSize: "11px",
+                                              fontWeight: "900",
+                                              background: "rgba(249, 115, 22, 0.08)",
+                                              color: "var(--accent)",
+                                              border: "1px solid rgba(249, 115, 22, 0.2)",
+                                              padding: "2px 8px",
+                                              borderRadius: "4px"
+                                            }}>{sub.grade}</span>
+                                          </div>
+                                        )}
+
                                         {sub.feedback && (
                                           <div style={{
                                             marginTop: "8px",
@@ -6572,27 +6713,6 @@ function App() {
                         }}
                       >
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><FaChartPie /></span> Analytics & Deliverables
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveCoordinatorTab("team")}
-                        style={{
-                          padding: "8px 18px",
-                          borderRadius: "8px",
-                          border: "1px solid transparent",
-                          background: activeCoordinatorTab === "team" ? "rgba(99, 102, 241, 0.12)" : "transparent",
-                          color: activeCoordinatorTab === "team" ? "var(--primary)" : "var(--text-muted)",
-                          borderColor: activeCoordinatorTab === "team" ? "rgba(99, 102, 241, 0.25)" : "transparent",
-                          fontWeight: "750",
-                          fontSize: "12.5px",
-                          cursor: "pointer",
-                          transition: "var(--transition-smooth)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px"
-                        }}
-                      >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><FaUsers /></span> Spoke Team Directory
                       </button>
                       <button
                         type="button"
@@ -7152,449 +7272,13 @@ function App() {
                       </div>
                     )}
 
-                    {/* TAB 2: 👥 SPOKE TEAM DIRECTORY */}
-                    {activeCoordinatorTab === "team" && (
-                      <div className="fade-in" style={{
-                        display: "grid",
-                        gridTemplateColumns: "1.1fr 0.9fr",
-                        gap: "30px",
-                        alignItems: "flex-start"
-                      }}>
-                        {/* Left Column: Member Directory & Add Member Form */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
-                          {/* Directory list */}
-                          <div className="glass-panel" style={{ padding: "24px" }}>
-                            <h3 style={{ fontSize: "16px", fontWeight: "800", marginBottom: "16px", color: "var(--text-main)" }}>
-                              <span><FaUsers style={{ marginRight: "6px" }} /> {SPOKES[currentBoardId]?.name || "Campus Spoke"} Member Pool ({spokeMembers.length})</span>
-                            </h3>
-                            <div style={{ overflowX: "auto" }}>
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "var(--text-main)", textAlign: "left" }}>
-                                <thead>
-                                  <tr style={{ borderBottom: "1px solid var(--border-glass)", color: "var(--text-dim)" }}>
-                                    <th style={{ padding: "10px 8px", fontWeight: "750" }}>Member</th>
-                                    <th style={{ padding: "10px 8px", fontWeight: "750" }}>Email Address</th>
-                                    <th style={{ padding: "10px 8px", fontWeight: "750" }}>Role</th>
-                                    <th style={{ padding: "10px 8px", fontWeight: "750", textAlign: "right" }}>Type</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {spokeMembers.map((m) => (
-                                    <tr key={m.accountId} style={{ borderBottom: "1px solid var(--border-glass)" }}>
-                                      <td style={{ padding: "12px 8px" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                          <img src={m.avatarUrl} alt={m.displayName} style={{ width: "28px", height: "28px", borderRadius: "50%" }} />
-                                          <strong style={{ color: "var(--text-main)" }}>{m.displayName.replace(/ \((Student Developer|Faculty Mentor|Coordinator)\)/g, "")}</strong>
-                                        </div>
-                                      </td>
-                                      <td style={{ padding: "12px 8px", fontFamily: "var(--mono)", fontSize: "12px", color: "var(--text-dim)" }}>
-                                        {m.emailAddress || "N/A"}
-                                      </td>
-                                      <td style={{ padding: "12px 8px" }}>
-                                        <span style={{
-                                          fontSize: "10.5px",
-                                          fontWeight: "750",
-                                          background: m.displayName.includes("Mentor") || m.displayName.includes("Coordinator") ? "rgba(168, 85, 247, 0.08)" : "rgba(99, 102, 241, 0.08)",
-                                          color: m.displayName.includes("Mentor") || m.displayName.includes("Coordinator") ? "#a855f7" : "var(--primary)",
-                                          padding: "3px 8px",
-                                          borderRadius: "6px"
-                                        }}>
-                                          {m.displayName.includes("Mentor") || m.displayName.includes("Coordinator") ? "Faculty Mentor" : "Student Developer"}
-                                        </span>
-                                      </td>
-                                      <td style={{ padding: "12px 8px", textAlign: "right" }}>
-                                        <span style={{
-                                          fontSize: "9px",
-                                          fontWeight: "850",
-                                          background: m.isPersistent ? "rgba(45, 212, 191, 0.08)" : "rgba(255, 255, 255, 0.02)",
-                                          border: m.isPersistent ? "1px solid rgba(45, 212, 191, 0.15)" : "1px solid var(--border-glass)",
-                                          color: m.isPersistent ? "#2dd4bf" : "var(--text-muted)",
-                                          padding: "2px 6px",
-                                          borderRadius: "4px",
-                                          textTransform: "uppercase"
-                                        }}>
-                                          {m.isPersistent ? "Persistent" : "Simulated"}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-
-                          {/* Add team member form */}
-                          <div className="glass-panel" style={{
-                            padding: "24px",
-                            background: "var(--bg-card)"
-                          }}>
-                            <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "16px", marginTop: 0 }}>
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Add Student Team Member</span>
-                            </h3>
-                            <p style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "18px" }}>
-                              Register a new student developer to the campus spoke. They will instantly appear in directories and become assignable on Kanban boards.
-                            </p>
-                            <form onSubmit={async (e) => {
-                              e.preventDefault();
-                              if (!newMemberName.trim() || !newMemberEmail.trim()) {
-                                triggerToast("Please fill in both the display name and email fields.", "warning");
-                                return;
-                              }
-                              if (!newMemberEmail.includes("@") || !newMemberEmail.includes(".")) {
-                                triggerToast("Please enter a valid academic email address.", "warning");
-                                return;
-                              }
-
-                              setIsAddingMember(true);
-                              try {
-                                const res = await axios.post("http://localhost:5000/api/register", {
-                                  displayName: newMemberName.trim(),
-                                  email: newMemberEmail.toLowerCase().trim(),
-                                  password: "student123", // standard default credentials
-                                  role: "Student Developer",
-                                  persona: currentPersona // sets active spoke group, e.g. "spoke-kle"
-                                });
-
-                                if (res.data && res.data.success) {
-                                  triggerToast(` Successfully added and registered developer ${newMemberName}!`);
-                                  setNewMemberName("");
-                                  setNewMemberEmail("");
-                                  fetchSpokeMembers(currentBoardId);
-                                }
-                              } catch (err) {
-                                console.error(err);
-                                triggerToast(err.response?.data?.error || "Failed to register new team member.", "error");
-                              } finally {
-                                setIsAddingMember(false);
-                              }
-                            }} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>DEVELOPER DISPLAY NAME</label>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  placeholder="e.g. Akash Gupta"
-                                  value={newMemberName}
-                                  onChange={(e) => setNewMemberName(e.target.value)}
-                                  disabled={isAddingMember}
-                                  style={{ padding: "10px 14px", fontSize: "13px" }}
-                                />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>CAMPUS EMAIL ADDRESS</label>
-                                <input
-                                  type="email"
-                                  className="form-input"
-                                  placeholder="e.g. akash@kle.edu"
-                                  value={newMemberEmail}
-                                  onChange={(e) => setNewMemberEmail(e.target.value)}
-                                  disabled={isAddingMember}
-                                  style={{ padding: "10px 14px", fontSize: "13px" }}
-                                />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>ROLE POLICIES & CREDENTIALS</label>
-                                <div style={{
-                                  padding: "10px 14px",
-                                  border: "1px solid var(--border-glass)",
-                                  background: "rgba(0,0,0,0.15)",
-                                  borderRadius: "8px",
-                                  fontSize: "11.5px",
-                                  color: "var(--text-muted)"
-                                }}>
-                                  Role auto-assigned to <strong>Student Developer</strong>.<br/>
-                                  Password auto-set to <strong style={{ color: "var(--primary)" }}>student123</strong> for demo connection.
-                                </div>
-                              </div>
-                              <button
-                                type="submit"
-                                disabled={isAddingMember}
-                                className="btn-primary"
-                                style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
-                              >
-                                {isAddingMember ? "Registering Account..." : "Add to Team Directory"}
-                              </button>
-                            </form>
-                          </div>
-                        </div>
-
-                        {/* Right Column: Spoke Teams & Creation Form */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
-                          {/* Active Teams directory cards */}
-                          <div className="glass-panel" style={{ padding: "24px" }}>
-                            <h3 style={{ fontSize: "16px", fontWeight: "800", marginBottom: "16px", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaUsers /> Active Collaborative Teams ({spokeTeams.length})</span>
-                            </h3>
-                            {isTeamsLoading ? (
-                              <div style={{ padding: "20px", textAlign: "center", color: "var(--text-dim)" }}>
-                                Loading teams...
-                              </div>
-                            ) : spokeTeams.length > 0 ? (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                                {spokeTeams.map((team) => (
-                                  <div key={team._id} className="glass-panel" style={{
-                                    padding: "16px",
-                                    background: "rgba(255, 255, 255, 0.01)",
-                                    border: "1px solid var(--border-glass)",
-                                    borderRadius: "12px",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "12px",
-                                    transition: "var(--transition-smooth)",
-                                    position: "relative"
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = "var(--primary)";
-                                    e.currentTarget.style.background = "rgba(99, 102, 241, 0.03)";
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = "var(--border-glass)";
-                                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.01)";
-                                  }}
-                                  >
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                      <strong style={{ color: "var(--text-main)", fontSize: "14px" }}>
-                                        {team.name}
-                                      </strong>
-                                      <button
-                                        onClick={() => handleDeleteTeam(team._id)}
-                                        style={{
-                                          background: "rgba(239, 68, 68, 0.08)",
-                                          border: "1px solid rgba(239, 68, 68, 0.15)",
-                                          borderRadius: "6px",
-                                          color: "#ef4444",
-                                          padding: "4px 8px",
-                                          fontSize: "11px",
-                                          fontWeight: "750",
-                                          cursor: "pointer",
-                                          transition: "var(--transition-smooth)"
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          e.currentTarget.style.background = "#ef4444";
-                                          e.currentTarget.style.color = "white";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
-                                          e.currentTarget.style.color = "#ef4444";
-                                        }}
-                                      >
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>Disband <FaTrashAlt /></span>
-                                      </button>
-                                    </div>
-                                    
-                                    {/* Faculty Mentor Display */}
-                                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignSelf: "flex-start" }}>
-                                      {team.mentor && (
-                                        <div style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          background: "rgba(168, 85, 247, 0.05)",
-                                          border: "1px solid rgba(168, 85, 247, 0.15)",
-                                          borderRadius: "8px",
-                                          padding: "6px 10px"
-                                        }}>
-                                          <img src={team.mentor.avatarUrl} alt={team.mentor.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
-                                          <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
-                                            <span>Coordinator: <strong style={{ color: "var(--text-main)" }}>{team.mentor.displayName}</strong></span>
-                                          </span>
-                                        </div>
-                                      )}
-                                      {team.teamLeader && (
-                                        <div style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          background: "rgba(16, 185, 129, 0.05)",
-                                          border: "1px solid rgba(16, 185, 129, 0.15)",
-                                          borderRadius: "8px",
-                                          padding: "6px 10px"
-                                        }}>
-                                          <img src={team.teamLeader.avatarUrl} alt={team.teamLeader.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
-                                          <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontWeight: "600" }}>
-                                            <span>Leader: <strong style={{ color: "var(--text-main)" }}>{team.teamLeader.displayName}</strong></span>
-                                          </span>
-                                        </div>
-                                      )}
-                                      {!team.mentor && !team.teamLeader && (
-                                        <span style={{ fontSize: "11px", color: "var(--text-dim)", fontStyle: "italic" }}>
-                                          No Faculty Coordinator assigned
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
-                                      {team.members.map((m) => (
-                                        <div key={m.accountId} style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "6px",
-                                          background: "rgba(255, 255, 255, 0.03)",
-                                          border: "1px solid var(--border-glass)",
-                                          borderRadius: "20px",
-                                          padding: "4px 10px 4px 6px"
-                                        }}>
-                                          <img src={m.avatarUrl} alt={m.displayName} style={{ width: "20px", height: "20px", borderRadius: "50%" }} />
-                                          <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600" }}>
-                                            {m.displayName}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                    <div style={{ fontSize: "10px", color: "var(--text-dim)", alignSelf: "flex-end" }}>
-                                      Created {new Date(team.createdAt).toLocaleDateString()}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div style={{
-                                padding: "30px",
-                                textAlign: "center",
-                                color: "var(--text-dim)",
-                                fontStyle: "italic",
-                                fontSize: "12.5px",
-                                border: "1px dashed var(--border-glass)",
-                                borderRadius: "8px",
-                                background: "rgba(255,255,255,0.002)"
-                              }}>
-                                No persistent teams have been formed yet. Form a new team below!
-                              </div>
-                            )}
-                          </div>
-
-                          {/* <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span> checkbox builder form */}
-                          <div className="glass-panel" style={{
-                            padding: "24px",
-                            background: "var(--bg-card)"
-                          }}>
-                            <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "12px", marginTop: 0 }}>
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Create Spoke Team</span>
-                            </h3>
-                            <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "16px" }}>
-                              Combine student developers into a persistent collaborative team and select a Faculty Coordinator to guide them.
-                            </p>
-                            <form onSubmit={handleCreateTeam} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TEAM NAME</label>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  placeholder="e.g. Agritech AI Drone Team"
-                                  value={newTeamName}
-                                  onChange={(e) => setNewTeamName(e.target.value)}
-                                  disabled={isCreatingTeam}
-                                  style={{ padding: "10px 14px", fontSize: "13px" }}
-                                />
-                              </div>
-                              
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>FACULTY COORDINATOR / MENTOR</label>
-                                <select
-                                  className="form-input"
-                                  value={selectedTeamMentor}
-                                  onChange={(e) => setSelectedTeamMentor(e.target.value)}
-                                  disabled={isCreatingTeam}
-                                  style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
-                                >
-                                  <option value="">-- Choose Faculty Coordinator --</option>
-                                  {spokeMembers.filter(m => m.displayName.includes("Mentor") || m.displayName.includes("Coordinator")).map(m => (
-                                    <option key={m.accountId} value={m.accountId}>{m.displayName.replace(/ \((Faculty Mentor|Coordinator)\)/g, "")}</option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TEAM LEADER</label>
-                                <select
-                                  className="form-input"
-                                  value={selectedTeamLeader}
-                                  onChange={(e) => setSelectedTeamLeader(e.target.value)}
-                                  disabled={isCreatingTeam}
-                                  style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white", marginBottom: "14px" }}
-                                >
-                                  <option value="">-- Choose Team Leader --</option>
-                                  {spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).map(m => (
-                                    <option key={m.accountId} value={m.accountId}>{m.displayName.replace(/ \((Student Developer)\)/g, "")}</option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>SELECT TEAM MEMBERS</label>
-                                <div style={{
-                                  maxHeight: "180px",
-                                  overflowY: "auto",
-                                  border: "1px solid var(--border-glass)",
-                                  borderRadius: "8px",
-                                  padding: "10px 14px",
-                                  background: "rgba(0, 0, 0, 0.15)",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "8px"
-                                }}>
-                                  {spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).length > 0 ? (
-                                    spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).map((m) => {
-                                      const isChecked = selectedTeamMembers.includes(m.accountId);
-                                      return (
-                                        <label key={m.accountId} style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "10px",
-                                          cursor: "pointer",
-                                          padding: "4px 0",
-                                          userSelect: "none"
-                                        }}>
-                                          <input
-                                            type="checkbox"
-                                            checked={isChecked}
-                                            disabled={isCreatingTeam}
-                                            onChange={(e) => {
-                                              if (e.target.checked) {
-                                                setSelectedTeamMembers([...selectedTeamMembers, m.accountId]);
-                                              } else {
-                                                setSelectedTeamMembers(selectedTeamMembers.filter(id => id !== m.accountId));
-                                              }
-                                            }}
-                                            style={{ cursor: "pointer" }}
-                                          />
-                                          <img src={m.avatarUrl} alt={m.displayName} style={{ width: "22px", height: "22px", borderRadius: "50%" }} />
-                                          <span style={{ fontSize: "12.5px", color: isChecked ? "var(--text-main)" : "var(--text-muted)" }}>
-                                            {m.displayName.replace(/ \((Student Developer)\)/g, "")}
-                                          </span>
-                                        </label>
-                                      );
-                                    })
-                                  ) : (
-                                    <div style={{ fontSize: "12px", color: "var(--text-dim)", fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>
-                                      No students registered yet.
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <button
-                                type="submit"
-                                disabled={isCreatingTeam}
-                                className="btn-primary"
-                                style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
-                              >
-                                {isCreatingTeam ? "Creating Spoke Team..." : "Create Spoke Team"}
-                              </button>
-                            </form>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     {/* TAB 3: 💼 B2B PROJECT & SPRINT ALLOCATOR */}
                     {activeCoordinatorTab === "projects" && (
                       <div className="fade-in" style={{
-                        display: "grid",
-                        gridTemplateColumns: "1.8fr 1.4fr",
-                        gap: "30px",
-                        alignItems: "flex-start"
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "20px"
                       }}>
-                        {/* B2B projects overview list */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                           <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-main)", margin: "0 0 10px 0" }}>
                             Active B2B Corporate Projects Allocated to {SPOKES[currentBoardId]?.name || "Our Campus"}
                           </h3>
@@ -7624,17 +7308,6 @@ function App() {
                                         <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Sponsor: <strong>{proj.company}</strong> • Epic: <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{epicKey || "PNLP-3"}</strong></span>
                                       </div>
                                     </div>
-                                    <button
-                                      onClick={() => {
-                                        setSelectedEpicForTask(proj.id);
-                                        setNewSprintTaskDueDate(proj.proposedDueDate);
-                                        triggerToast(`Linked B2B Project: ${proj.company} ${proj.title}`);
-                                      }}
-                                      className="btn-secondary"
-                                      style={{ padding: "6px 12px", fontSize: "11px", borderColor: "rgba(99, 102, 241, 0.25)", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px" }}
-                                    >
-                                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaLink /> Link Form</span>
-                                    </button>
                                   </div>
                                   <p style={{ margin: 0, fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4" }}>{proj.description}</p>
                                   <div style={{
@@ -7655,6 +7328,100 @@ function App() {
                                       <div style={{ width: `${progressPct}%`, height: "100%", background: "var(--primary)", borderRadius: "3px" }}></div>
                                     </div>
                                   </div>
+
+                                  {/* Mentors Row */}
+                                  {(() => {
+                                    const allocation = proj.allocations?.find(a => a.targetCampusId === currentBoardId);
+                                    const currFacultyMentor = allocation?.facultyMentor || proj.facultyMentor;
+                                    const currProjectMentor = allocation?.projectMentor || proj.projectMentor;
+                                    return (
+                                      <div style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                                        gap: "12px",
+                                        marginTop: "6px"
+                                      }}>
+                                        {/* Faculty Mentor */}
+                                        <div style={{
+                                          background: "rgba(255, 255, 255, 0.01)",
+                                          border: "1px solid var(--border-glass)",
+                                          borderRadius: "8px",
+                                          padding: "10px 12px",
+                                          fontSize: "12px"
+                                        }}>
+                                          <div style={{ fontWeight: "750", color: "var(--text-main)", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <FaGraduationCap style={{ color: "#10b981" }} /> College Faculty Mentor
+                                          </div>
+                                          {currFacultyMentor ? (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                              <img src={currFacultyMentor.avatarUrl || "https://ui-avatars.com/api/?name=Mentor&background=10b981&color=fff"} alt="" style={{ width: "24px", height: "24px", borderRadius: "50%" }} />
+                                              <div>
+                                                <div style={{ fontWeight: "600", fontSize: "11.5px" }}>{currFacultyMentor.displayName}</div>
+                                                <div style={{ fontSize: "10px", color: "var(--text-dim)" }}>{currFacultyMentor.emailAddress}</div>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div style={{ fontStyle: "italic", color: "var(--text-dim)", fontSize: "11px", marginBottom: "8px" }}>No Faculty Mentor assigned</div>
+                                          )}
+                                          
+                                          {/* Dropdown select to assign */}
+                                          <div>
+                                             <select
+                                              value={currFacultyMentor?.accountId || ""}
+                                              onChange={async (e) => {
+                                                const mentorId = e.target.value;
+                                                if (!mentorId) return;
+                                                try {
+                                                  const res = await axios.post(`http://localhost:5001/api/project/${proj._id || proj.id}/spoke/${currentBoardId}/faculty-mentor`, { mentorId });
+                                                  if (res.data && res.data.success) {
+                                                    triggerToast("Faculty Mentor assigned successfully!");
+                                                    fetchModeratorProjects(true); // reload projects list
+                                                  }
+                                                } catch (err) {
+                                                  console.error(err);
+                                                  triggerToast("Failed to assign Faculty Mentor.", "error");
+                                                }
+                                              }}
+                                              style={{ width: "100%", padding: "6px 8px", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "6px", color: "white", fontSize: "11px", outline: "none", cursor: "pointer" }}
+                                            >
+                                              <option value="">-- Assign Faculty Mentor --</option>
+                                              {spokeMembers.filter(m => {
+                                                const r = (m.role || "").toLowerCase();
+                                                const d = (m.displayName || "").toLowerCase();
+                                                return r.includes("mentor") || r.includes("faculty") || r.includes("professor") || d.includes("mentor") || d.includes("faculty") || d.includes("professor");
+                                              }).map(m => (
+                                                <option key={m.accountId} value={m.accountId}>{m.displayName.replace(/ \((Student Developer|Faculty Mentor|Coordinator)\)/g, "")}</option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                        </div>
+
+                                        {/* Company Project Mentor */}
+                                        <div style={{
+                                          background: "rgba(255, 255, 255, 0.01)",
+                                          border: "1px solid var(--border-glass)",
+                                          borderRadius: "8px",
+                                          padding: "10px 12px",
+                                          fontSize: "12px"
+                                        }}>
+                                          <div style={{ fontWeight: "750", color: "var(--text-main)", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <FaUser style={{ color: "#f97316" }} /> Company Project Mentor
+                                          </div>
+                                          {currProjectMentor ? (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                              <img src={currProjectMentor.avatarUrl || "https://ui-avatars.com/api/?name=Mentor&background=f97316&color=fff"} alt="" style={{ width: "24px", height: "24px", borderRadius: "50%" }} />
+                                              <div>
+                                                <div style={{ fontWeight: "600", fontSize: "11.5px" }}>{currProjectMentor.displayName}</div>
+                                                <div style={{ fontSize: "10px", color: "var(--text-dim)" }}>{currProjectMentor.emailAddress}</div>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <span style={{ fontStyle: "italic", color: "var(--text-dim)", fontSize: "11px" }}>Awaiting Sponsor assignment...</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })
@@ -7664,183 +7431,6 @@ function App() {
                             </div>
                           )}
                         </div>
-
-                        {/* Sprint task assignment form */}
-                        <div className="glass-panel" style={{
-                          padding: "24px",
-                          background: "var(--bg-card)"
-                        }}>
-                          <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-main)", marginBottom: "16px", marginTop: 0 }}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaPlus /> Assign Sprint Task under B2B Project</span>
-                          </h3>
-                          <p style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.4", marginBottom: "18px" }}>
-                            Create a detailed sprint child task under an allocated B2B program, set its target milestones, and assign it directly to a Student Developer.
-                          </p>
-                          <form onSubmit={async (e) => {
-                            e.preventDefault();
-                            if (!selectedEpicForTask) {
-                              triggerToast("Please select the target B2B Project to link this sprint task under.", "warning");
-                              return;
-                            }
-                            if (!newSprintTaskTitle.trim()) {
-                              triggerToast("Please enter a sprint task title.", "warning");
-                              return;
-                            }
-                            if (!newSprintTaskAssignee) {
-                              triggerToast("Please select a student developer to assign this task to.", "warning");
-                              return;
-                            }
-
-                            const linkedEpicObj = acceptedProjectsForSpoke.find(p => p.id === selectedEpicForTask);
-                            if (!linkedEpicObj) {
-                              triggerToast("Selected B2B Project is invalid or inactive.", "warning");
-                              return;
-                            }
-
-                            const epicKey = linkedEpicObj.allocations ? linkedEpicObj.allocations.find(a => a.targetCampusId === currentBoardId)?.assignedKey : linkedEpicObj.assignedKey;
-                            const epicSummary = `[${linkedEpicObj.company}] ${linkedEpicObj.title}`;
-
-                            setIsCreatingSprintTask(true);
-                            try {
-                              const res = await axios.post("http://localhost:5000/tasks", {
-                                summary: newSprintTaskTitle.trim(),
-                                description: newSprintTaskDesc.trim(),
-                                statusName: "To Do",
-                                priorityName: newSprintTaskPriority,
-                                assigneeId: newSprintTaskAssignee,
-                                reporterId: currentUser?.accountId || "mock-1",
-                                dueDate: newSprintTaskDueDate || linkedEpicObj.proposedDueDate,
-                                issueTypeName: "Task",
-                                boardId: currentBoardId,
-                                parentId: `mock-${currentBoardId}-epic-preload-${epicKey || "PNLP-3"}`,
-                                parentKey: epicKey || "PNLP-3",
-                                parentSummary: epicSummary
-                              });
-
-                              if (res.data && res.data.success) {
-                                triggerToast(` Sprint task "${newSprintTaskTitle}" successfully provisioned and assigned!`);
-                                setNewSprintTaskTitle("");
-                                setNewSprintTaskDesc("");
-                                fetchJiraTasks(true);
-                                fetchHubMetrics(true); // Update portfolio stats
-                              }
-                            } catch (err) {
-                              console.error(err);
-                              triggerToast("Failed to create and assign sprint task.", "error");
-                            } finally {
-                              setIsCreatingSprintTask(false);
-                            }
-                          }} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                            <div>
-                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>TARGET CORPORATE PROJECT (EPIC)</label>
-                              <select
-                                className="form-input"
-                                value={selectedEpicForTask}
-                                onChange={(e) => {
-                                  setSelectedEpicForTask(e.target.value);
-                                  const linked = acceptedProjectsForSpoke.find(p => p.id === e.target.value);
-                                  if (linked) {
-                                    setNewSprintTaskDueDate(linked.proposedDueDate);
-                                  }
-                                }}
-                                disabled={isCreatingSprintTask}
-                                style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
-                              >
-                                <option value="">-- Choose Corporate Project --</option>
-                                {acceptedProjectsForSpoke.map(p => (
-                                  <option key={p.id} value={p.id}>[{p.company}] {p.title}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>SPRINT TASK SUMMARY</label>
-                              <input
-                                type="text"
-                                className="form-input"
-                                placeholder="e.g. Integrate camera feeds into deep learning classifier"
-                                value={newSprintTaskTitle}
-                                onChange={(e) => setNewSprintTaskTitle(e.target.value)}
-                                disabled={isCreatingSprintTask}
-                                style={{ padding: "10px 14px", fontSize: "13px" }}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>ASSIGNEE DEVELOPER</label>
-                              <select
-                                className="form-input"
-                                value={newSprintTaskAssignee}
-                                onChange={(e) => setNewSprintTaskAssignee(e.target.value)}
-                                disabled={isCreatingSprintTask}
-                                style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
-                              >
-                                <option value="">-- Choose Team or Developer --</option>
-                                {spokeTeams.length > 0 && (
-                                  <optgroup label="Collaborative Spoke Teams" style={{ background: "#111827", color: "var(--primary)", fontWeight: "bold" }}>
-                                    {spokeTeams.map(team => (
-                                      <option key={team._id} value={team._id} style={{ color: "white" }}>
-                                        <span><FaUsers style={{ marginRight: "6px" }} /> {team.name} ({team.members.length} ({team.members.length} Members)</span>
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                                <optgroup label="Individual Student Developers" style={{ background: "#111827", color: "#a855f7", fontWeight: "bold" }}>
-                                  {spokeMembers.filter(m => !m.displayName.includes("Mentor") && !m.displayName.includes("Coordinator")).map(m => (
-                                    <option key={m.accountId} value={m.accountId} style={{ color: "white" }}>
-                                      <span><FaUser style={{ marginRight: "6px", color: "var(--primary)" }} /> {m.displayName.replace(/ \((Student Developer)\)/g, "")}</span>
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              </select>
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>PRIORITY</label>
-                                <select
-                                  className="form-input"
-                                  value={newSprintTaskPriority}
-                                  onChange={(e) => setNewSprintTaskPriority(e.target.value)}
-                                  disabled={isCreatingSprintTask}
-                                  style={{ padding: "10px 14px", fontSize: "13px", width: "100%", background: "#1f2937", border: "1px solid var(--border-glass)", borderRadius: "8px", color: "white" }}
-                                >
-                                  <option value="High">High</option>
-                                  <option value="Medium">Medium</option>
-                                  <option value="Low">Low</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>MILESTONE DUE DATE</label>
-                                <input
-                                  type="date"
-                                  className="form-input"
-                                  value={newSprintTaskDueDate}
-                                  onChange={(e) => setNewSprintTaskDueDate(e.target.value)}
-                                  disabled={isCreatingSprintTask}
-                                  style={{ padding: "8px 12px", fontSize: "12.5px" }}
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label style={{ fontSize: "10px", fontWeight: "750", color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>DETAILED SPRINT SCOPE</label>
-                              <textarea
-                                className="form-input"
-                                placeholder="Describe specific deliverables, APIs, and expectations for this milestone phase..."
-                                value={newSprintTaskDesc}
-                                onChange={(e) => setNewSprintTaskDesc(e.target.value)}
-                                disabled={isCreatingSprintTask}
-                                style={{ padding: "10px 14px", fontSize: "13px", height: "65px", resize: "none" }}
-                              />
-                            </div>
-                            <button
-                              type="submit"
-                              disabled={isCreatingSprintTask}
-                              className="btn-primary"
-                              style={{ padding: "10px 18px", fontSize: "12.5px", marginTop: "4px", width: "100%", justifyContent: "center" }}
-                            >
-                              {isCreatingSprintTask ? "Allocating sprint task..." : "Assign Sprint Task & Notify"}
-                            </button>
-                          </form>
-                        </div>
-                      </div>
                     )}
                   </>
                 )}
@@ -9719,7 +9309,7 @@ function App() {
                   <button
                     onClick={async () => {
                       try {
-                        const res = await fetch("http://localhost:5000/cache/clear", { method: "POST" });
+                        const res = await fetch("http://localhost:5001/cache/clear", { method: "POST" });
                         const data = await res.json();
                         if (data.success) {
                           triggerToast("Server cache successfully purged!");
@@ -11471,7 +11061,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                 onClick={async () => {
                   setAuditLoading(true);
                   try {
-                    const res = await axios.post("http://localhost:5000/moderator/alerts/check");
+                    const res = await axios.post("http://localhost:5001/moderator/alerts/check");
                     setAuditResults(res.data);
                     onRefresh(); // reload projects to update their statuses
                   } catch (err) {
@@ -11644,7 +11234,7 @@ function ModeratorDashboardView({ projects, loading, onRefresh, onAssignClick, o
                                       <button
                                         onClick={async () => {
                                           try {
-                                            await axios.post("http://localhost:5000/moderator/alerts/check");
+                                            await axios.post("http://localhost:5001/moderator/alerts/check");
                                             alert(`Deadline warning notification dispatched successfully to ${alloc.assignedTo} Coordinator!`);
                                           } catch (err) {
                                             console.error(err);
@@ -11728,6 +11318,56 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
   const [dueDate, setDueDate] = useState("2026-09-15");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [companyMentors, setCompanyMentors] = useState([]);
+  const companyName = sessionUser?.displayName?.replace(" Sponsor", "") || "NVIDIA";
+  const [teams, setTeams] = useState([]);
+  const [evalRating, setEvalRating] = useState({}); // teamId -> rating (number)
+  const [evalFeedback, setEvalFeedback] = useState({}); // teamId -> comments (string)
+
+  const fetchTeams = async () => {
+    try {
+      const response = await axios.get("http://localhost:5001/api/teams");
+      setTeams(response.data || []);
+    } catch (err) {
+      console.error("Failed to fetch teams", err);
+    }
+  };
+
+  useEffect(() => {
+    const fetchCompanyMentors = async () => {
+      try {
+        const response = await axios.get(`http://localhost:5001/api/companies/${companyName}/mentors`);
+        setCompanyMentors(response.data);
+      } catch (err) {
+        console.error("Failed to fetch company mentors", err);
+      }
+    };
+    if (companyName) {
+      fetchCompanyMentors();
+    }
+    fetchTeams();
+  }, [companyName]);
+
+  const handleEvaluate = async (teamId) => {
+    const r = evalRating[teamId] || 5;
+    const f = evalFeedback[teamId] || "";
+    try {
+      const res = await axios.put(`http://localhost:5001/api/teams/${teamId}/evaluate`, {
+        rating: Number(r),
+        companyFeedback: f,
+        evaluatedBy: sessionUser?.displayName || "Company Mentor"
+      });
+      if (res.data && res.data.success) {
+        triggerToast("Team evaluation submitted successfully!");
+        fetchTeams();
+        if (onRefresh) onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to submit team evaluation.", "error");
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "400px", gap: "16px" }}>
@@ -11742,9 +11382,6 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
       </div>
     );
   }
-
-  // Resolve company name, e.g. "NVIDIA Sponsor" -> "NVIDIA"
-  const companyName = sessionUser?.displayName?.replace(" Sponsor", "") || "NVIDIA";
 
   // Filter B2B projects submitted by this specific sponsor's company
   const sponsorProjects = projects.filter(p => 
@@ -11948,6 +11585,22 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
           >
             FIP Cohort Progress
           </button>
+          <button
+            onClick={() => setActiveTab("evaluations")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              fontSize: "12.5px",
+              fontWeight: "750",
+              cursor: "pointer",
+              background: activeTab === "evaluations" ? "var(--primary-glow)" : "rgba(255,255,255,0.02)",
+              border: `1px solid ${activeTab === "evaluations" ? "var(--primary)" : "var(--border-glass)"}`,
+              color: activeTab === "evaluations" ? "var(--primary)" : "var(--text-muted)",
+              transition: "all 0.3s ease"
+            }}
+          >
+            Final Work Evaluations
+          </button>
         </div>
 
         <button
@@ -12023,24 +11676,75 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
                       {/* Campus Allocations */}
                       <td style={{ padding: "20px 8px", verticalAlign: "middle" }}>
                         {isAllocated ? (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                             {proj.allocations.map((alloc) => {
                               const targetSpoke = spokes.find(s => s.id === alloc.targetCampusId);
+                              const currFacultyMentor = alloc.facultyMentor;
+                              const currProjectMentor = alloc.projectMentor;
+                              
                               return (
                                 <div key={alloc.targetCampusId} style={{
-                                  padding: "10px 14px",
+                                  padding: "12px 14px",
                                   background: "rgba(255, 255, 255, 0.015)",
                                   border: "1px solid var(--border-glass)",
                                   borderRadius: "8px",
-                                  fontSize: "12px"
+                                  fontSize: "12px",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "8px"
                                 }}>
                                   <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "750" }}>
                                     <span style={{ color: "var(--primary)", display: "inline-flex", alignItems: "center", gap: "6px" }}><FaBuilding /> {targetSpoke?.name || "Campus Spoke"}</span>
                                     <span style={{ fontFamily: "var(--mono)", color: "var(--text-main)" }}>{alloc.assignedKey || "Key Assigned"}</span>
                                   </div>
-                                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", fontSize: "11px", color: "var(--text-dim)" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-dim)" }}>
                                     <span>Milestone: <strong>{alloc.status}</strong></span>
                                     <span>Due: <strong>{proj.proposedDueDate}</strong></span>
+                                  </div>
+
+                                  {/* Faculty Mentor Details */}
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "6px", fontSize: "11px" }}>
+                                    <span style={{ color: "var(--text-muted)" }}>Faculty Mentor:</span>
+                                    {currFacultyMentor ? (
+                                      <span style={{ color: "#10b981", fontWeight: "600" }}>{currFacultyMentor.displayName}</span>
+                                    ) : (
+                                      <span style={{ color: "var(--text-dim)", fontStyle: "italic" }}>Awaiting College...</span>
+                                    )}
+                                  </div>
+
+                                  {/* Project Mentor Details & Dropdown */}
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "6px" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px" }}>
+                                      <span style={{ color: "var(--text-muted)" }}>Project Mentor:</span>
+                                      {currProjectMentor ? (
+                                        <span style={{ color: "#f97316", fontWeight: "600" }}>{currProjectMentor.displayName}</span>
+                                      ) : (
+                                        <span style={{ color: "var(--text-dim)", fontStyle: "italic" }}>Not Assigned</span>
+                                      )}
+                                    </div>
+                                    <select
+                                      value={currProjectMentor?.accountId || ""}
+                                      onChange={(e) => handleAssignCompanyMentor(proj._id || proj.id, alloc.targetCampusId, e.target.value)}
+                                      style={{
+                                        width: "100%",
+                                        padding: "4px 8px",
+                                        background: "#1f2937",
+                                        border: "1px solid var(--border-glass)",
+                                        borderRadius: "6px",
+                                        color: "white",
+                                        fontSize: "11px",
+                                        outline: "none",
+                                        cursor: "pointer",
+                                        marginTop: "2px"
+                                      }}
+                                    >
+                                      <option value="">-- Assign Company Mentor --</option>
+                                      {companyMentors.map(m => (
+                                        <option key={m.accountId} value={m.accountId}>
+                                          {m.displayName} ({m.emailAddress})
+                                        </option>
+                                      ))}
+                                    </select>
                                   </div>
                                 </div>
                               );
@@ -12363,6 +12067,193 @@ function CorporateSponsorDashboardView({ projects, loading, onRefresh, onSubmitP
         </div>
       )}
 
+      {activeTab === "evaluations" && (
+        <div className="glass-panel" style={{ padding: "24px" }}>
+          <h3 style={{ margin: "0 0 8px 0", fontSize: "16px", fontWeight: "800", color: "var(--text-main)" }}>
+            Final Work Progress Reviews
+          </h3>
+          <p style={{ margin: "0 0 20px 0", fontSize: "13px", color: "var(--text-muted)" }}>
+            Evaluate completed sprints and final deliverables submitted by college teams working on your B2B corporate projects.
+          </p>
+
+          {(() => {
+            const companyTeams = teams.filter(t => sponsorProjects.some(p => p._id === t.projectId || p.id === t.projectId));
+            const finalProgressTeams = companyTeams.filter(t => t.finalProgress && t.finalProgress.status !== "Pending");
+
+            if (finalProgressTeams.length === 0) {
+              return (
+                <div style={{
+                  textAlign: "center",
+                  padding: "40px 20px",
+                  border: "1px dashed var(--border-glass)",
+                  borderRadius: "12px",
+                  color: "var(--text-dim)",
+                  fontSize: "13px"
+                }}>
+                  No campus teams have submitted their final work progress reports for your projects yet.
+                </div>
+              );
+            }
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                {finalProgressTeams.map((team) => {
+                  const linkedProj = sponsorProjects.find(p => p._id === team.projectId || p.id === team.projectId);
+                  const targetSpoke = spokes.find(s => s.id === team.boardId);
+
+                  return (
+                    <div key={team._id || team.id} style={{
+                      padding: "20px",
+                      background: "rgba(255, 255, 255, 0.015)",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "12px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px"
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "800", color: "var(--text-main)" }}>{team.name}</h4>
+                          <span style={{ fontSize: "12px", color: "var(--primary)", fontWeight: "650", display: "block", marginTop: "2px" }}>
+                            Institution Spoke: {targetSpoke?.name || "Campus Spoke"}
+                          </span>
+                        </div>
+                        <span style={{
+                          fontSize: "9px",
+                          fontWeight: "900",
+                          background: team.finalProgress.status === "Evaluated" ? "rgba(45, 212, 191, 0.08)" : "rgba(251, 146, 60, 0.08)",
+                          color: team.finalProgress.status === "Evaluated" ? "#2dd4bf" : "var(--accent)",
+                          border: team.finalProgress.status === "Evaluated" ? "1px solid rgba(45, 212, 191, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)",
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          textTransform: "uppercase"
+                        }}>{team.finalProgress.status}</span>
+                      </div>
+
+                      <div style={{ fontSize: "13px", color: "var(--text-muted)", background: "rgba(255, 255, 255, 0.005)", padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                        <div>
+                          Project Scope: <strong>{linkedProj?.title}</strong>
+                        </div>
+                        <div style={{ marginTop: "6px" }}>
+                          Report URL: <a href={team.finalProgress.reportUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary)", fontWeight: "700" }}>{team.finalProgress.reportUrl}</a>
+                        </div>
+                        {team.finalProgress.facultyComments && (
+                          <div style={{ marginTop: "6px", color: "var(--text-dim)" }}>
+                            Faculty Comments: <em>"{team.finalProgress.facultyComments}"</em>
+                          </div>
+                        )}
+                        <span style={{ fontSize: "10px", color: "var(--text-dim)", display: "block", marginTop: "8px" }}>
+                          Submitted on: {new Date(team.finalProgress.submittedAt).toLocaleString()}
+                        </span>
+                      </div>
+
+                      {team.finalProgress.status === "Submitted" ? (
+                        <div style={{
+                          marginTop: "8px",
+                          padding: "16px",
+                          background: "rgba(249, 115, 22, 0.02)",
+                          border: "1px solid rgba(249, 115, 22, 0.15)",
+                          borderRadius: "10px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "12px"
+                        }}>
+                          <h5 style={{ margin: 0, fontSize: "12px", color: "var(--accent)", textTransform: "uppercase", fontWeight: "800" }}>Grade Performance & Feedback</h5>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "16px", alignItems: "center" }}>
+                            <div>
+                              <label style={{ display: "block", fontSize: "11px", fontWeight: "750", color: "var(--text-muted)", marginBottom: "4px" }}>Rating Score *</label>
+                              <select
+                                value={evalRating[team._id || team.id] || "5"}
+                                onChange={(e) => setEvalRating({ ...evalRating, [team._id || team.id]: e.target.value })}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  background: "#1f2937",
+                                  border: "1px solid var(--border-glass)",
+                                  borderRadius: "6px",
+                                  color: "white",
+                                  fontSize: "12px",
+                                  outline: "none"
+                                }}
+                              >
+                                <option value="5">★★★★★ (5/5)</option>
+                                <option value="4">★★★★☆ (4/5)</option>
+                                <option value="3">★★★☆☆ (3/5)</option>
+                                <option value="2">★★☆☆☆ (2/5)</option>
+                                <option value="1">★☆☆☆☆ (1/5)</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ display: "block", fontSize: "11px", fontWeight: "750", color: "var(--text-muted)", marginBottom: "4px" }}>Written Feedback Comments *</label>
+                              <input
+                                type="text"
+                                placeholder="Provide detailed B2B engineering milestone feedback..."
+                                value={evalFeedback[team._id || team.id] || ""}
+                                onChange={(e) => setEvalFeedback({ ...evalFeedback, [team._id || team.id]: e.target.value })}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px 12px",
+                                  background: "var(--bg-input)",
+                                  border: "1px solid var(--border-glass)",
+                                  borderRadius: "6px",
+                                  color: "white",
+                                  fontSize: "12px",
+                                  outline: "none"
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleEvaluate(team._id || team.id)}
+                            style={{
+                              alignSelf: "flex-end",
+                              padding: "8px 16px",
+                              background: "var(--accent)",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "6px",
+                              fontWeight: "750",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              boxShadow: "0 2px 8px rgba(249, 115, 22, 0.2)"
+                            }}
+                          >
+                            Submit Evaluation Review
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{
+                          background: "rgba(45, 212, 191, 0.03)",
+                          borderLeft: "3px solid #2dd4bf",
+                          padding: "12px 16px",
+                          borderRadius: "0 8px 8px 0",
+                          marginTop: "8px",
+                          fontSize: "12.5px"
+                        }}>
+                          <div style={{ fontWeight: "800", display: "flex", alignItems: "center", gap: "6px", color: "var(--text-main)" }}>
+                            Rating Score: {Array.from({ length: team.finalProgress.rating }).map((_, i) => (
+                              <span key={i} style={{ color: "#fbbf24", fontSize: "14px" }}>★</span>
+                            ))} ({team.finalProgress.rating}/5)
+                          </div>
+                          {team.finalProgress.companyFeedback && (
+                            <div style={{ color: "var(--text-muted)", marginTop: "4px" }}>
+                              Feedback: <strong>{team.finalProgress.companyFeedback}</strong>
+                            </div>
+                          )}
+                          <span style={{ fontSize: "10px", color: "var(--text-dim)", display: "block", marginTop: "6px" }}>
+                            Evaluated by {team.finalProgress.evaluatedBy} on {new Date(team.finalProgress.evaluatedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
     </div>
   );
 }
@@ -12420,7 +12311,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
 
     setIsScheduling(true);
     try {
-      const res = await axios.post("http://localhost:5000/meetings", {
+      const res = await axios.post("http://localhost:5001/meetings", {
         title: newTitle,
         campusId: newCampusId,
         date: newDate,
@@ -12447,7 +12338,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
   const handleSendReminder = async (meetId) => {
     setRemindLoading(meetId);
     try {
-      const res = await axios.post(`http://localhost:5000/meetings/${meetId}/remind`);
+      const res = await axios.post(`http://localhost:5001/meetings/${meetId}/remind`);
       if (res.data && res.data.success) {
         triggerToast(`Reminder dispatched! Notified ${res.data.notifiedEmails.length} coordinators with ${res.data.overdueCount} overdue items and ${res.data.blockerCount} blockers.`);
         if (res.data.previewUrl) {
@@ -12476,7 +12367,7 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
       return;
     }
     try {
-      const res = await axios.delete(`http://localhost:5000/meetings/${meetId}`);
+      const res = await axios.delete(`http://localhost:5001/meetings/${meetId}`);
       if (res.data && res.data.success) {
         triggerToast("Sync meeting cancelled and deleted successfully.");
         onRefresh();
@@ -13098,6 +12989,1061 @@ function MeetingsPortalView({ meetings, loading, onRefresh, spokes, triggerToast
         </div>
       )}
 
+    </div>
+  );
+}
+
+function ProjectManagerDashboardView({ projects = [], loading, onRefresh, triggerToast, spokes = [] }) {
+  const [spokeMentorsMap, setSpokeMentorsMap] = useState({});
+  const [companyMentorsMap, setCompanyMentorsMap] = useState({});
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    // Fetch mentors for all spokes
+    const fetchSpokeMentors = async () => {
+      const map = {};
+      await Promise.all(spokes.map(async (spoke) => {
+        try {
+          const res = await axios.get(`http://localhost:5001/api/spokes/${spoke.id}/mentors`);
+          map[spoke.id] = res.data;
+        } catch (err) {
+          console.error(`Failed to fetch mentors for spoke ${spoke.id}`, err);
+        }
+      }));
+      setSpokeMentorsMap(map);
+    };
+
+    if (spokes.length > 0) {
+      fetchSpokeMentors();
+    }
+  }, [spokes]);
+
+  useEffect(() => {
+    // Fetch mentors for all unique companies
+    const fetchCompanyMentors = async () => {
+      const companies = [...new Set(projects.map(p => p.company))].filter(Boolean);
+      const map = {};
+      await Promise.all(companies.map(async (company) => {
+        try {
+          const res = await axios.get(`http://localhost:5001/api/companies/${company}/mentors`);
+          map[company] = res.data;
+        } catch (err) {
+          console.error(`Failed to fetch mentors for company ${company}`, err);
+        }
+      }));
+      setCompanyMentorsMap(map);
+    };
+
+    if (projects.length > 0) {
+      fetchCompanyMentors();
+    }
+  }, [projects]);
+
+  const handleAssignFacultyMentor = async (projectId, spokeId, mentorId) => {
+    if (!mentorId) return;
+    try {
+      const res = await axios.post(`http://localhost:5001/api/project/${projectId}/spoke/${spokeId}/faculty-mentor`, { mentorId });
+      if (res.data && res.data.success) {
+        triggerToast("College Faculty Mentor assigned successfully!");
+        if (onRefresh) onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to assign Faculty Mentor.", "error");
+    }
+  };
+
+  const handleAssignProjectMentor = async (projectId, spokeId, mentorId) => {
+    if (!mentorId) return;
+    try {
+      const res = await axios.post(`http://localhost:5001/api/project/${projectId}/spoke/${spokeId}/project-mentor`, { mentorId });
+      if (res.data && res.data.success) {
+        triggerToast("Company Project Mentor assigned successfully!");
+        if (onRefresh) onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to assign Company Project Mentor.", "error");
+    }
+  };
+
+  // Metrics
+  const totalProjects = projects.length;
+  const allocatedProjects = projects.filter(p => p.allocations && p.allocations.length > 0).length;
+  const activeAllocations = projects.reduce((acc, p) => acc + (p.allocations ? p.allocations.filter(a => a.status === "Active").length : 0), 0);
+  const pendingMentors = projects.reduce((acc, p) => {
+    if (!p.allocations) return acc;
+    const pending = p.allocations.filter(a => a.status === "Active" && (!a.facultyMentor || !a.projectMentor)).length;
+    return acc + pending;
+  }, 0);
+
+  const filteredProjects = projects.filter(p => 
+    p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {/* Title block */}
+      <div className="glass-panel" style={{
+        padding: "20px 24px",
+        background: "linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(99, 102, 241, 0.03))",
+        border: "1px solid var(--border-glass)",
+        borderRadius: "16px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "900", color: "var(--text-main)", letterSpacing: "-0.5px" }}>
+            Project Manager Hub Dashboard
+          </h2>
+          <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-muted)" }}>
+            Central administration console for industry B2B projects, active campus spoke allocations, and dual mentorship configuration.
+          </p>
+        </div>
+        <button
+          onClick={onRefresh}
+          className="btn-secondary"
+          style={{ padding: "8px 16px", borderRadius: "8px" }}
+        >
+          Refresh Dashboard
+        </button>
+      </div>
+
+      {/* Metrics Row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px" }}>
+        <DashboardCard title="Total B2B Projects" value={totalProjects} subtitle="Total proposed corporate projects" glow={true} />
+        <DashboardCard title="Allocated to Spokes" value={allocatedProjects} subtitle="Allocated institution cohorts" themeColor="var(--primary)" />
+        <DashboardCard title="Active Institutions" value={activeAllocations} subtitle="Active campus sprint tracks" themeColor="var(--status-progress-text)" />
+        <DashboardCard title="Pending Mentorship" value={pendingMentors} subtitle="Allocations missing mentors" themeColor={pendingMentors > 0 ? "#ef4444" : "var(--status-done-text)"} glow={pendingMentors > 0} />
+      </div>
+
+      {/* Main Table section */}
+      <div className="glass-panel" style={{ padding: "24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--text-main)" }}>
+              B2B Corporate Projects & Allocations
+            </h3>
+            <p style={{ margin: "4px 0 0 0", fontSize: "12.5px", color: "var(--text-muted)" }}>
+              Assign Faculty Mentors from campuses or Project Mentors from corporate sponsors to ensure smooth delivery.
+            </p>
+          </div>
+          {/* Search bar */}
+          <div style={{ position: "relative", width: "100%", maxWidth: "300px" }}>
+            <input
+              type="text"
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="form-input"
+              style={{ width: "100%", padding: "8px 12px 8px 36px", fontSize: "13px" }}
+            />
+            <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)", display: "flex", alignItems: "center" }}>
+              <FaSearch size={14} />
+            </span>
+          </div>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "var(--text-main)" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border-glass)", color: "var(--text-dim)", textAlign: "left" }}>
+                <th style={{ padding: "12px 8px", fontWeight: "750", width: "35%" }}>Project & Sponsor Details</th>
+                <th style={{ padding: "12px 8px", fontWeight: "750", width: "65%" }}>Campus Allocations & Mentorship Assignment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProjects.map(proj => {
+                const isAllocated = proj.allocations && proj.allocations.length > 0;
+                return (
+                  <tr key={proj.id} style={{ borderBottom: "1px solid var(--border-glass)" }}>
+                    <td style={{ padding: "20px 8px", verticalAlign: "top" }}>
+                      <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                        <CompanyLogo company={proj.company} size={36} />
+                        <div>
+                          <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "800" }}>{proj.title}</h4>
+                          <div style={{ fontSize: "11px", color: "var(--text-dim)", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                            <span>Company: <strong>{proj.company}</strong></span>
+                            <span>•</span>
+                            <span>Budget: <strong>{proj.budget}</strong></span>
+                            <span>•</span>
+                            <span>Duration: <strong>{proj.duration}</strong></span>
+                          </div>
+                          <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4", maxWidth: "300px" }}>
+                            {proj.description}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: "20px 8px", verticalAlign: "top" }}>
+                      {isAllocated ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {proj.allocations.map(alloc => {
+                            const targetSpoke = spokes.find(s => s.id === alloc.targetCampusId);
+                            const mentors = spokeMentorsMap[alloc.targetCampusId] || [];
+                            const cMentors = companyMentorsMap[proj.company] || [];
+
+                            return (
+                              <div key={alloc.targetCampusId} style={{
+                                padding: "12px 16px",
+                                background: "rgba(255,255,255,0.01)",
+                                border: "1px solid var(--border-glass)",
+                                borderRadius: "10px",
+                                display: "grid",
+                                gridTemplateColumns: "1.2fr 1fr 1fr",
+                                gap: "16px",
+                                alignItems: "center"
+                              }}>
+                                <div>
+                                  <div style={{ fontWeight: "750", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <FaBuilding size={14} /> {targetSpoke?.name || "Campus Spoke"}
+                                  </div>
+                                  <div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "4px" }}>
+                                    Status: <strong style={{ color: alloc.status === "Active" ? "var(--status-progress-text)" : "var(--text-muted)" }}>{alloc.status}</strong>
+                                  </div>
+                                  <div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+                                    Jira Key: <strong style={{ color: "var(--text-main)", fontFamily: "var(--mono)" }}>{alloc.assignedKey || "N/A"}</strong>
+                                  </div>
+                                </div>
+
+                                {/* College Faculty Mentor Selection */}
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  <label style={{ fontSize: "11px", fontWeight: "750", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px" }}>
+                                    <FaGraduationCap size={13} style={{ color: "#10b981" }} /> Faculty Mentor:
+                                  </label>
+                                  {alloc.facultyMentor ? (
+                                    <div style={{ fontSize: "11.5px", fontWeight: "600", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "6px" }}>
+                                      <img src={alloc.facultyMentor.avatarUrl} alt="" style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
+                                      {alloc.facultyMentor.displayName}
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: "11px", color: "#ef4444", fontStyle: "italic" }}>Not Assigned</div>
+                                  )}
+                                </div>
+
+                                {/* Company Project Mentor Selection */}
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  <label style={{ fontSize: "11px", fontWeight: "750", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px" }}>
+                                    <FaUser size={13} style={{ color: "#f97316" }} /> Project Mentor:
+                                  </label>
+                                  {alloc.projectMentor ? (
+                                    <div style={{ fontSize: "11.5px", fontWeight: "600", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "6px" }}>
+                                      <img src={alloc.projectMentor.avatarUrl} alt="" style={{ width: "18px", height: "18px", borderRadius: "50%" }} />
+                                      {alloc.projectMentor.displayName}
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: "11px", color: "#f97316", fontStyle: "italic" }}>Not Assigned</div>
+                                  )}
+                                  <select
+                                    value={alloc.projectMentor?.accountId || ""}
+                                    onChange={(e) => handleAssignProjectMentor(proj._id || proj.id, alloc.targetCampusId, e.target.value)}
+                                    className="form-input"
+                                    style={{ width: "100%", padding: "4px 8px", fontSize: "11px", marginTop: "4px" }}
+                                  >
+                                    <option value="">-- Select Project Mentor --</option>
+                                    {cMentors.map(m => (
+                                      <option key={m.accountId} value={m.accountId}>{m.displayName}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div style={{ fontStyle: "italic", color: "var(--text-dim)", fontSize: "12px" }}>
+                          This project has not been allocated to any spoke campus. Go to the Moderator Panel to allocate.
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredProjects.length === 0 && (
+                <tr>
+                  <td colSpan={2} style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)", fontStyle: "italic" }}>
+                    No B2B projects found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FacultyMentorDashboardView({ 
+  sessionUser, 
+  triggerToast, 
+  spokes, 
+  allSubmissions = [], 
+  handleUpdateSubmissionStatus, 
+  handleDeleteSubmission, 
+  fetchAllSubmissions 
+}) {
+  const [assignedProjects, setAssignedProjects] = useState([]);
+  const [existingTeams, setExistingTeams] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [spokeMentors, setSpokeMentors] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Form states
+  const [teamName, setTeamName] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [subMentorId, setSubMentorId] = useState("");
+  const [teamLeaderId, setTeamLeaderId] = useState("");
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+
+  const mentorId = sessionUser?._id;
+  const spokeId = sessionUser?.spokeId || "3"; // KLE by default
+
+  const fetchMentorData = async () => {
+    if (!mentorId) return;
+    setIsLoading(true);
+    try {
+      if (fetchAllSubmissions) fetchAllSubmissions();
+      const [projectsRes, teamsRes, studentsRes, mentorsRes] = await Promise.all([
+        axios.get(`http://localhost:5001/api/mentors/${mentorId}/projects`),
+        axios.get(`http://localhost:5001/api/teams?mentorId=${mentorId}`),
+        axios.get(`http://localhost:5001/api/spokes/${spokeId}/students`),
+        axios.get(`http://localhost:5001/api/spokes/${spokeId}/mentors`)
+      ]);
+      setAssignedProjects(projectsRes.data);
+      setExistingTeams(teamsRes.data);
+      setStudents(studentsRes.data);
+      setSpokeMentors(mentorsRes.data);
+    } catch (err) {
+      console.error("Failed to load faculty mentor data:", err);
+      triggerToast("Failed to retrieve dashboard data.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMentorData();
+  }, [mentorId, spokeId]);
+
+  const handleStudentCheckboxChange = (studentId) => {
+    setSelectedStudentIds(prev => {
+      if (prev.includes(studentId)) {
+        const next = prev.filter(id => id !== studentId);
+        // Clear team leader if they were deselected
+        if (teamLeaderId === studentId) {
+          setTeamLeaderId("");
+        }
+        return next;
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  const handleCreateTeam = async (e) => {
+    e.preventDefault();
+    if (!teamName.trim()) {
+      triggerToast("Please provide a team name.", "warning");
+      return;
+    }
+    if (!selectedProjectId) {
+      triggerToast("Please select a project.", "warning");
+      return;
+    }
+    if (selectedStudentIds.length === 0) {
+      triggerToast("Please select at least one student member.", "warning");
+      return;
+    }
+    if (!teamLeaderId) {
+      triggerToast("Please designate a team leader.", "warning");
+      return;
+    }
+
+    setIsCreatingTeam(true);
+
+    const selectedStudentsObjects = students
+      .filter(s => selectedStudentIds.includes(s.accountId))
+      .map(s => ({
+        accountId: s.accountId,
+        displayName: s.displayName,
+        emailAddress: s.emailAddress,
+        avatarUrl: s.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.displayName)}&background=6366f1&color=fff`
+      }));
+
+    const teamLeaderObj = selectedStudentsObjects.find(s => s.accountId === teamLeaderId);
+
+    const subMentorObj = spokeMentors.find(m => m.accountId === subMentorId);
+    let subMentorPayload = null;
+    if (subMentorObj) {
+      subMentorPayload = {
+        accountId: subMentorObj.accountId,
+        displayName: subMentorObj.displayName,
+        emailAddress: subMentorObj.emailAddress,
+        avatarUrl: subMentorObj.avatarUrl
+      };
+    }
+
+    const payload = {
+      name: teamName,
+      boardId: spokeId,
+      members: selectedStudentsObjects,
+      mentor: {
+        accountId: mentorId,
+        displayName: sessionUser.displayName,
+        emailAddress: sessionUser.email,
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(sessionUser.displayName)}&background=10b981&color=fff`
+      },
+      teamLeader: teamLeaderObj || null,
+      projectId: selectedProjectId,
+      subMentor: subMentorPayload
+    };
+
+    try {
+      const res = await axios.post("http://localhost:5001/api/teams", payload);
+      if (res.data && res.data.success) {
+        triggerToast(`Team "${teamName}" created successfully!`);
+        // Reset form
+        setTeamName("");
+        setSelectedProjectId("");
+        setSelectedStudentIds([]);
+        setSubMentorId("");
+        setTeamLeaderId("");
+        // Reload teams
+        fetchMentorData();
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast(err.response?.data?.error || "Failed to create sprints team.", "error");
+    } finally {
+      setIsCreatingTeam(false);
+    }
+  };
+
+  const handleDisbandTeam = async (teamId) => {
+    if (!window.confirm("Are you sure you want to disband this team? This action is permanent.")) return;
+    try {
+      await axios.delete(`http://localhost:5001/api/teams/${teamId}`);
+      triggerToast("Team disbanded successfully!");
+      fetchMentorData();
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to disband team.", "error");
+    }
+  };
+
+  const selectedStudentsObjects = students.filter(s => selectedStudentIds.includes(s.accountId));
+  const subMentorOptions = spokeMentors.filter(m => m.accountId !== mentorId);
+
+  const handleSubmitFinalProgressClick = async (teamId) => {
+    const reportUrl = prompt("Please enter the Final Progress Report URL (e.g., GitHub repository, PDF report):");
+    if (!reportUrl) return;
+    const facultyComments = prompt("Enter summary comments for the Company Mentor:");
+    if (facultyComments === null) return;
+
+    try {
+      const res = await axios.put(`http://localhost:5001/api/teams/${teamId}/final-progress`, {
+        reportUrl,
+        facultyComments
+      });
+      if (res.data && res.data.success) {
+        triggerToast("Final work progress submitted to Company Mentor!");
+        fetchMentorData();
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to submit final progress.", "error");
+    }
+  };
+
+  const spokeSubmissions = allSubmissions.filter(sub => {
+    const isMember = students.some(s => s.displayName?.toLowerCase() === sub.studentName?.toLowerCase());
+    const targetKeyword = spokeId === "3" ? "kle" : spokeId === "101" ? "coep" : spokeId === "102" ? "mmcoep" : "rit";
+    const subNameLower = sub.studentName?.toLowerCase() || "";
+    return isMember || subNameLower.includes(targetKeyword) || subNameLower.includes("student");
+  });
+
+  return (
+    <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {/* Header Block */}
+      <div className="glass-panel" style={{
+        padding: "20px 24px",
+        background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(99, 102, 241, 0.03))",
+        border: "1px solid var(--border-glass)",
+        borderRadius: "16px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "900", color: "var(--text-main)", letterSpacing: "-0.5px" }}>
+            Faculty Mentor Portal
+          </h2>
+          <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-muted)" }}>
+            Welcome, <strong>{sessionUser?.displayName}</strong>. Manage your assigned corporate projects and assemble student teams.
+          </p>
+        </div>
+        <button
+          onClick={fetchMentorData}
+          className="btn-secondary"
+          style={{ padding: "8px 16px", borderRadius: "8px" }}
+        >
+          Sync Dashboard
+        </button>
+      </div>
+
+      {/* Main Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1.6fr", gap: "24px", alignItems: "flex-start" }}>
+        
+        {/* Left Column: Form and Projects */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          
+          {/* Create Sprints Team Form */}
+          <div className="glass-panel" style={{ padding: "24px" }}>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
+              <FaPlus size={16} style={{ color: "var(--primary)" }} /> Assemble Student Sprints Team
+            </h3>
+            
+            <form onSubmit={handleCreateTeam} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
+                  Team Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. KLE Jetson Edge AI Team A"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  className="form-input"
+                  style={{ width: "100%", padding: "8px 12px", fontSize: "13px" }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
+                  Select Project *
+                </label>
+                <select
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="form-input"
+                  style={{ width: "100%", padding: "8px 12px", fontSize: "13px" }}
+                  required
+                >
+                  <option value="">-- Choose Corporate Project --</option>
+                  {assignedProjects.map(proj => (
+                    <option key={proj._id || proj.id} value={proj._id || proj.id}>
+                      [{proj.company}] {proj.title}
+                    </option>
+                  ))}
+                </select>
+                {assignedProjects.length === 0 && (
+                  <span style={{ fontSize: "11.5px", color: "#ef4444", marginTop: "4px", display: "block" }}>
+                    No corporate projects have been assigned to you yet.
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
+                  Select Student Developers *
+                </label>
+                <div style={{
+                  maxHeight: "150px",
+                  overflowY: "auto",
+                  border: "1px solid var(--border-glass)",
+                  borderRadius: "8px",
+                  padding: "10px",
+                  background: "rgba(255,255,255,0.005)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px"
+                }}>
+                  {students.map(student => (
+                    <label key={student.accountId} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12.5px", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedStudentIds.includes(student.accountId)}
+                        onChange={() => handleStudentCheckboxChange(student.accountId)}
+                      />
+                      <span>{student.displayName} ({student.emailAddress})</span>
+                    </label>
+                  ))}
+                  {students.length === 0 && (
+                    <span style={{ color: "var(--text-dim)", fontSize: "12px", fontStyle: "italic" }}>No students found in your campus spoke.</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
+                    Sub-Faculty Mentor (Optional)
+                  </label>
+                  <select
+                    value={subMentorId}
+                    onChange={(e) => setSubMentorId(e.target.value)}
+                    className="form-input"
+                    style={{ width: "100%", padding: "8px 12px", fontSize: "13px" }}
+                  >
+                    <option value="">-- Select Sub-Mentor --</option>
+                    {subMentorOptions.map(m => (
+                      <option key={m.accountId} value={m.accountId}>{m.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
+                    Team Leader *
+                  </label>
+                  <select
+                    value={teamLeaderId}
+                    onChange={(e) => setTeamLeaderId(e.target.value)}
+                    className="form-input"
+                    style={{ width: "100%", padding: "8px 12px", fontSize: "13px" }}
+                    required
+                  >
+                    <option value="">-- Designate Leader --</option>
+                    {selectedStudentsObjects.map(s => (
+                      <option key={s.accountId} value={s.accountId}>{s.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isCreatingTeam}
+                className="btn-primary"
+                style={{
+                  padding: "10px",
+                  background: "var(--accent)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontWeight: "750",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 12px rgba(255, 140, 0, 0.22)",
+                  marginTop: "8px"
+                }}
+              >
+                {isCreatingTeam ? "Creating Sprints Team..." : "Create Sprints Team"}
+              </button>
+            </form>
+          </div>
+
+        </div>
+
+        {/* Right Column: Assigned Projects list and Active Teams list */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          
+          {/* Assigned Corporate Projects */}
+          <div className="glass-panel" style={{ padding: "24px" }}>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
+              <FaBriefcase size={16} style={{ color: "#3b82f6" }} /> Assigned B2B Projects
+            </h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {assignedProjects.map(proj => (
+                <div key={proj._id || proj.id} style={{
+                  padding: "14px",
+                  background: "rgba(255,255,255,0.01)",
+                  border: "1px solid var(--border-glass)",
+                  borderRadius: "10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <CompanyLogo company={proj.company} size={28} />
+                      <h4 style={{ margin: 0, fontSize: "13.5px", fontWeight: "800" }}>{proj.title}</h4>
+                    </div>
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "auto" }}>Due: <strong>{proj.proposedDueDate}</strong></span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "12px", color: "var(--text-dim)", lineHeight: "1.4" }}>
+                    {proj.description}
+                  </p>
+                </div>
+              ))}
+              {assignedProjects.length === 0 && (
+                <div style={{ padding: "20px", textAlign: "center", color: "var(--text-dim)", fontStyle: "italic", fontSize: "13px" }}>
+                  No corporate projects assigned to you yet.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Active Teams Managed */}
+          <div className="glass-panel" style={{ padding: "24px" }}>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
+              <FaUsers size={18} style={{ color: "#8b5cf6" }} /> Sprints Teams Under Management
+            </h3>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {existingTeams.map(team => {
+                const linkedProj = assignedProjects.find(p => p._id === team.projectId || p.id === team.projectId);
+                return (
+                  <div key={team._id || team.id} style={{
+                    padding: "16px",
+                    background: "rgba(255,255,255,0.015)",
+                    border: "1px solid var(--border-glass)",
+                    borderRadius: "12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "850", color: "var(--text-main)" }}>
+                        {team.name}
+                      </h4>
+                      <button
+                        onClick={() => handleDisbandTeam(team._id || team.id)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#ef4444",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          padding: "2px 6px"
+                        }}
+                      >
+                        Disband
+                      </button>
+                    </div>
+
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                      Project: <strong style={{ color: "var(--text-main)" }}>{linkedProj ? linkedProj.title : "Unresolved Corporate Project"}</strong>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", fontSize: "11.5px" }}>
+                      <div style={{ padding: "6px 10px", background: "rgba(255,255,255,0.01)", borderRadius: "6px", border: "1px solid var(--border-glass)" }}>
+                        <span style={{ color: "var(--text-muted)", display: "block", fontSize: "10px", textTransform: "uppercase", fontWeight: "750" }}>Team Leader</span>
+                        <span style={{ fontWeight: "600", color: "var(--text-main)" }}>{team.teamLeader?.displayName || "N/A"}</span>
+                      </div>
+                      <div style={{ padding: "6px 10px", background: "rgba(255,255,255,0.01)", borderRadius: "6px", border: "1px solid var(--border-glass)" }}>
+                        <span style={{ color: "var(--text-muted)", display: "block", fontSize: "10px", textTransform: "uppercase", fontWeight: "750" }}>Sub-Faculty Mentor</span>
+                        <span style={{ fontWeight: "600", color: "var(--text-main)" }}>{team.subMentor?.displayName || "None"}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "8px" }}>
+                      <span style={{ fontSize: "11px", fontWeight: "750", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Cohort Members:</span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                        {team.members?.map(m => (
+                          <span key={m.accountId} style={{
+                            fontSize: "11px",
+                            padding: "4px 8px",
+                            background: "rgba(99, 102, 241, 0.08)",
+                            color: "var(--primary)",
+                            border: "1px solid rgba(99, 102, 241, 0.15)",
+                            borderRadius: "6px"
+                          }}>
+                            {m.displayName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {team.finalProgress && team.finalProgress.status !== "Pending" ? (
+                      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "8px", fontSize: "12px" }}>
+                        <span style={{ fontSize: "10.5px", fontWeight: "750", color: "var(--text-muted)", textTransform: "uppercase", display: "block" }}>Final Work Progress</span>
+                        <div style={{ marginTop: "4px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <div>
+                            Report URL: <a href={team.finalProgress.reportUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary)", fontWeight: "600" }}>{team.finalProgress.reportUrl}</a>
+                          </div>
+                          {team.finalProgress.facultyComments && (
+                            <div style={{ color: "var(--text-muted)" }}>Comments: <em>"{team.finalProgress.facultyComments}"</em></div>
+                          )}
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "2px" }}>
+                            Status: 
+                            <span style={{
+                              fontSize: "9px",
+                              fontWeight: "900",
+                              background: team.finalProgress.status === "Evaluated" ? "rgba(45, 212, 191, 0.08)" : "rgba(251, 146, 60, 0.08)",
+                              color: team.finalProgress.status === "Evaluated" ? "#2dd4bf" : "var(--accent)",
+                              border: team.finalProgress.status === "Evaluated" ? "1px solid rgba(45, 212, 191, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)",
+                              padding: "2px 6px",
+                              borderRadius: "3px",
+                              textTransform: "uppercase"
+                            }}>{team.finalProgress.status}</span>
+                          </div>
+                          {team.finalProgress.status === "Evaluated" && (
+                            <div style={{
+                              background: "rgba(45, 212, 191, 0.03)",
+                              borderLeft: "3px solid #2dd4bf",
+                              padding: "8px 10px",
+                              borderRadius: "0 6px 6px 0",
+                              marginTop: "6px"
+                            }}>
+                              <div style={{ fontWeight: "700", display: "flex", alignItems: "center", gap: "4px", color: "var(--text-main)" }}>
+                                Rating: {Array.from({ length: team.finalProgress.rating }).map((_, i) => (
+                                  <span key={i} style={{ color: "#fbbf24" }}>★</span>
+                                ))} ({team.finalProgress.rating}/5)
+                              </div>
+                              {team.finalProgress.companyFeedback && (
+                                <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+                                  Feedback: <strong>{team.finalProgress.companyFeedback}</strong>
+                                </div>
+                              )}
+                              <span style={{ fontSize: "9.5px", color: "var(--text-dim)", display: "block", marginTop: "4px" }}>Reviewed by {team.finalProgress.evaluatedBy}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "8px" }}>
+                        <button
+                          onClick={() => handleSubmitFinalProgressClick(team._id || team.id)}
+                          style={{
+                            padding: "6px 12px",
+                            background: "rgba(249, 115, 22, 0.08)",
+                            border: "1px solid rgba(249, 115, 22, 0.2)",
+                            borderRadius: "6px",
+                            color: "var(--accent)",
+                            fontSize: "11px",
+                            fontWeight: "750",
+                            cursor: "pointer",
+                            width: "100%",
+                            textAlign: "center"
+                          }}
+                        >
+                          Submit Final Work Progress
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {existingTeams.length === 0 && (
+                <div style={{ padding: "20px", textAlign: "center", color: "var(--text-dim)", fontStyle: "italic", fontSize: "13px" }}>
+                  No active custom sprints teams created yet.
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Student Deliverables Verification Queue */}
+      <div className="glass-panel" style={{ padding: "24px", marginTop: "24px" }}>
+        <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
+          <FaClipboardList size={18} style={{ color: "var(--accent)" }} /> Spoke Deliverables Verification Queue
+        </h3>
+        {spokeSubmissions.length > 0 ? (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "var(--text-main)", textAlign: "left" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border-glass)", color: "var(--text-dim)" }}>
+                  <th style={{ padding: "12px 8px", fontWeight: "750" }}>Student Developer</th>
+                  <th style={{ padding: "12px 8px", fontWeight: "750" }}>Sprint Task ID</th>
+                  <th style={{ padding: "12px 8px", fontWeight: "750" }}>Artifact Access</th>
+                  <th style={{ padding: "12px 8px", fontWeight: "750" }}>Grade</th>
+                  <th style={{ padding: "12px 8px", fontWeight: "750" }}>Review Status</th>
+                  <th style={{ padding: "12px 8px", fontWeight: "750", textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {spokeSubmissions.map((sub) => {
+                  const badgeBg = sub.status === "Approved" ? "rgba(45, 212, 191, 0.08)" : sub.status === "Re-work Requested" ? "rgba(239, 68, 68, 0.08)" : "rgba(251, 146, 60, 0.08)";
+                  const badgeColor = sub.status === "Approved" ? "#2dd4bf" : sub.status === "Re-work Requested" ? "#ef4444" : "var(--accent)";
+                  const badgeBorder = sub.status === "Approved" ? "1px solid rgba(45, 212, 191, 0.2)" : sub.status === "Re-work Requested" ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid rgba(251, 146, 60, 0.2)";
+
+                  return (
+                    <tr key={sub._id} style={{ borderBottom: "1px solid var(--border-glass)" }}>
+                      <td style={{ padding: "14px 8px", fontWeight: "600" }}>{sub.studentName}</td>
+                      <td style={{ padding: "14px 8px" }}>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <strong style={{ color: "var(--primary)", fontFamily: "var(--mono)" }}>{sub.taskId}</strong>
+                          {sub.comments && <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>"{sub.comments}"</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: "14px 8px" }}>
+                        <a 
+                          href={sub.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{
+                            color: "var(--primary)",
+                            fontWeight: "750",
+                            textDecoration: "none"
+                          }}
+                        >
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><FaLink /> {sub.fileName}</span>
+                        </a>
+                      </td>
+                      <td style={{ padding: "14px 8px" }}>
+                        {sub.grade ? (
+                          <strong style={{ color: "var(--accent)", fontSize: "14px" }}>{sub.grade}</strong>
+                        ) : (
+                          <span style={{ color: "var(--text-dim)", fontStyle: "italic" }}>Ungraded</span>
+                        )}
+                      </td>
+                      <td style={{ padding: "14px 8px" }}>
+                        <span style={{
+                          fontSize: "9px",
+                          fontWeight: "900",
+                          background: badgeBg,
+                          color: badgeColor,
+                          border: badgeBorder,
+                          padding: "2px 6px",
+                          borderRadius: "3px",
+                          textTransform: "uppercase"
+                        }}>{sub.status}</span>
+                      </td>
+                      <td style={{ padding: "14px 8px", textAlign: "right" }}>
+                        {sub.status === "Awaiting Review" ? (
+                          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                            <button 
+                              onClick={() => {
+                                const grade = prompt("Please assign a grade for this student deliverable (e.g. A, B, C, D, F):", "A");
+                                if (grade !== null) {
+                                  const feedback = prompt("Enter evaluation comments:", "Meets all FIP B2B criteria. Excellent work!");
+                                  if (feedback !== null) {
+                                    handleUpdateSubmissionStatus(sub._id, "Approved", feedback, grade);
+                                  }
+                                }
+                              }}
+                              style={{
+                                padding: "6px 12px",
+                                background: "rgba(45, 212, 191, 0.15)",
+                                border: "1px solid rgba(45, 212, 191, 0.3)",
+                                borderRadius: "6px",
+                                color: "#2dd4bf",
+                                fontSize: "11px",
+                                fontWeight: "800",
+                                cursor: "pointer"
+                              }}
+                            >
+                              Approve & Grade
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const feedback = prompt("Please enter evaluation comments / requested changes for the student developer:", "Re-work required: please refine your layout controller.");
+                                if (feedback !== null) {
+                                  handleUpdateSubmissionStatus(sub._id, "Re-work Requested", feedback || "Please revise task artifacts.");
+                                }
+                              }}
+                              style={{
+                                padding: "6px 12px",
+                                background: "rgba(239, 68, 68, 0.15)",
+                                border: "1px solid rgba(239, 68, 68, 0.3)",
+                                borderRadius: "6px",
+                                color: "#ef4444",
+                                fontSize: "11px",
+                                fontWeight: "800",
+                                cursor: "pointer"
+                              }}
+                            >
+                              Flag Re-work
+                            </button>
+                          </div>
+                        ) : sub.status === "Re-work Requested" ? (
+                          <div style={{ display: "flex", gap: "10px", alignItems: "center", justifyContent: "flex-end" }}>
+                            <span style={{
+                              fontSize: "11px", 
+                              color: "#ef4444", 
+                              fontWeight: "750",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px"
+                            }}>
+                              <FaExclamationTriangle size={12} />
+                              <span>Revision Required</span>
+                            </span>
+                            <button 
+                              onClick={() => {
+                                const grade = prompt("Please assign a grade for this student deliverable (e.g. A, B, C, D, F):", "A");
+                                if (grade !== null) {
+                                  const feedback = prompt("Enter evaluation comments:", "Re-evaluated and approved! Meets all B2B criteria.");
+                                  if (feedback !== null) {
+                                    handleUpdateSubmissionStatus(sub._id, "Approved", feedback, grade);
+                                  }
+                                }
+                              }}
+                              style={{
+                                padding: "6px 12px",
+                                background: "rgba(45, 212, 191, 0.15)",
+                                border: "1px solid rgba(45, 212, 191, 0.3)",
+                                borderRadius: "6px",
+                                color: "#2dd4bf",
+                                fontSize: "11px",
+                                fontWeight: "800",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease"
+                              }}
+                            >
+                              Re-evaluate & Approve
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+                            <span style={{
+                              fontSize: "11px", 
+                              color: "#2dd4bf", 
+                              fontWeight: "600",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px"
+                            }}>
+                              <FaCheck size={11} />
+                              <span>Verified Shipped</span>
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this submission?")) {
+                                  handleDeleteSubmission(sub._id);
+                                }
+                              }}
+                              style={{
+                                padding: "4px 6px",
+                                background: "rgba(239, 68, 68, 0.08)",
+                                border: "1px solid rgba(239, 68, 68, 0.2)",
+                                borderRadius: "4px",
+                                color: "#ef4444",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                verticalAlign: "middle",
+                                transition: "var(--transition-smooth)",
+                                marginLeft: "8px"
+                              }}
+                              title="Delete old submission history"
+                            >
+                              <FaTrashAlt size={10} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{
+            textAlign: "center",
+            padding: "40px 20px",
+            border: "1px dashed var(--border-glass)",
+            borderRadius: "12px",
+            color: "var(--text-dim)",
+            fontSize: "13px"
+          }}>
+            No deliverables have been submitted by Spoke student developers for review yet.
+          </div>
+        )}
+      </div>
     </div>
   );
 }

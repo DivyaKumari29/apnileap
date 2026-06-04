@@ -21,6 +21,14 @@ const AllocationSchema = new mongoose.Schema({
   assignedKey: {
     type: String,
     default: null
+  },
+  facultyMentor: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
+  projectMentor: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
   }
 });
 
@@ -68,6 +76,14 @@ const CorporateProjectSchema = new mongoose.Schema({
   },
   assignedKey: {
     type: String,
+    default: null
+  },
+  facultyMentor: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
+  projectMentor: {
+    type: mongoose.Schema.Types.Mixed,
     default: null
   },
   dateAdded: {

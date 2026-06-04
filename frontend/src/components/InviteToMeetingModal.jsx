@@ -17,10 +17,10 @@ export const InviteToMeetingModal = ({ meeting, currentUser, onClose, onInviteSu
       let endpoint = '';
       if (currentUser.role === 'Central Moderator' || currentUser.role === 'Corporate Sponsor' || currentUser.role.includes('Coordinator')) {
         // Coordinators can invite Mentors
-        endpoint = `http://localhost:5000/mentors/${meeting.campusId}`;
+        endpoint = `http://localhost:5001/mentors/${meeting.campusId}`;
       } else if (currentUser.role === 'MENTOR') {
         // Mentors can invite Students
-        endpoint = `http://localhost:5000/students/${meeting.campusId}`;
+        endpoint = `http://localhost:5001/students/${meeting.campusId}`;
       }
 
       if (endpoint) {
@@ -45,7 +45,7 @@ export const InviteToMeetingModal = ({ meeting, currentUser, onClose, onInviteSu
   const handleInvite = async () => {
     setInviting(true);
     try {
-      const res = await axios.post(`http://localhost:5000/meetings/${meeting.id}/invite`, {
+      const res = await axios.post(`http://localhost:5001/meetings/${meeting.id}/invite`, {
         userIds: selectedUserIds,
         invitedBy: currentUser.id
       });

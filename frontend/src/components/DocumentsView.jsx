@@ -18,7 +18,7 @@ const DocumentsView = ({ currentUser, documentType = 'project' }) => {
 
   const fetchDocuments = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/documents`);
+      const res = await axios.get(`http://localhost:5001/api/documents`);
       setDocuments(res.data);
     } catch (err) {
       console.error('Failed to fetch documents', err);
@@ -28,16 +28,16 @@ const DocumentsView = ({ currentUser, documentType = 'project' }) => {
   const fetchContextData = async () => {
     try {
       if (currentUser.role === 'STUDENT') {
-        const res = await axios.get(`http://localhost:5000/students/${currentUser.id}/projects`);
+        const res = await axios.get(`http://localhost:5001/students/${currentUser.id}/projects`);
         setAllocations(res.data);
       } else if (currentUser.role === 'MENTOR') {
-        const res = await axios.get(`http://localhost:5000/faculty/${currentUser.id}/mentored`);
+        const res = await axios.get(`http://localhost:5001/faculty/${currentUser.id}/mentored`);
         setAllocations(res.data);
       } else {
          const campusQuery = (currentUser.role === 'SPONSOR' && currentUser.campusId) ? `?campusId=${currentUser.campusId}` : '';
-         const res = await axios.get(`http://localhost:5000/projects${campusQuery}`);
+         const res = await axios.get(`http://localhost:5001/projects${campusQuery}`);
          setProjects(res.data);
-         const allocRes = await axios.get(`http://localhost:5000/allocations${campusQuery}`);
+         const allocRes = await axios.get(`http://localhost:5001/allocations${campusQuery}`);
          if(allocRes.data) setAllocations(allocRes.data);
       }
     } catch(err) {
@@ -68,7 +68,7 @@ const DocumentsView = ({ currentUser, documentType = 'project' }) => {
 
     setIsUploading(true);
     try {
-      await axios.post('http://localhost:5000/api/documents', formData, {
+      await axios.post('http://localhost:5001/api/documents', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -89,7 +89,7 @@ const DocumentsView = ({ currentUser, documentType = 'project' }) => {
       const feedback = prompt("Enter feedback (optional):", "");
       if(feedback === null) return;
       try {
-          await axios.put(`http://localhost:5000/api/documents/${id}/review`, { status, feedback });
+          await axios.put(`http://localhost:5001/api/documents/${id}/review`, { status, feedback });
           fetchDocuments();
       } catch(err) {
           console.error("Failed to review", err);
@@ -99,7 +99,7 @@ const DocumentsView = ({ currentUser, documentType = 'project' }) => {
   const handleDelete = async (id) => {
       if(!window.confirm("Delete this document?")) return;
       try {
-          await axios.delete(`http://localhost:5000/api/documents/${id}`);
+          await axios.delete(`http://localhost:5001/api/documents/${id}`);
           fetchDocuments();
       } catch(err) {
           console.error("Failed to delete", err);
@@ -186,7 +186,7 @@ const DocumentsView = ({ currentUser, documentType = 'project' }) => {
                                  <File size={20} color="var(--primary)" />
                                  <span style={{ fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={doc.filename}>{doc.filename}</span>
                              </div>
-                             <a href={`http://localhost:5000${doc.filepath}`} target="_blank" rel="noreferrer" style={{ color: 'var(--text-muted)', cursor: 'pointer' }}>
+                             <a href={`http://localhost:5001${doc.filepath}`} target="_blank" rel="noreferrer" style={{ color: 'var(--text-muted)', cursor: 'pointer' }}>
                                  <Download size={18} />
                              </a>
                           </div>

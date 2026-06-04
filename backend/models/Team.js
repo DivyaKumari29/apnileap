@@ -38,6 +38,28 @@ const TeamSchema = new mongoose.Schema({
     type: TeamMemberSchema,
     default: null
   },
+  projectId: {
+    type: String,
+    default: null
+  },
+  subMentor: {
+    type: TeamMemberSchema,
+    default: null
+  },
+  finalProgress: {
+    reportUrl: { type: String, default: "" },
+    facultyComments: { type: String, default: "" },
+    submittedAt: { type: Date, default: null },
+    status: { 
+      type: String, 
+      enum: ["Pending", "Submitted", "Evaluated"], 
+      default: "Pending" 
+    },
+    rating: { type: Number, default: 0 },
+    companyFeedback: { type: String, default: "" },
+    evaluatedAt: { type: Date, default: null },
+    evaluatedBy: { type: String, default: "" }
+  },
   createdAt: {
     type: Date,
     default: Date.now

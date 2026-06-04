@@ -39,7 +39,7 @@ export default function CreateSprintModal({ isOpen, onClose, currentBoardId, onS
         finalGoal = `Target Team/Project: ${formData.project} - ${formData.goal}`;
       }
 
-      await axios.post('http://localhost:5000/sprints', {
+      await axios.post('http://localhost:5001/sprints', {
         boardId: currentBoardId,
         name: finalName,
         startDate: formattedStart,
